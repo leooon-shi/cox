@@ -1,0 +1,266 @@
+= Introduction to Cow
+:toc: left
+:toc-title: Introducton to Event I/O
+:toclevels: 4
+
+Leooon Shi <leooon.shi@gmail.com>; Roger X. Zhang
+{doctitle} Life is a trip
+:description: A event-driven c++ library
+:revdate: April 4, 2025
+:revnumber: V1.0.0
+:revremark: Epoll reactor
+:version-label!: 
+:source-highlighter: highlight.js
+:source-language: C/C++
+
+== advanced IO
+
+
+=== EPOLL
+epoll(7) - I/O event notification facility. https://man7.org/linux/man-pages/man7/epoll.7.html[man7 epoll]
+
+The central concept of the epoll API is `_epoll intance_`, an kernel data structure which, from a user-space perspective, can be considered as a container for two lists:
+[unordered]
+The interest list:: (sometimes also called the epoll set) file descriptors registered by user.
+The ready list:: The set of file descriptor that are "ready" for I/O.
+
+==== proc interfaces
+The following interfaces can be used to limit the amount of kernel memory consumed by epoll:
+ /proc/sys/fs/epoll/max_user_watches
+Each registered file descriptor costs roughly 90 bytes on a 32-bit kernel, and roughly 160 bytes on a 64-bit kernel.
+
+Currently, the default value for max_user_watches is 1/25(4%) of the available low memory, divided by the registration cost in bytes.
+
+.epoll_create1
+epoll_create1 is used to create epoll instance https://man7.org/linux/man-pages/man2/epoll_create.2.html[man7 epoll_create] For CLOEXEC https://man7.org/linux/man-pages/man2/open.2.html[man7 open(2)]
+[epoll_create1, c, linenums]
+----
+int epoll_create(int size);
+int epoll_create1(int flags);
+EPOLL_CLOEXEC avoid race condition in multiple thread system.
+----
+
+.errors
+[horizontal]
+EINVAL:: size is not positive, epoll_create1(), invalid value specified in `_flag_`
+EMFILE:: The per-process limit on the number of open file descriptors has been reached.
+ENFILE:: The system-wide limit on the total number of open files has been reached.
+ENOMEM:: There was insufficient memory to create the kerneel object.
+
+.epoll_event
+@events This field in the `*epoll_event*` structure lists which events to monitor on the given file descriptor `*fd*`
+@multiple events can be bitwise-ORed together.
+https://man7.org/linux/man-pages/man3/epoll_event.3type.html[man7 epoll_event(3type)]
+[epoll_event, c, linenums]
+----
+#include <sys/epoll.h>
+
+struct epoll_event {
+    uint32_t      events;  /* Epoll events */
+    epoll_data_t  data;    /* User data variable */
+};
+
+union epoll_data {
+    void     *ptr;
+    int       fd;
+    uint32_t  u32;
+    uint64_t  u64;
+};
+
+typedef union epoll_data  epoll_data_t;
+----
+
+The Linux kernel headers also provide this type, with a slightly different definition:
+
+[linux_epoll_event,c,linenums]
+----
+#include <linux/eventpoll.h>
+
+struct epoll_event {
+    __poll_t  events;
+    __u64     data;
+};
+----
+
+.epoll_ctl
+[epoll_ctl, c, linenums]
+----
+#include <sys/epoll.h>
+
+int epoll_ctl(int epfd, int op, int fd,
+                 struct epoll_event *_Nullable event);
+----
+
+==== Event Types
+
+.readable event
+[unordered]
+EPOLLIN:: The file is available to be read from without blocking.
+EPOLLPRI:: There is urgent out-of-band data available to read.
+
+.writable event
+[unordered]
+EPOLLOUT:: The file is available to be written to without blocking.
+
+.manageable event
+[unordered]
+EPOLLERR:: An error condition occurred on the file. This event is always monitored, even if it's not specified.
+EPOLLHUP:: A hangup occured on the file. This event is always monitored, even if it's not specified. Stream socket peer closed connection, or shutdown writing half of connection. 
+[sidebar]
+This flag is espectially useful for writing simple code to detect peer shutdown when using edge-triggered monitoring.
+
+==== input flags
+[unordered]
+EPOLLET:: Requests `_edge-triggered_` notification for the associated file descriptor.
+EPOLLONESHOT:: Requests one-shot noification for the associated file descriptor.
+[sidebar]
+After an event is generated and read, the file is automatically no longer monitored, a new event mask must be specified via `*EPOLL_CTL_MOD*` to reenable the watch.
+
+EPOLLWAKEUP:: since linux 3.5 TODO USAGE
+EPOLLEXCLUSIVE:: since Linux 4.5 TODO USAGE
+
+.Operation
+[unordered]
+EPOLL_CTL_ADD:: Add a monitor on the file associated with the file descriptor fd to the epoll instance associated with epfd, per the events defined in event.
+EPOLL_CTL_DEL:: Remove a monitor on the file associated with the file descriptor fd from epoll instance associated with epfd.
+EPOLL_CTL_MOD:: Modify an existing monitor of fd with the updated events specified by event.
+
+.ERRORs
+[unordered]
+EBADF:: epfd or fd is not a valid file descriptor.
+EEXIST:: op was *EPOLL_CTL_ADD*, and the supplied file descriptor fd is already registered with this epoll instance.
+EINVAL:: epfd is not an epoll file descriptor, or fd is the same as epfd, or the requested operation op is not suppoprted by this interface.
+EINVAL:: TODO USAGE EPOLLEXECLUSIVE
+EINVAL EPOLLEXECLUSIVE:: TODO USAGE
+ELOOP:: fd refers to an epoll instance and this *EPOLL_CTL_ADD* would result in a circular loop of epoll instances monitoring one another or a nesting depth of epoll instances greate than 5.
+ENOENT:: op was *EPOLL_CTL_MOD* or *EPOLL_CTL_DEL*, and fd is not registered with this epoll instance.
+ENOMEM:: There was insufficient memory to handle the requested op contrll operation.
+ENOSPC:: The limit imposed by proc interface was encountered while trying to register a new file descriptor on an epoll instance.
+ENERM:: The target file fd doesn not support epoll. `This error can occur if fd refers to, for example, a regular file or a directory.`
+
+
+.epoll_wait
+A call to epoll_wait() will block until either:
+
+* a file descriptor delivers an event;
+* the call is interrupted by a signal handler
+* the timeout expires
+
+A call to epoll_wait waits up to `*timeout milliseconds*` for events on the files associated with the epoll instance epfd
+* Upon success, events points to memory containing `*epoll_event*` structures describing each event, up to maximum of `*maxevents*`
+* Return value is the number of events, or -1 on error, in which errono is set to one of the following values.
+[horizontal]
+EBADF:: epfd is not a valid file descriptor
+EFAULT:: The process does not have write access to the memory pointed at by events.
+EINTR:: The system call was interrupted by a signal before it could complete
+INVAL:: epfd is not a valid epoll instance, or maxevents is equal to or less than 0.
+@timeout if timeout is 0, the call to epoll_wait returns immediately, even if no events are available, in which case the call will return 0.
+[sidebar]
+Time is measured against the CLOCK_MONOTONIC clock. The timeout interval will be rounded up to the system clock granularity, and kernel scheduling delays mean that the blocking interval may overrun by a small amount.
+
+[epoll_wait, c, linenums]
+----
+#include <sys/epoll.h>
+
+int epoll_wait(int epfd,
+               struct epoll_event *events,
+               int maxevents,
+               int timeout);
+
+
+int epoll_pwait(int epfd, struct epoll_event events[.maxevents],
+            int maxevents, int timeout,
+            const sigset_t *_Nullable sigmask);
+
+int epoll_pwait2(int epfd, struct epoll_event events[.maxevents],
+        int maxevents, const struct timespec *_Nullable timeout,
+        const sigset_t *_Nullable sigmask);
+----
+
+[sidebar]
+Ther relationship between epoll_wait() and epoll_pwait() is analogous to the relationship between select(2) and pselect(2). epoll_pwait allows an applicaiton to safely wait until either a file descriptor becomes ready or until a signal is caught.
+
+[epoll_pwait, c, linenums]
+----
+read = epoll_pwait(epfd, &events, maxevents, timeout, &sigmask)
+//it's equivalent to atomicall executing the follwing calls:
+
+sigset_t origmask
+pthread_sigmask(SIG_SETMASK, &sigmask, &origmask);
+read = epoll_wait(epfd, &events, maxevents, timeout);
+pthread_sigmask(SIG_SETMASK, &origmask, NULL);
+----
+
+.ERRORS
+[unordered]
+EBADF:: epfd is not a valid file descriptor.
+EFAULT:: The memory area pointed to by events is not accessible with write permissions.
+EINTR:: The call was interrupted by a signal handler before either any of requested events occurred or the timeout expired.
+EINVAL:: epfd is not an epoll file descriptor, or maxevents is less than or equal to zero.
+
+=== POLL
+poll, ppoll - wait for some event on a file descriptor
+
+.SYNOPSIS
+[poll, c, linenums]
+----
+#include <poll.h>
+struct pollfd {
+    int fd; /* file descriptor*/
+    short events; /*requested events*/
+    short revents; /* returned events*/
+}
+int poll(struct pollfd *fds, nfds_t nfds, int timeout);
+#define __GNU_SOURCE
+#include <poll.h>
+int ppoll(struct pollfd *fds, nfds_t nfds,
+        const struct tmiespec *_Nullable tmo_p,
+        const sigset_t *_Nullable sigmask);
+----
+
+.input events
+The field events is an input parameter, a bit mask specifying the events the application is interested in for the file descriptor fd.
+This field may be specified as zero, in which case the only events that can be returned in revents are *POLLHUP*, *POLLERR*, and *POLLNVAL*.
+[unordered]
+POLLIN:: There is data to read
+POLLPRI:: There is some exceptional condition on the file descriptor. Possibiliies include:
+* There is out-of-band data on a TCP socket.
+* A pseudoterminal master in packet mode has seen a state change on the slave.
+* A cgroup.events file has been modified.
+POLLRDHUP:: Stream socket peer closed connection, or shut down writing half of connection. The *_GNU_SOURCE* feature test macro must be defined (before including any header files) in order to obtain thi definition.
+
+.output events
+The field revents is an output parameter, fille by the kernel with the events that actually occured. The bits returned in revents can include any of those specified in events, or one of the values *POLLERR*, *POLLHUP*, and *POLLNVAL*
+
+POLLOUT:: Writing is now possible, though a write larger than the available space in a socket or pipe will still block (unless *O_NOBLOCK* is set).
+POLLERR:: Error condition. This bit is also set for a file descriptor referring to the write end of a pipe when the read end has been closed.
+POLLHUBP:: Hang up. Note that when reading from a channel such as a pipe or a stream socket, this event merely indicates that the peer clsoed its end of the channel. Subsequent reads from the channel will return 0 (end of file) only after outstanding data in the channel has been consumed. 
+POLLNVAL:: Inavlid request: fd not open (only in revents)
+
+.ERRORS
+On success, *poll()* returns a nonnegative value which is the number of elements in the `_pollfds_` whose `_revents_` fields has been set to a nonzero value.
+
+[unordered]
+EFAULT:: fds points outside the process's accessible address space. The array given as argument was not contained in the calling program's address space.
+EINTR:: A signal occurred before any requested event
+EINVAL:: The nfds value exceeds the *RLIMIT_NOFILE* value.
+EINVAL:: The timeout value epressed in *tmo_p is invalid.
+ENOMEM:: Unable to allocate memory for kernal data structures.
+
+=== SELECT
+
+== Reactor
+
+== Q&A
+
+[qanda]
+What's the purpose of this library?::
+That's the answer
+
+Are you okay?::
+What's your hobbies?::
+Get away
+
+[comment]
+It's a comment
+it's another comment.

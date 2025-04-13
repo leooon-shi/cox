@@ -1,0 +1,3 @@
+/Users/leon/projects/cox/build/CMakeFiles/Cow.dir
+/Users/leon/projects/cox/build/CMakeFiles/edit_cache.dir
+/Users/leon/projects/cox/build/CMakeFiles/rebuild_cache.dir

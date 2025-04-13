@@ -1,0 +1,83 @@
+= Introduction to timerfd
+:toc: left
+:toc-title: Introducton to Event I/O
+:toclevels: 4
+
+Leooon Shi <leooon.shi@gmail.com>; Roger X. Zhang
+{doctitle} Life is a trip
+:description: A event-driven c++ library
+:revdate: April 4, 2025
+:revnumber: V1.0.0
+:revremark: Epoll reactor
+:version-label!: 
+:source-highlighter: highlight.js
+:source-language: C/C++
+
+== timerfd
+timerfd_create() creates a new timer object, and returns a file descriptor that refers to that time.
+
+
+[timerfd, c, linenums]
+----
+#include <sys/timerfd.h>
+
+int timerfd_create(int clockid, int flags);
+----
+=== timerfd_create
+
+.Clockid
+The *clockid* argument specifies the clock that is used to mark the progress of the timer, the must be one of the following:
+[unsorted]
+CLOCK_REALTIME:: A settable system-wide real-time clock.
+CLOCK_MONOTONIC:: A nonsettable monotonically increasing clock that measures time from some unspecified point in the past that does not change after system startup.
+CLOCK_BOOTTIME:: This is a monotonically increasing clock. including the time during which the system is suspended. This is useful for applicaitons that need to be `_suspend-aware_`.
+CLOCK_REALTIME_ALARM:: This clock is like *CLOCK_REALTIME*, but will wake the system if it is suspended. The caller must have the *CAP_WAKE_ALARM* capcability in order to set a timer against this clock.
+CLOCK_BOOTTIME_ALARM:: This clock is like *CLOCK_BOOTTIME*, but will wake the system if it is suspended. The caller must have the *CAP_WAKE_ALARM* capcability in order to set a timer against this clock.
+
+.Flags
+Following values can be bitwise-ORed in flags to change the behavior of *timerfd_create()*
+[unsorted]
+TFD_NONBLOCK:: Set *N_NONBLOCK* file status flag on the open file description referred to by the new file descriptor.
+TFD_CLOEXEC:: Set the close-on-exec (*FD_CLOEXEC*) flag on the new file descriptor. 
+
+=== timerfd_setttime
+*timerfd_settime()* arms (starts) or disarms (stops) the timer referred to by the file descriptor fd.
+
+[timerfd, c, linenums]
+----
+#include <sys/timerfd.h>
+#include <time.h>
+
+struct timespec {
+    time_t     tv_sec;   /* Seconds */
+    /* ... */  tv_nsec;  /* Nanoseconds [0, 999'999'999] */
+};
+
+struct itimerspec {
+    struct timespec  it_interval;  /* Interval for periodic timer */
+    struct timespec  it_value;     /* Initial expiration */
+};
+
+int timerfd_settime(int fd, int flags,
+        const struct itimerspec *new_value,
+        struct itimerspec *_Nullable old_value);
+int timerfd_gettime(int fd, struct itimerspec *curr_value);
+
+----
+
+.new_value
+The argument *new_value* argument specifies the initial expiration and interval for the time.
+it_value:: specifies the initial expiration of the timer, in seconds and nanoseconds.
+it. Setting both fields of `_new_value.it_value_` to zero disarms the timer.
+it_interval:: specifies the period by settign one or both fields of `_new_value.it_interval_` to nonzero values. for the *repeated timer* expirations after the initial expiration. 
+
+[sidebar]
+If both fields of `_new_value.it_interval_` are zero, the timer expires just once, at the time specified by `_new_value.it_value_`.
+If the old_value argument is not NULL, then the itimerspec structure that it points to is used to return the setting of the timer that was current at the time of the call;
+
+.FLAGS
+TFD_TIMER_ABSTIME:: Interpret `__new_value.it_value_` as an absolute value on the timer's clock. The timer will expire when the value of the timer's clock reaches the value specified in `_new_value.it_value_`.
+TFD_TIMER_CANCEL_ON_SET:: if this flag is specified along with the *TFD_TIME_ABSTIME* and the clock for this timer is *CLOCK_REALTIME* or *CLOCK_REALTIME_ALARM*, then this timer as  cancelable if the real-time clock undergoes a discontinuous change (settimeofday, clock_settime), or similar). When such changes occur, a current or future read() fromt the file descriptor will fail with the error *ECANCELED*.
+
+.Operation_on_timerfd
+If the timer has already expired one or more times since its setting were last modified using *timerfd_settime()*, or since the last successful *read(2)*, then the buffer given to *read(2)* returns an unsigned 8-byte integer `_(uint64_t)_` in (host byte order) containing the number of expirations that have occured.
