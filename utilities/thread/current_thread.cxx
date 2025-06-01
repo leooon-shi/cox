@@ -44,6 +44,9 @@ namespace current_thread {
         auto tid_str_len = tid_str.length();
         std::copy(tid_str.begin(), tid_str.end(), tid_str_);
         tid_str_[tid_str_len] = '\0'; // Null-terminate the string
+    // CXX20
+    // std::string tid_str = std::format("{:07}", tid_); // Fixed width of 5, padded with '0'
+
     #else
         auto tid_str_len = std::snprintf(tid_str_, sizeof(tid_str_), "%-7d", tid_);
         tid_str_[tid_str_len] = '\0'; // Null-terminate the string

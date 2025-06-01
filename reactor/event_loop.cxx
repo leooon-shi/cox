@@ -183,7 +183,7 @@ void EventLoop::doPendingTasks() {
     while (!tasks.empty()) {
         tasks.front()();
         tasks.pop();
-        logger_->info("handling pending task..");
+        // logger_->info("handling pending task..");
     }
 }
 

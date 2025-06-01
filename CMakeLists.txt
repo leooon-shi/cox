@@ -48,6 +48,10 @@ set(CMAKE_VERBOSE_MAKEFILE OFF)
 add_subdirectory(reactor)
 add_subdirectory(logging)
 add_subdirectory(utilities)
+# Add Google Test
+add_subdirectory(googletest)
+add_subdirectory(tests)
+# examples
 add_subdirectory(examples)
 
 # Add libriary
