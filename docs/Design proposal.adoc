@@ -1,0 +1,386 @@
+= C++20 Event-Driven I/O Library Design Proposal
+
+== Introduction
+This document outlines the design for a C++20 event-driven I/O library, drawing inspiration from established libraries like libuev, muduo, and boost.asio. The library aims to provide a high-performance, cross-platform (initially excluding Windows) foundation for building network applications and handling other I/O operations asynchronously.
+
+== Core Components
+=== overview
+Central Element:
+
+EventLoop: Place this in the center as the core component orchestrating everything.
+Key Components and their Interactions with the EventLoop:
+
+IOPoller (Abstract):: Show arrows indicating the EventLoop uses an IOPoller to monitor file descriptors for events. Have separate boxes/representations for the concrete implementations: EPollPoller and KqueuePoller, with the EventLoop potentially selecting the appropriate one at runtime.
+IOChannel:: Illustrate that IOChannel objects are registered with the EventLoop. Show arrows indicating the EventLoop receives events from the IOPoller and uses these events to trigger handleEvents on the corresponding IOChannel.
+BackoffTimer: Show that BackoffTimer uses the EventLoop to schedule timer events.
+FileWatcher:: Depict the FileWatcher registering with the EventLoop to monitor file system events.
+Wakeup Mechanism (eventfd/Pipe):: Show other threads interacting with the EventLoop via the wakeup mechanism to add tasks or signal updates.
+Higher-Level Networking::
+TcpListener:: Show it using the EventLoop to listen for incoming connections.
+TcpConnection:: Illustrate that established TcpConnection objects are associated with the EventLoop for handling data and connection events.
+UdpSocket:: Show UdpSocket interacting with the EventLoop for sending and receiving data.
+TLS:: If you want to include it at this level, you could show TcpConnection potentially using a TLS module that interacts with the EventLoop for secure communication.
+Domain Sockets:: Similar to TCP/UDP, show the acceptor and connection (if stream-based) interacting with the EventLoop.
+Thread Pool (Planned):: You could include a representation of a ThreadPool and show tasks being submitted from various parts of the library and potentially posting results back to the EventLoop.
+Flow of Information/Control:
+
+Use arrows to indicate the direction of information flow and control between these components. For example:
+
+IOPoller informs EventLoop about events.
+EventLoop notifies IOChannel objects.
+User callbacks within IOChannel (or higher layers) might interact with networking components or schedule new tasks with the EventLoop.
+
+[overview,plantuml]
+----
+@startuml
+component "EventLoop" as EventLoop
+component "IOPoller" as IOPoller
+component "EPollPoller" as EPollPoller
+component "KqueuePoller" as KqueuePoller
+component "IOChannel" as IOChannel
+component "BackoffTimer" as Timer
+component "FileWatcher" as FileWatcher
+component "Wakeup Mechanism" as Wakeup
+
+EventLoop -- IOPoller
+IOPoller -- EPollPoller
+IOPoller -- KqueuePoller
+EventLoop -- IOChannel
+EventLoop -- Timer
+EventLoop -- FileWatcher
+EventLoop -- Wakeup
+
+' Add more components and interactions as needed
+@enduml
+----
+
+=== EventLoop
+* The central orchestrator of the library.
+* Runs in a single thread per instance.
+* Responsible for polling I/O events and dispatching them to handlers.
+* Provides an interface for registering and unregistering I/O channels, timers, and other event sources.
+* Includes a mechanism to wake up the loop from other threads.
+
+=== IOPoller
+* An abstract interface for platform-specific I/O event polling mechanisms.
+* Implementations:
+** `EPollPoller`: Uses the `epoll` system call (Linux).
+** `KqueuePoller`: Uses the `kqueue` system call (macOS, BSD).
+
+=== IOChannel
+* Represents a file descriptor and its associated events (read, write, close, error).
+* Holds callbacks to be executed when events occur.
+* Leverages C++20 coroutines to simplify asynchronous operations.
+* Manages the registration and unregistration of the file descriptor with the `IOPoller`.
+
+=== BackoffTimer
+* A timer implementation for Linux using the `timerfd` system call.
+* Owned and managed by event handlers.
+
+=== FileWatcher
+* A Linux-specific component using `inotify` to monitor changes to files and directories.
+* Integrates with the `EventLoop` via an `IOChannel`.
+
+== Wakeup Mechanism
+* `eventfd` for efficient inter-thread signaling on Linux.
+* A pipe for other POSIX-compliant platforms.
+
+== Higher-Level Abstractions
+
+=== Networking
+==== TcpListener
+* Accepts incoming TCP connections using the Acceptor pattern.
+
+==== TcpConnection
+* Represents an active TCP connection.
+* Manages asynchronous read and write operations.
+* Lifecycle managed using `std::shared_ptr`.
+* Implements the Connector pattern for establishing outgoing connections.
+
+==== UdpSocket
+* Supports sending and receiving UDP datagrams.
+
+=== TLS Support
+* Integrates with OpenSSL for TLS 1.3+ encryption.
+* Supports certificate refresh and session resumption (including session tickets).
+* Configurable via environment variables.
+
+=== Domain Sockets
+* Supports local inter-process communication using Unix domain sockets.
+
+== Concurrency Model
+
+.Background for concurrency design
+[%collapsible]
+====
+The library employs a single-threaded event loop model for efficient handling of I/O operations. For tasks that may be blocking, such as certain file operations or computationally intensive tasks, the library will provide integration with a configurable thread pool. This allows for offloading blocking work from the main event loop, ensuring responsiveness without requiring complex multi-threading management by the user for typical I/O-bound scenarios. Each thread can have its own independent event loop, allowing for potential scaling in multi-core environments.
+====
+
+* Primarily a single-threaded event loop per instance.
+* Integration with a thread pool is planned for offloading blocking operations.
+
+== Error Handling
+* Errors are propagated from lower layers to upper layers.
+* Critical programming errors are handled with assertions during development.
+* Critical runtime errors in production will trigger a graceful shutdown attempt followed by program termination if necessary. Fatal errors are logged.
+
+== Memory Management
+
+The `cox` library emphasizes safe and efficient memory management. This is achieved through:
+
+* **RAII (Resource Acquisition Is Initialization):** Ensuring that resources are automatically managed by tying their lifetime to objects.
+* **Smart Pointers (`std::unique_ptr`, `std::shared_ptr`, `std::weak_ptr`):** Utilizing smart pointers to automatically handle memory deallocation and ownership, reducing the risk of memory leaks and dangling pointers. The higher-level `TcpConnection` will leverage `std::shared_ptr` for simplified lifecycle management.
+* **Careful Buffer Management:** Implementing strategies for efficient allocation and reuse of buffers for I/O operations.
+
+== Lifecycle Management
+* A hybrid approach is used:
+** Lower-level `IOChannel` objects managed by the library.
+** Higher-level objects like `TcpConnection` use `std::shared_ptr` for lifecycle management.
+
+== Race Condition Handling
+* `std::weak_ptr` is used in the `IOPoller` to prevent accessing destroyed `IOChannel` objects.
+* A `std::weak_ptr` within `IOChannel` (similar to muduo) will guard callback execution.
+
+== Performance Considerations
+* Leverages efficient platform-specific polling.
+* Designed for non-blocking I/O.
+* Supports optional thread pool offloading.
+
+
+== Performance Goals
+
+This library is designed with a strong focus on achieving high performance in I/O operations. Key performance goals include:
+
+* **High Throughput:** Enabling efficient handling of a large volume of data transfer.
+** **QPS/EPS** TODO
+* **Low Latency:** Minimizing delays in processing and responding to I/O events.
+* **Minimal Resource Consumption:** Optimizing memory usage and CPU utilization.
+** **CPU usage**
+** **Memory usage**
+** **I/O Throughput**
+
+The use of platform-specific polling mechanisms like `epoll` and `kqueue`, along with support for non-blocking I/O, are fundamental to achieving these goals.
+
+== Benchmarks
+
+Further benchmarks will evaluate the impact of CPU throttling and overload protection mechanisms on the library's performance.
+
+**CPU Throttling Impact:** We will conduct tests to understand how the library performs under various CPU throttling scenarios, ensuring graceful degradation and predictable behavior.
+
+**Overload Protection (OLP):** The library will incorporate mechanisms to prevent overload scenarios. This may include strategies like limiting the number of concurrent connections, employing rate limiting, and providing backpressure mechanisms to upstream components.
+ You mention OLP will be incorporated. You could potentially expand slightly on the planned strategies (e.g., connection limits, rate limiting algorithms) if those details are firming up.
+
+**Flow Control:** While TCP inherently provides flow control at the transport layer, the library's design will allow upper layers to implement application-level flow control if needed. This could involve providing APIs to monitor buffer usage or implement custom strategies for managing data flow based on application requirements.
+The inclusion of flow control is good. If you have specific mechanisms or interfaces in mind that the upper layer would use, you could briefly mention them (even if they are just "APIs to monitor buffer usage").
+
+== Trade-offs
+
+* **Initial Platform Focus:** Focusing on POSIX systems (`epoll`, `kqueue`) initially allows for deeper optimization on these platforms but means Windows support is not immediately available.
+* **Hybrid Lifecycle Management:** Balancing performance at the core with ease of use at higher levels results in a hybrid approach that might have slightly different performance characteristics in different parts of the library.
+* **OpenSSL Dependency:** Relying on OpenSSL for TLS provides robust security but introduces an external dependency.
+
+== Benefits
+
+* **High Performance and Scalability:** Utilizes efficient I/O polling mechanisms for handling a large number of concurrent connections and events.
+* **Modern C++20 Development:** Leverages features like coroutines to simplify asynchronous programming, leading to more readable and maintainable code for developers.
+* **Cross-Platform (POSIX):** Supports both Linux and macOS/BSD, enabling wider adoption across common server environments.
+* **Robust Networking Capabilities:** Provides well-structured abstractions for TCP and UDP communication, including essential features like TLS security.
+* **Simplified Concurrency:** The single-threaded event loop model simplifies concurrent programming for I/O-bound tasks, while thread pool integration allows for efficient handling of blocking operations.
+* **Clear Separation of Concerns:** The modular design with distinct components for event looping, polling, and I/O handling promotes maintainability and extensibility.
+
+== Key Design Principles
+
+* **Performance First:** Prioritizing efficiency and low latency in core I/O operations.
+* **Asynchronous by Default:** Favoring non-blocking operations to maximize responsiveness.
+* **Modularity and Extensibility:** Designing components to be easily replaceable and allowing users to extend functionality.
+* **Developer Experience:** Providing a clear, concise, and intuitive API, leveraging modern C++ features to simplify common tasks.
+
+== Build System
+* CMake will be used to build the library.
+* Both static and shared libraries will be provided.
+
+== Platform Support
+
+* **Linux:** Fully supported using `epoll` and `eventfd`. `timerfd` and `inotify` are also utilized for specific features.
+* **macOS and BSD:** Fully supported using `kqueue`.
+* **Windows:** Not currently supported but could be a future consideration with appropriate polling mechanism and API adaptations.
+
+== Use Cases
+
+* Building high-performance network servers for various protocols.
+* Developing asynchronous network clients.
+* Implementing custom network proxies or load balancers.
+* Creating efficient tools for monitoring file system changes on Linux.
+* Building applications requiring non-blocking I/O operations on local files or pipes.
+
+== Intended Usage Scenarios
+
+This library is intended to be a versatile foundation for various types of applications:
+
+* **High-Performance Network Servers:** Building servers for protocols like HTTP, gRPC, or custom network services requiring efficient handling of concurrent connections.
+* **Asynchronous Network Clients:** Developing clients that can interact with multiple servers or perform long-running network operations without blocking the main application flow.
+* **Network Proxies and Load Balancers:** Implementing intermediary network components that need to efficiently forward and manage traffic.
+* **Efficient File Monitoring Tools:** On Linux, leveraging `FileWatcher` for applications that need to react to changes in the file system.
+* **General Asynchronous I/O Applications:** Creating any application that benefits from non-blocking I/O operations on sockets, pipes, or other file-like resources.
+
+== Potential Challenges
+
+* **Ensuring Correctness in Asynchronous Code:** Asynchronous programming can be complex, and careful design and testing will be required to avoid common pitfalls.
+* **Platform-Specific Polling Mechanism Nuances:** Different polling mechanisms have their own behaviors and edge cases that need to be carefully handled to ensure cross-platform consistency within the supported platforms.
+* **Managing Object Lifetimes in Asynchronous Operations:** Ensuring that objects involved in asynchronous operations remain alive for the duration of the operation and that resources are properly cleaned up requires careful attention to ownership and lifecycle management.
+
+== Future Extensions
+* Support for HTTP/WebSocket protocols, building upon the robust TCP layer provided by this library.
+* Exploration of zero-copy data transfer techniques for further performance enhancements.
+* Investigation into other platform-specific I/O optimizations beyond the initial POSIX focus.
+
+== Future Roadmap
+
+Our roadmap for the `cox` library includes the following planned enhancements:
+
+* **HTTP/WebSocket Protocol Support:** Building higher-level abstractions for these common web protocols on top of the TCP layer.
+* **More Platform Support:** Investigating and potentially adding support for other operating systems, including Windows.
+* **Advanced Networking Features:** Exploring features like connection pooling, multiplexing, and more sophisticated error handling strategies.
+* **Performance Optimizations:** Continuously profiling and optimizing the library for even greater performance and efficiency, potentially including zero-copy I/O techniques.
+
+== Non-Goals
+* Initial support for Windows platform is not planned to allow for focused development and optimization on POSIX systems.
+
+== Testing
+* Comprehensive testing strategy including unit tests, integration tests, and stress tests.
+
+== code tree
+
+[code_tree, text]
+----
+├── CMakeLists.txt
+├── include
+│   └── event_loop
+│       ├── channel.hpp
+│       ├── epoll_poller.hpp
+│       ├── event_loop.hpp
+│       ├── i_o_poller.hpp
+│       ├── kqueue_poller.hpp
+│       └── poller.hpp
+│       └── timer.hpp
+│       └── wakeup.hpp
+│   └── net
+│       ├── acceptor.hpp
+│       ├── connector.hpp
+│       ├── tcp_connection.hpp
+│       ├── tcp_listener.hpp
+│       └── udp_socket.hpp
+│   └── fs
+│       └── file_watcher.hpp
+│   └── detail
+│       └── // Internal implementation details
+│   └── base
+│       └── // Basic utilities, error handling, logging
+│
+├── src
+│   └── event_loop
+│       ├── channel.cpp
+│       ├── epoll_poller.cpp
+│       ├── event_loop.cpp
+│       ├── kqueue_poller.cpp
+│       └── timer.cpp
+│       └── wakeup_pipe.cpp
+│       └── wakeup_eventfd.cpp
+│   └── net
+│       ├── acceptor.cpp
+│       ├── connector.cpp
+│       ├── tcp_connection.cpp
+│       ├── tcp_listener.cpp
+│       └── udp_socket.cpp
+│   └── fs
+│       └── file_watcher_inotify.cpp
+│   └── base
+│       └── // Basic utilities, error handling, logging implementation
+│
+├── examples
+│   ├── echo_server
+│   ├── file_monitor
+│   └── // Other examples
+│
+└── tests
+├── unit_tests
+├── integration_tests
+└── stress_tests
+----
+
+== Contribution Guidelines
+
+We welcome contributions from the development community to help improve and expand this library. If you are interested in contributing, please follow these general guidelines:
+
+* **Code Style:** Adhere to a consistent code style (we will provide specific style guidelines).
+* **Testing:** Ensure that any new features or bug fixes are accompanied by appropriate unit and integration tests.
+* **Pull Requests:** Submit contributions as pull requests through our version control system (e.g., Git). Provide a clear description of the changes and the rationale behind them.
+* **Issue Reporting:** Report any bugs or feature requests through our issue tracking system.
+
+More detailed contribution guidelines will be provided in a dedicated CONTRIBUTING.md file in the project repository.
+
+== Conclusion
+This design provides a foundation for building a robust and efficient event-driven I/O library in C++20. The modular architecture and focus on asynchronous operations will enable developers to create scalable and responsive applications.
+
+[]
+====
+APPENDIX
+====
+
+== Event Flow Diagram
+
+=== The journey of an event through your system
+
+What it illustrates: The journey of an event through your system. For example, from when an event occurs on a file descriptor (detected by the IOPoller) to when it's handled by a user-defined callback.
+
+==== How it could look
+How it could look: A simple flowchart with boxes representing components (e.g., IOPoller, EventLoop, IOChannel, User Callback) and arrows showing the sequence of actions and data flow.
+
+==== Benefits
+Benefits: Helps developers understand the internal workings of the event loop and how their code interacts with it.
+
+== TcpConnection Lifecycle Diagram
+
+=== The different states a TcpConnection object can go through
+What it illustrates: The different states a TcpConnection object can go through (e.g., Initializing, Connecting, Connected, Data Transfer, Closing, Closed) and the events or actions that trigger these transitions.
+
+==== How it could look
+How it could look: A state machine diagram with boxes representing states and arrows labeled with the triggering events.
+
+==== Benefits
+Benefits: Clarifies the lifecycle of a crucial component, which is particularly useful for developers who will be working with network connections.
+Thread Pool Integration Diagram:
+
+=== How tasks submitted to thread pool
+What it illustrates: How tasks from the event loop or other parts of the application are submitted to the thread pool, how the thread pool executes them, and how the results are communicated back to the event loop.
+
+==== How it could look
+How it could look: A simplified component diagram showing the EventLoop, ThreadPool, and the flow of tasks and results between them.
+
+==== Benefits
+Benefits: Explains the concurrency model more visually, especially the interaction between the single-threaded event loop and the multi-threaded thread pool.
+Simplified Class Diagram (Focus on Key Relationships):
+
+=== The relationships between the most important classes
+What it illustrates: The relationships between the most important classes in your library (e.g., inheritance between IOPoller and its implementations, associations between EventLoop, IOChannel, and TcpConnection).
+
+==== How it could look
+How it could look: A basic UML class diagram showing the key classes and the types of relationships (e.g., "uses," "manages," "inherits from"). You don't need to include every single member variable or method.
+
+==== Benefits
+Benefits: Helps architects and developers quickly grasp the high-level structural organization of the library.
+
+
+== How to include them
+=== Plantuml
+How to Include Them:
+PlantUML: You might be able to create some of these simpler diagrams using PlantUML as well.
+[horizontal]
+Simple Drawing Tools:: Tools like diagrams.net (draw.io), Google Drawings, or even basic presentation software can be used to create clear and effective diagrams.
+Embedding:: The way you embed these diagrams will depend on the format of your design proposal. If it's a written document, you can typically insert images. If it's a web-based document, you can use image tags or other embedding techniques.
+Key Considerations:
+Keep it Simple:: The goal is to enhance understanding, so avoid overly complex or cluttered diagrams.
+Focus on Clarity:: Ensure the diagrams are well-labeled and easy to interpret.
+Relevance:: Only include diagrams that genuinely help explain key aspects of your design to your target audience.
+
+By strategically incorporating these types of visual enhancements, you can make your design proposal even more engaging and easier to understand for both architects and developers.
