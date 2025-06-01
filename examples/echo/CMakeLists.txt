@@ -1,4 +1,6 @@
-add_executable(echo_server main.cxx)
+cmake_minimum_required(VERSION 3.20)
 
-target_include_directories(echo_server PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(echo_server PRIVATE reactor ${ALLOC_LIB})
+# Executables
+add_executable(echo_main echo_main.cpp)
+target_link_libraries(echo_main PRIVATE cow_reactor cow_logging cow_utilities)
+# target_compile_options(reactor_benchmark PRIVATE -pthread)
