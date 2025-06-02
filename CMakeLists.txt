@@ -41,8 +41,23 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "using clang")
     add_compile_options(-Wpendantic -Wno-unknown-warning-option)
 endif()
-
-set(CMAKE_VERBOSE_MAKEFILE OFF)
+if (BUILD_VERBOSE STREQUAL ON)
+    set(CMAKE_VERBOSE_MAKEFILE ON)
+else()
+    set(CMAKE_VERBOSE_MAKEFILE OFF)
+endif()
+if (BUILD_DEBUG STREQUAL ON)
+    set(CMAKE_BUILD_TYPE Debug)
+else()
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+# Set output directories
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
+# set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Add subdirectories
 add_subdirectory(reactor)
@@ -53,17 +68,3 @@ add_subdirectory(googletest)
 add_subdirectory(tests)
 # examples
 add_subdirectory(examples)
-
-# Add libriary
-
-# Executables
-# add_executable(backoff_main backoff_main.cpp)
-# target_link_libraries(backoff_main PRIVATE cow_reactor cow_logging cow_utilities)
-
-# Executables
-# add_executable(reactor_benchmark reactor_benchmark.cpp)
-# target_link_libraries(reactor_benchmark PRIVATE cow_reactor cow_logging)
-# target_compile_options(reactor_benchmark PRIVATE -pthread)
-
-# add_executable(echo_main echo_main.cpp)
-# target_link_libraries(echo_main PRIVATE cow_reactor)

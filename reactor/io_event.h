@@ -2,15 +2,14 @@
 #pragma once
 
 namespace reactor {
-    /*
-#if defined(__linux__)
-constexpr int IO_READ  = EPOLLIN;
-constexpr int IO_WRITE = EPOLLOUT;
-#elif defined(__APPLE__) || defined(__FreeBSD__)
-constexpr int IO_READ  = EVFILT_READ;
-constexpr int IO_WRITE = EVFILT_WRITE;
-#endif
-*/
+
+// #if defined(__linux__)
+// constexpr int IO_READ  = EPOLLIN;
+// constexpr int IO_WRITE = EPOLLOUT;
+// #elif defined(__APPLE__) || defined(__FreeBSD__)
+// constexpr int IO_READ  = EVFILT_READ;
+// constexpr int IO_WRITE = EVFILT_WRITE;
+// #endif
 
 enum IOEvent {
     IO_NONE   = 0,

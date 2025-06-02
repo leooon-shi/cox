@@ -51,7 +51,6 @@ private:
 
     std::unique_ptr<Poller> poller_;
     std::unique_ptr<Channel> wakeup_channel_;
-    //std::unique_ptr<TimerHeap> timer_heap_;
 
     const pid_t loop_thread_id_;
 

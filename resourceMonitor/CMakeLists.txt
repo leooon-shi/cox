@@ -1,4 +1,4 @@
-add_executable(resourceMonitor main.cxx)
+add_executable(resourceMonitor main.cc)
 
 target_include_directories(resourceMonitor PRIVATE ${CMAKE_SOURCE_DIR})
 

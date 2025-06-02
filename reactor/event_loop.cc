@@ -3,6 +3,7 @@
 #include "poller/io_poller.h"
 #include "poller/io_poller_factory.h"
 #include "logger.h"
+#include "file/file_opts.h"
 
 #include <unistd.h>
 #include <fcntl.h>

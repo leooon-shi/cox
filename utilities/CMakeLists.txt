@@ -1,6 +1,6 @@
 set(SOURCES 
-    thread/current_thread.cxx
-    file/file_opts.cxx
+    thread/current_thread.cc
+    file/file_opts.cc
 )
 set(HEADERS 
     thread/current_thread.h
