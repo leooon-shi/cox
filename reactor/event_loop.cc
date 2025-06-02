@@ -8,18 +8,49 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <cstring>
-#include <iostream>
 #include <utility>
 
 namespace reactor {
-namespace {
+// namespace {
 
-void setNonBlocking(int fd) {
-    int flags = ::fcntl(fd, F_GETFL, 0);
-    ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+// void setNonBlocking(int fd) {
+//     int flags = ::fcntl(fd, F_GETFL, 0);
+//     ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+// }
+
+// } // namespace
+#if defined(DEBUG)
+EventLoop::EventLoop(std::unique_ptr<Poller> poller)
+:logger_(std::make_unique<logging::Logger>()),
+ poller_(std::move(poller)),
+ loop_thread_id_(current_thread::tid())
+{
+
+    int fds[2];
+    if (::pipe(fds) != 0) {
+        logger_->error("pipe() failed: " + std::string(std::strerror(errno)));
+        std::abort();
+    }
+
+    wakeup_fd_ = fds[0];
+    writeup_fd_ = fds[1];
+
+    file_opts::setNonBlocking(wakeup_fd_);
+    file_opts::setNonBlocking(writeup_fd_);
+
+    std::exchange(wakeup_channel_, std::make_unique<Channel>(wakeup_fd_, this));
+    
+    wakeup_channel_->setReadCallback([this] { handleWakeup(); });
+
+    auto toHexStr = [](std::uintptr_t ptr) {
+        std::ostringstream oss;
+        oss << "0x" << std::hex << ptr;
+        return oss.str();
+    };
+
+    logger_->info("EventLoop created with custom poller, wakeup channel " + std::string(toHexStr(reinterpret_cast<std::uintptr_t>(wakeup_channel_.get()))));
 }
-
-} // namespace
+#endif // DEBUG
 
 EventLoop::EventLoop()
 :logger_(std::make_unique<logging::Logger>()),
@@ -28,7 +59,7 @@ loop_thread_id_(current_thread::tid())
 {
     int fds[2];
     if (::pipe(fds) != 0) {
-        std::cerr << "pipe() failed: " << std::strerror(errno) << std::endl;
+        logger_->error("pipe() failed: " + std::string(std::strerror(errno)));
         std::abort();
     }
 
@@ -36,8 +67,8 @@ loop_thread_id_(current_thread::tid())
     writeup_fd_ = fds[1];
 
     std::exchange(wakeup_channel_, std::make_unique<Channel>(wakeup_fd_, this));
-    setNonBlocking(wakeup_fd_);
-    setNonBlocking(writeup_fd_);
+    file_opts::setNonBlocking(wakeup_fd_);
+    file_opts::setNonBlocking(writeup_fd_);
     
     wakeup_channel_->setReadCallback([this] { handleWakeup(); });
     wakeup_channel_->enableRead();
@@ -124,6 +155,7 @@ void EventLoop::runEvery(uint64_t interval_ms, Task task) {
     //timer_heap_->addTimer(interval_ms, std::move(task), /*repeating=*/true);
 }
 
+//FIXME: It's not allowed to update a channel belong to another event loop.
 void EventLoop::updateChannel(Channel* channel) {
     poller_->updateChannel(channel);
 }
@@ -137,11 +169,14 @@ void EventLoop::assertInLoopThread() const {
 }
 
 void EventLoop::removeChannel(Channel* channel) {
+    
     assertInLoopThread();
+    
     if (channel == nullptr) {
         logger_->error("removeChannel - channel is null");
         return;
     }
+    
     //FXIME race condition might happen, if the channel is being processed by handleEvents.
     // Before poller returned, It's secured to remove it from poller.
     // Ongongin events handlings, and the channel is in ActiveChannels. 
@@ -150,6 +185,7 @@ void EventLoop::removeChannel(Channel* channel) {
     if (channel == processing_channel_) {
         processing_channel_ = nullptr; // reset processing channel to avoid meaningless wakeup
     }
+    
     poller_->removeChannel(channel);
 }
 

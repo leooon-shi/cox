@@ -23,7 +23,11 @@ class Channel;
 class EventLoop {
 public:
     using Task = std::function<void()>;
-
+#if defined(DEBUG)
+    EventLoop(std::unique_ptr<Poller> poller);
+    const Poller& getPoller() const { return *poller_; }
+    Poller& getPoller() { return *poller_; }
+#endif
     EventLoop();
     ~EventLoop();
 

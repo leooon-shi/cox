@@ -4,7 +4,7 @@
 #include "event_loop.h"
 
 namespace reactor {
-
+//FIXME: loop should not be nullptr.
 Channel::Channel(int fd, EventLoop* loop)
 :fd_(fd), events_(IO_NONE), revents_(IO_NONE),loop_(loop) {}
 

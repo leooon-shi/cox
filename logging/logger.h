@@ -9,11 +9,11 @@ namespace logging {
 class Formatter;
 
 enum class LogLevel : std::int8_t {
-    DEBUG,
-    INFO,
-    WARNING,
-    ERROR,
-    FETAL
+    Debug,
+    Info,
+    Warning,
+    Error,
+    Fetal
 };
 
 // class LogEntry {
@@ -43,11 +43,11 @@ public:
     // void fetal(std::string message) { log(LogLevel::FETAL, std::forward<std::string>(message));}
 
     //TODO adding log level control.
-    void debug(std::string && message) { log(LogLevel::DEBUG, std::forward<std::string>(message));}
-    void info(std::string && message) { log(LogLevel::INFO, std::forward<std::string>(message));}
-    void warning(std::string && message) { log(LogLevel::WARNING, std::forward<std::string>(message));}
-    void error(std::string && message) { log(LogLevel::ERROR, std::forward<std::string>(message));}
-    void fetal(std::string && message) { log(LogLevel::FETAL, std::forward<std::string>(message));}
+    void debug(std::string && message) { log(LogLevel::Debug, std::forward<std::string>(message));}
+    void info(std::string && message) { log(LogLevel::Info, std::forward<std::string>(message));}
+    void warning(std::string && message) { log(LogLevel::Warning, std::forward<std::string>(message));}
+    void error(std::string && message) { log(LogLevel::Error, std::forward<std::string>(message));}
+    void fetal(std::string && message) { log(LogLevel::Fetal, std::forward<std::string>(message));}
 
 private:
     void log([[maybe_unused]] LogLevel level, std::string && message);

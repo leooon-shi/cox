@@ -20,7 +20,7 @@ pid_(current_thread::tidStr())
 }
 
 Logger::Logger()
-:level_(LogLevel::INFO),
+:level_(LogLevel::Info),
 formatter_(Formatter::newDefaultFormatter()),
 pid_(current_thread::tidStr())
 {
