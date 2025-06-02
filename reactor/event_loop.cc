@@ -5,10 +5,7 @@
 #include "logger.h"
 #include "file/file_opts.h"
 
-#include <unistd.h>
-#include <fcntl.h>
-#include <cstring>
-#include <utility>
+#include <unistd.h> // for ::read, ::write
 namespace reactor {
 
 #if defined(DEBUG)
@@ -30,34 +27,32 @@ EventLoop::EventLoop(std::unique_ptr<Poller> poller)
 
 EventLoop::EventLoop()
 :logger_(std::make_unique<logging::Logger>()),
-poller_(PollerFactory::create()),
-loop_thread_id_(current_thread::tid())
+ poller_(PollerFactory::create()),
+ loop_thread_id_(current_thread::tid())
 {
     std::tie(wakeup_fd_, writeup_fd_) = file_opts::createNonBlockingPipe();
 
-    logger_->info("EventLoop wakeup_fd: " + std::to_string(wakeup_fd_) +
-                  ", writeup_fd: " + std::to_string(writeup_fd_));
     std::exchange(wakeup_channel_, std::make_unique<Channel>(wakeup_fd_, this));
     
     wakeup_channel_->setReadCallback([this] { handleWakeup(); });
+    
     wakeup_channel_->enableRead();
+
+    logger_->info("EventLoop created, wakeup_fd: " + std::to_string(wakeup_fd_) +
+                  ", writeup_fd: " + std::to_string(writeup_fd_));
 }
 
 EventLoop::~EventLoop() {
     assert(quit_);
+    
     wakeup_channel_->disableAll();
+
     poller_->removeChannel(wakeup_channel_.get());
+    
     wakeup_channel_.reset();
 
-    if (wakeup_fd_ >= 0)
-    {
-        ::close(wakeup_fd_);
-    }
-    
-    if (writeup_fd_ >= 0 && writeup_fd_ != wakeup_fd_)
-    {
-        ::close(writeup_fd_);
-    } 
+    file_opts::closePipe(wakeup_fd_, writeup_fd_);
+
     logger_->info("~EventLoop");
 }
 

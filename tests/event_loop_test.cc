@@ -161,7 +161,7 @@ TEST(EventLoopTest, Concurrency) {
 
     t1.join();
     t2.join();
-    
+
     loop.loop();
 
     loopThread.join();
@@ -213,4 +213,97 @@ TEST(EventLoopTest, Reentrancy) {
 
     // Verify both tasks were executed
     EXPECT_EQ(counter.load(), 2);
+}
+
+
+TEST(EventLoopBenchmark, TaskExecutionPerformance) {
+    const int numTasks = 100000; // Number of tasks to schedule
+    std::atomic<int> counter = {0};
+
+    // Create the EventLoop in the loop thread
+    std::thread loopThread([&]() {
+        reactor::EventLoop loop;
+
+        // Schedule a large number of tasks
+        for (int i = 0; i < numTasks; ++i) {
+            loop.runInLoop([&]() {
+                counter++;
+            });
+        }
+
+        // Measure the time taken to execute all tasks
+        auto startTime = std::chrono::high_resolution_clock::now();
+
+        // Run the event loop
+        loop.runInLoop([&]() {
+            if (counter.load() == numTasks) {
+                loop.quit(); // Quit the loop once all tasks are executed
+            }
+        });
+
+        loop.loop();
+
+        auto endTime = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+
+        // Output the benchmark result
+        std::cout << "Executed " << numTasks << " tasks in " << duration << " ms" << std::endl;
+
+        // Verify all tasks were executed
+        EXPECT_EQ(counter.load(), numTasks);
+    });
+
+    loopThread.join();
+}
+
+TEST(EventLoopBenchmark, ConcurrencyPerformance) {
+    const int numThreads = 4;      // Number of threads submitting tasks
+    const int tasksPerThread = 25000; // Number of tasks per thread
+    const int totalTasks = numThreads * tasksPerThread;
+
+    std::atomic<int> counter = {0};
+    reactor::EventLoop* loop_ptr = nullptr;
+    // Create the EventLoop in the loop thread
+    std::thread loopThread([&]() {
+        reactor::EventLoop loop;
+        loop_ptr = &loop;
+        // Measure the time taken to execute all tasks
+        auto startTime = std::chrono::high_resolution_clock::now();
+        // Start the event loop
+        loop.loop();
+
+        auto endTime = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+
+        // Output the benchmark result
+        std::cout << "Executed " << totalTasks << " tasks from " << numThreads
+                  << " threads in " << duration << " ms" << std::endl;
+
+        // Verify all tasks were executed
+        EXPECT_EQ(counter.load(), totalTasks);
+    });
+
+    while(!loop_ptr) {
+        // Wait for the loop thread to initialize the EventLoop
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    // Create worker threads to submit tasks
+    std::vector<std::thread> workers;
+    for (int i = 0; i < numThreads; ++i) {
+        workers.emplace_back([&]() {
+            for (int j = 0; j < tasksPerThread; ++j) {
+                loop_ptr->runInLoop([&]() {
+                    counter++;
+                });
+            }
+        });
+    }
+
+    // Join all worker threads
+    for (auto& worker : workers) {
+        worker.join();
+    }
+    loop_ptr->quit(); // Quit the loop to allow it to finish processing
+    // Join the loop thread
+    loopThread.join();
 }
