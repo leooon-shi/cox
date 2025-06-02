@@ -9,16 +9,8 @@
 #include <fcntl.h>
 #include <cstring>
 #include <utility>
-
 namespace reactor {
-// namespace {
 
-// void setNonBlocking(int fd) {
-//     int flags = ::fcntl(fd, F_GETFL, 0);
-//     ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-// }
-
-// } // namespace
 #if defined(DEBUG)
 EventLoop::EventLoop(std::unique_ptr<Poller> poller)
 :logger_(std::make_unique<logging::Logger>()),
@@ -26,27 +18,11 @@ EventLoop::EventLoop(std::unique_ptr<Poller> poller)
  loop_thread_id_(current_thread::tid())
 {
 
-    int fds[2];
-    if (::pipe(fds) != 0) {
-        logger_->error("pipe() failed: " + std::string(std::strerror(errno)));
-        std::abort();
-    }
-
-    wakeup_fd_ = fds[0];
-    writeup_fd_ = fds[1];
-
-    file_opts::setNonBlocking(wakeup_fd_);
-    file_opts::setNonBlocking(writeup_fd_);
+    std::tie(wakeup_fd_, writeup_fd_) = file_opts::createNonBlockingPipe();
 
     std::exchange(wakeup_channel_, std::make_unique<Channel>(wakeup_fd_, this));
     
     wakeup_channel_->setReadCallback([this] { handleWakeup(); });
-
-    auto toHexStr = [](std::uintptr_t ptr) {
-        std::ostringstream oss;
-        oss << "0x" << std::hex << ptr;
-        return oss.str();
-    };
 
     logger_->info("EventLoop created with custom poller, wakeup channel " + std::string(toHexStr(reinterpret_cast<std::uintptr_t>(wakeup_channel_.get()))));
 }
@@ -57,18 +33,11 @@ EventLoop::EventLoop()
 poller_(PollerFactory::create()),
 loop_thread_id_(current_thread::tid())
 {
-    int fds[2];
-    if (::pipe(fds) != 0) {
-        logger_->error("pipe() failed: " + std::string(std::strerror(errno)));
-        std::abort();
-    }
+    std::tie(wakeup_fd_, writeup_fd_) = file_opts::createNonBlockingPipe();
 
-    wakeup_fd_ = fds[0];
-    writeup_fd_ = fds[1];
-
+    logger_->info("EventLoop wakeup_fd: " + std::to_string(wakeup_fd_) +
+                  ", writeup_fd: " + std::to_string(writeup_fd_));
     std::exchange(wakeup_channel_, std::make_unique<Channel>(wakeup_fd_, this));
-    file_opts::setNonBlocking(wakeup_fd_);
-    file_opts::setNonBlocking(writeup_fd_);
     
     wakeup_channel_->setReadCallback([this] { handleWakeup(); });
     wakeup_channel_->enableRead();
@@ -199,10 +168,9 @@ void EventLoop::quit() {
 }
 
 void EventLoop::wakeup() {
-    // logger_->info("wakeup");
+    // logger_->info("wakeup called, writeup_fd_: " + std::to_string(writeup_fd_));
     uint64_t one = 1;
     (void)::write(writeup_fd_, &one, sizeof(one));
-    // logger_->info("wakeup done");
 }
 
 void EventLoop::handleWakeup() {

@@ -36,12 +36,6 @@ public:
     Logger();
     virtual ~Logger();
 
-    // void debug(std::string message) { log(LogLevel::DEBUG, std::forward<std::string>(message));}
-    // void info(std::string message) { log(LogLevel::INFO, std::forward<std::string>(message));}
-    // void warning(std::string message) { log(LogLevel::WARNING, std::forward<std::string>(message));}
-    // void error(std::string message) { log(LogLevel::ERROR, std::forward<std::string>(message));}
-    // void fetal(std::string message) { log(LogLevel::FETAL, std::forward<std::string>(message));}
-
     //TODO adding log level control.
     void debug(std::string && message) { log(LogLevel::Debug, std::forward<std::string>(message));}
     void info(std::string && message) { log(LogLevel::Info, std::forward<std::string>(message));}

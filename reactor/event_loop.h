@@ -18,7 +18,6 @@ namespace logging
 namespace reactor {
 class Poller;
 class Channel;
-// class TimerHeap;
 
 class EventLoop {
 public:
@@ -58,8 +57,8 @@ private:
 
     const pid_t loop_thread_id_;
 
-    int wakeup_fd_{-1};
-    int writeup_fd_{-1};
+    int wakeup_fd_{-1}; //FIXME: use macro instead of hardcoding -1
+    int writeup_fd_{-1}; //FIXME: use macro instead of hardcoding -1
 
     std::atomic<bool> quit_{false};
     // It would be better to combine this with a light std::atomic<Channel*> if needed crossed-thread.

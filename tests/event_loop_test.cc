@@ -158,10 +158,12 @@ TEST(EventLoopTest, Concurrency) {
         loop.quit();
     });
 
+
     t1.join();
     t2.join();
-
+    
     loop.loop();
+
     loopThread.join();
 
     // Verify all tasks were executed
