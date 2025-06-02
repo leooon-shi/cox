@@ -16,6 +16,7 @@ public:
     MOCK_METHOD(void, removeChannel, (reactor::Channel* channel), (override));
     MOCK_METHOD(void, poll, (int timeoutMs, std::vector<reactor::Channel*>& activeChannels), (override));
 };
+
 #if defined(DEBUG)
 TEST(EventLoopTest, AddAndRemoveChannel) {
     std::unique_ptr<MockPoller> pollerPtr = std::make_unique<MockPoller>();
@@ -73,6 +74,7 @@ TEST(EventLoopTest, HandlePendingTasks) {
     ASSERT_TRUE(taskExecuted);
 }
 
+#if defined(DEBUG)
 TEST(EventLoopTest, PollerHandlesEvents) {
     std::unique_ptr<MockPoller> poller_p = std::make_unique<MockPoller>();
     MockPoller& poller = *poller_p;
@@ -103,10 +105,11 @@ TEST(EventLoopTest, PollerHandlesEvents) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     loopThread.join();
 }
+#endif // DEBUG
 
 TEST(EventLoopTest, TaskScheduling) {
     reactor::EventLoop loop;
-    std::atomic<int> counter = 0;
+    std::atomic<int> counter = {0};
 
     // Schedule a task
     loop.runInLoop([&]() {
@@ -129,7 +132,7 @@ TEST(EventLoopTest, TaskScheduling) {
 
 TEST(EventLoopTest, Concurrency) {
     reactor::EventLoop loop;
-    std::atomic<int> counter = 0;
+    std::atomic<int> counter = {0};
 
     // Schedule tasks from multiple threads
     std::thread t1([&]() {
@@ -186,7 +189,7 @@ TEST(EventLoopTest, QuitBehavior) {
 
 TEST(EventLoopTest, Reentrancy) {
     reactor::EventLoop loop;
-    std::atomic<int> counter = 0;
+    std::atomic<int> counter = {0};
 
     // Schedule a task that schedules another task
     loop.runInLoop([&]() {
