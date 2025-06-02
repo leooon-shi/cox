@@ -114,7 +114,7 @@ void EventLoop::queueInLoop(Task && task)
 void EventLoop::runAfter(uint64_t delay_ms, Task task) {
     //timer_heap_->addTimer(delay_ms, std::move(task), /*repeating=*/false);
 }
-
+//TODO: Timer integration
 void EventLoop::runEvery(uint64_t interval_ms, Task task) {
     //timer_heap_->addTimer(interval_ms, std::move(task), /*repeating=*/true);
 }
@@ -181,6 +181,7 @@ void EventLoop::doPendingTasks() {
     }
 
     while (!tasks.empty()) {
+        //TODO: handle exceptions in tasks.
         tasks.front()();
         tasks.pop();
         // logger_->info("handling pending task..");

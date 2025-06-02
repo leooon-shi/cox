@@ -17,6 +17,30 @@ public:
     MOCK_METHOD(void, poll, (int timeoutMs, std::vector<reactor::Channel*>& activeChannels), (override));
 };
 
+TEST(EventLoopTest, QuitBeforeLoop) {
+    reactor::EventLoop loop;
+    {
+        // Call quit() before starting the loop
+        loop.quit();
+
+        // Run the loop
+        loop.loop();
+    }
+    {
+        // Call quit() mutiple times before starting the loop
+        loop.quit();
+        loop.quit();
+        loop.quit();
+
+        // Run the loop
+        loop.loop();
+    }
+
+    // Verify that the loop exits immediately
+    SUCCEED(); // If no exceptions or errors occur, the test passes
+}
+
+
 #if defined(DEBUG)
 TEST(EventLoopTest, AddAndRemoveChannel) {
     std::unique_ptr<MockPoller> pollerPtr = std::make_unique<MockPoller>();
