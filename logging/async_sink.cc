@@ -1,71 +1,134 @@
-#pragma once
+#include "async_sink.h"
 
-#include <cstddef>
-#include <cstdint>
-#include <memory>
-#include <mutex>
+#include <chrono>
 #include <string>
-#include <vector>
+#include <utility>
 
-namespace logging
+namespace logging {
+AsyncSink::AsyncSink(std::unique_ptr<Sink> downstream, size_t max_buffered_lines,
+                    uint32_t flush_interval_ms)
+: downstream_(std::move(downstream)),
+ max_lines_(max_buffered_lines == 0 ? 1 : max_buffered_lines),
+ flush_interval_ms_(flush_interval_ms)
 {
-// A destination for formatted log lines. The formatter decides how a record
-// LOOKS; the Sink decides where it GOES. Keeping them separate means "JSON to a
-// rotating file" needs no new class -- it is a JsonFormatter plus a
-// RotatingFileSink.
-//
-// Reference points: spdlog's sink abstraction (pluggable destination, multi-sink
-// fan-out) and glog's flush-on-fatal behavior.
-//
-// Thread-safety contract: a Logger may be shared across threads, so
-// implementations MUST tolerate concurrent append()/flush(). The synchronous
-// sinks here use a mutex; AsyncSink instead hands off to one writer thread.
-class Sink{
-public:
-    virtual ~Sink() = default;
+    running_ = true;
+    thread_ = std::thread([this]{ writerThread(); });
+}
 
-    // Write one formatted line. The sink appends the line terminator, so
-    // formatters never emit trailing newlines.
-    virtual void append(const std::string& line) = 0;
+AsyncSink::~AsyncSink() { stop(); }
 
-    // Push buffered data to the OS. Called for Fatal records and on
-    // destruction, so the line explaining a crash is not lost (glog's lesson).
-    virtual void flush() = 0;
+void AsyncSink::append(const std::string& line)
+{
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!running_) return;
+        //Bounded: shed rather than block a (possibly event-loop) producer.
+        if (current_.size() + writing_.size() >= max_lines_)
+        {
+            dropped_.fetch_add(1);
+            return;
+        }
+        current_.push_back(line);
+    }
+    not_empty_.notify_one();
+}
 
-    // --- Factories ---
+void AsyncSink::flush()
+{
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (!running_)
+    {
+        lock.unlock();
+        downstream_->flush();
+        return;
+    }
 
-    static std::unique_ptr<Sink> newStdoutSink();
+    //Wake the writer and wait until both buffers are empty.
+    not_empty_.notify_one();
+    drained_.wait(lock, [this]{
+        return (current_.empty() && writing_.empty()) || !running_;
+    });
 
-    static std::unique_ptr<Sink> newFileSink(const std::string& path,
-                                            bool append_mode = true);
-    
-    // Rolls to "<path>.1", "<path>.2", ... once the active file exceeds
-    // max_bytes, keeping at most max_files rolled copies.
-    static std::unique_ptr<Sink> newRotatingFileSink(const std::string& path,
-                                                    size_t max_bytes,
-                                                    size_t max_files);
-    
-    // Fan out every line to several sinks (e.g. human-readable to stdout AND
-    // JSON to a file). Failure of one sink does not stop the others.
-    static std::unique_ptr<Sink> newMultiSink(std::vector<std::unique_ptr<Sink>> sinks);
-};
+    lock.unlock();
+    downstream_->flush();
+}
 
-// Collects lines in memory instead of writing them anywhere. Intended for tests
-// and for inspecting output without touching stdout or the filesystem.
-class MemorySink final : public Sink {
-public:
-    void append(const std::string& line) override;
-    viod flush() override;
+void AsyncSink::stop()
+{
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!running_) return;
+        running_ = false;
+    }
+    not_empty_.notify_all();
+    drained_.notify_all();
+    if (thread_.joinable()) thread_.join();
 
-    std::vector<std::string> lines() const;
-    // All lines joined by '\n' (convenient for substring assertions).
-    std::string text() const;
-    size_t flushCount() const;
-    void clear();
-private:
-    mutable std::mutex mutex_;
-    std::vector<std::string> lines_;
-    size_t flush_count_ {0};
-};
+    // Drain anything the writer did not get to, so shutdown loses nothing.
+    std::vector<std::string> leftover;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        leftover.swap(writing_);
+        for (auto& l : current_) leftover.push_back(std::move(l));
+        current_.clear();
+    }
+
+    for (auto& line : leftover) downstream_->append(line);
+    downstream_->flush();
+}
+
+void AsyncSink::writerThread()
+{
+    while(true)
+    {
+        std::vector<std::string> batch;
+        uint64_t drops_to_report = 0;
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            if (current_.empty() && running_)
+            {
+                // Wait for work, but wake periodically so a low-traffic
+                // service still sees its lines promptly.
+                not_empty_.wait_for(lock, std::chrono::milliseconds(flush_interval_ms_),
+                [this]{
+                    return !current_.empty() || !running_;
+                });
+            }
+
+            if (!running_ && current_.empty())
+            {
+                drained_.notify_all();
+                return;
+            }
+
+            // The SWAP: take the producers' buffer and give them an empty one.
+            // All I/O below happens with the lock released.
+            current_.swap(writing_);
+            batch.swap(writing_);
+
+            uint64_t total = dropped_.load();
+            if (total > reported_drops_)
+            {
+                drops_to_report = total - reported_drops_;
+                reported_drops_ = total;
+            }
+        }
+
+        for (const auto& line : batch) downstream_->append(line);
+        //Make shedding visible in the log itself, not just via the counter.
+        if (drops_to_report > 0)
+        {
+            downstream_.append(
+                "AsyncSink: dropped " + std::to_string(drops_to_report) +
+                " log line(s) -- buffer full");
+        }
+
+        if (!batch.empty()) downstream_->flush();
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (current_.empty() && writing_.empty()) drained_.notify_all();
+        }
+    }
+}
 
 } // namespace logging
