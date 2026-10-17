@@ -1,0 +1,135 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {"major": 3, "minor": 21, "patch": 0},
+
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "description": "Common settings. Each preset gets its OWN binary dir so configuration never clobber each other and stay incremental (unlike build.sh, which wipes build/).",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "BUILD_TESTS": "ON",
+                "COX_WERROR": "ON"
+            }
+        },
+        {
+            "name": "clang",
+            "hidden": true,
+            "inherits": "base",
+            "cacheVariables": { "CMAKE_CXX_COMPILER": "clang++" }
+        },
+        {
+            "name": "gcc",
+            "hidden": true,
+            "inherits": "base",
+            "description": "GCC is not redundant with Clang: the two report different warnings, and a real format-string bug in timestamp.cc was found only by GCC.",
+            "cacheVariables": { "CMAKE_CXX_COMPILER": "g++" }
+        },
+        {
+            "name": "clang-debug",
+            "displayName": "Clang Debug",
+            "inherits": "clang",
+            "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+        },
+        {
+            "name": "clang-release",
+            "displayName": "Clang Release",
+            "inherits": "clang",
+            "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+        },
+        {
+            "name": "gcc-debug",
+            "displayName": "Gcc Debug",
+            "inherits": "gcc",
+            "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+        },
+        {
+            "name": "gcc-release",
+            "displayName": "Gcc Release",
+            "inherits": "gcc",
+            "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+        },
+        {
+            "name": "asan",
+            "displayName": "Clang + AddressSanitizer/LeakSanitizer",
+            "description": "Catches use-after-free, overflows and leaks. Reports leaks today (see roadmap CI/CD item 3), so treat as informational until triaged.",
+            "inherits": "clang",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "COX_SANITIZE": "address"
+            }
+        },
+        {
+            "name": "tsan",
+            "displayName": "Clang + ThreadSanitizer",
+            "description": "The highest-value tool for this codebase: a passing test proves behavior, not the absence of a data race. Reports races today (see raodmap CI/CD item 3).",
+            "inherits": "clang",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "COX_SANITIZE": "thread"
+            }
+        },
+        {
+            "name": "ubsan",
+            "displayName": "Clang + UndefinedBehaviorSanitizer",
+            "inherits": "clang",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "COX_SANITIZE": "undefined"
+            }
+        },
+        {
+            "name": "examples",
+            "displayName": "Clang Release + examples/benchmarks",
+            "inherits": "clang",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "BUILD_EXAMPLES": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        {"name": "clang-debug", "configurePreset": "clang-debug"},
+        {"name": "clang-release", "configurePreset": "clang-release"},
+        {"name": "gcc-debug", "configurePreset": "gcc-debug"},
+        {"name": "gcc-release", "configurePreset": "gcc-release"},
+        {"name": "asan", "configurePreset": "asan"},
+        {"name": "tsan", "configurePreset": "tsan"},
+        {"name": "ubsan", "configurePreset": "ubsan"},
+        {"name": "examples", "configurePreset": "examples"}
+    ],
+
+    "testPresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "output": { "outputOnFailure": true},
+            "execution": {"jobs": 8, "noTestsAction": "error"}
+        },
+        { "name": "clang-debug", "inherits": "base", "configurePreset": "clang-debug"},
+        { "name": "clang-release", "inherits": "base", "configurePreset": "clang-release"},
+        { "name": "gcc-debug", "inherits": "base", "configurePreset": "gcc-debug"},
+        { "name": "gcc-release", "inherits": "base", "configurePreset": "gcc-release"},
+        {
+            "name": "asan",
+            "displayName": "ASan tests (fewer jobs: sanitizers are slower)",
+            "inherits": "base",
+            "configurePreset": "asan",
+            "execution": {"jobs": 4, "noTestsAction": "error"}
+        },
+        {
+            "name": "tsan",
+            "displayName": "TSan tests (fewer jobs: sanitizer are slower)",
+            "inherits": "base",
+            "configurePreset": "tsan",
+            "execution": {"jobs": 4, "noTestsAction": "error"}
+        },
+        {
+            "name": "ubsan",
+            "inherits": "base",
+            "configurePreset": "ubsan",
+            "execution": {"jobs": 4, "noTestsAction": "error"}
+        }
+    ]
+}

@@ -1,82 +1,88 @@
 #!/bin/bash
+#
+# Convenience wrapper around CMake presets ( see CMakePresets.json).
+#
+# Build configuration lives in the presets, not here, so that CI, this script
+# and a manual `cmake --preset ...` all produce identical builds. Each preset
+# uses its own directory under build/, so configurations no longer clobber one
+# another and rebuilds are incremental (this script used to `rm -rf` the build
+# directory on every invocation).
 
-# Default configurations
-BUILD_TYPE="Debug"
+set -euo pipefail
+
+BUILD_TYPE="debug"
+COMPILER="clang"
+SANITIZER=""
 BUILD_EXAMPLES="OFF"
-BUILD_TESTS="OFF"
+RUN_TESTS="OFF"
+CLEAN="OFF"
 
-# Function to print usage
 print_usage() {
-    echo "Usage: $0 [--debug | --release] [--build-examples] [--build-tests]"
-    echo "Options:"
-    echo "  --debug           Build in Debug mode (default)"
-    echo "  --release         Build in Release mode"
-    echo "  --build-examples  Enable building examples"
-    echo "  --build-tests     Enable building tests"
-    exit 1
+    cat << 'EOF'
+Usage: ./build.sh [options]
+
+Options:
+    --debug             Debug build (default)
+    --release           Release build
+    --gcc               Build with g++ (default: clang++)
+    --clang             Build with clang++
+    --asan              AddressSanitizer + LeakSanitizer build
+    --tsan              ThreadSanitizer build
+    --ubsan             UndefinedBehaviorSanitizer build
+    --build-examples    Also build examples/benchmarks
+    --test              Run the test suite (ctest) after building
+    --clean             Delete this configuration's build dir first
+    -h, --help          Show this help
+
+Examples:
+    ./build.sh --release --test
+    ./build.sh --tsan --test            #hunt data races
+    ./build.sh --gcc --release --test   #GCC sees warnings clang does not
+
+Equivalent raw commands (CI uses these directly):
+    cmake --preset clang-debug
+    cmake --build --preset clang-debug --parallel
+    cmake --preset clang-debug
+EOF
+    exit "${1:-1}"
 }
 
-# Function to parse input arguments
-parse_arguments() {
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            --release)
-                BUILD_TYPE="Release"
-                shift
-                ;;
-            --debug)
-                BUILD_TYPE="Debug"
-                shift
-                ;;
-            --build-examples)
-                BUILD_EXAMPLES="ON"
-                shift
-                ;;
-            --build-tests)
-                BUILD_TESTS="ON"
-                shift
-                ;;
-            *)
-                echo "Unknown option: $1"
-                print_usage
-                ;;
-        esac
-    done
-}
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --release)          BUILD_TYPE="release"; shift ;;
+        --debug)            BUILD_TYPE="debug"; shift ;;
+        --gcc)              COMPILER="gcc"; shift ;;
+        --clang)            COMPILER="clang"; shift ;;
+        --asan)             SANITIZER="asan"; shift ;;
+        --tsan)             SANITIZER="tsan"; shift ;;
+        --ubsan)            SANITIZER="ubsan"; shift ;;
+        --build-examples)   BUILD_EXAMPLES="ON"; shift ;;
+        --test)             RUN_TESTS="ON"; shift ;;
+        --clean)            CLEAN="ON"; shift ;;
+        -h|--help)          print usage 0 ;;
+        *)                  echo "Unknown option: $1"; print_usage ;;
+    esac
+done
 
-# Function to configure the build
-configure_build() {
-    echo "Building in ${BUILD_TYPE} mode..."
-    echo "Build examples: ${BUILD_EXAMPLES}"
-    echo "Build tests: ${BUILD_TESTS}"
+# Map the flags onto a preset name.
+if [[ -n "$SANITIZER" ]]; then
+    PRESET="$SANITIZER"             # sanitizer presets are Debug + clang
+elif [[ "$BUILD_EXAMPLES" == "ON" ]]; then
+    PRESET="examples"               # Release + clang + examples
+else
+    PRESET="${COMPILER}-${BUILD_TYPE}"
+fi
 
-    # Create and navigate to the build directory
-    mkdir -p build
-    cd build
+echo "preset: ${PRESET}"
 
-    # Clean the build directory
-    rm -rf *
+if [[ "$CLEAN" == "ON" ]]; then
+    echo "removing build/${PRESET}"
+    rm -rf "build/${PRESET}"
+fi
 
-    # Run CMake with the specified options
-    cmake -DCMAKE_CXX_COMPILER=clang++ \
-          -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-          -DBUILD_EXAMPLES=${BUILD_EXAMPLES} \
-          -DBUILD_TESTS=${BUILD_TESTS} ..
-}
+cmake --preset "${PRESET}"
+cmake --build --preset "${PRESET}" --parallel
 
-# Function to build the project
-build_project() {
-    # Build the project using all available cores
-    make -j
-}
-
-# Function to clean up and return to the previous directory
-cleanup() {
-    cd -
-}
-
-# Main script execution
-parse_arguments "$@"
-configure_build
-build_project
-cleanup
+if [[ "${RUN_TESTS}" == "ON" ]]; then
+    ctest --preset "${PRESET}"
+fi

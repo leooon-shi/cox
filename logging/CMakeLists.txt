@@ -2,6 +2,8 @@ set(LOGGING_SOURCES
     formatter.cc
     json_formatter.cc
     default_formatter.cc
+    skink.cc
+    async_sink.cc
     logger.cc
     timestamp.cc
 )
@@ -9,6 +11,10 @@ set(LOGGING_SOURCES
 set(LOGGING_HEADERS
     formatter.h
     json_formatter.h
+    default_formatter.h
+    log_record.h
+    sink.h
+    async_sink.h
     logger.h
     timestamp.h
 )
