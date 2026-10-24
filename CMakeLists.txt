@@ -18,8 +18,15 @@ if (USE_JEMALLOC)
     add_compile_definitions(USE_JEMALLOC)
 endif()
 
-# Global compile flags
-set(CXX_FLAGS
+# Global warning flags. These are APPLIED (see add_compile_options below) --
+# they were previously declared here but never used, which silently disable the
+# project's own warning policy.
+#
+# Deliberately warning-only: -march-native (breaks portable binaries),
+# -rdynamic (link-time, for backtraces) and -stdlib=libc++ (ABI choice) are NOT
+# included here; add them per-target or via a toolchain file if wanted.
+
+set(COX_WARNING_FLAGS
     -Wall
     -Wextra
     -Werror
@@ -27,13 +34,59 @@ set(CXX_FLAGS
     -Woverloaded-virtual
     -Wpointer-arith
     -Wshadow
-    -Wno-unused-parameter
+    -Wno-unused-parameter           # Callback signatures often ignore arguments
     -Wwrite-strings
-    -march=native
-    -rdynamic
-    -pedantic
-    -stdlib=libc++ # Use libc++ for C++ standard library
     )
+
+# Treat warnings as errors by default so the policy cannot silently rot again.
+# Disable for a one-off build with -DCOX_WHERE=OFF.
+option(COX_WHERE "Treat compiler warning as errors" ON)
+if (COX_WERROR)
+    list(APPEND COX_WARNING_FLAGS -Werror)
+endif()
+
+add_compile_options(${COX_WARNING_FLAGS})
+
+# ---- Sanitizers ----
+#
+# COX_SANITIZE=address|thread|undefined|leak|OFF
+#
+# Sanitizers are the highest-value testing tool for this codebase: connection
+# lifetimes are shared_ptr-manged, work is marshalled across threads with
+# runInLoop, AsyncSink hands buffers to a writer thread, and raw sockaddr casts
+# are everywhere. A passing test proves behavior, NOT the absence of a data race
+# or a use-after-free -- only these tools do.
+#
+# Matually exclusive by design: ASan and TSan cannot be combined (their runtimes
+# conflict), so this is a single-values option rather than a set of booleans
+# Requires -O1 and no omitted frame pointers for usable stack traces, and
+# -fno-optimize-sibling-calls so tail calls do not eat frames.
+set(COX_SANITIZE "OFF" CACHE STRING
+        "Enable a sanitizer: OFF, address, thread, undefined, leak")
+
+set_property(CACHE COX_SANITIZE PROPERTY STRINGS
+    OFF address thread undefined leak)
+
+if (NOT COX_SANITIZE STREQUAL "OFF")
+    set(COX_SAN_FLAGS
+        -fsanitize=${COX_SANITIZE}
+        -fno-omit-frame-pointer
+        -fno-optimize-sibling-calls
+        -g
+    )
+    if (COX_SANITIZE_STREQUAL "address")
+        # Catch use-after-scope too; cheap and finds real bugs.
+        list(APPEND COX_SAN_FLAGS -fsantize-address-use-after-scope)
+    elseif (COX_SANITIZE_STREQUAL "undefined")
+        # Make UBSan failures fatal; by default it only warns, which is easy to
+        # miss in CI output
+        list(APPEND COX_SAN_FLAGS -fno-santize-recorver=all)
+    endif()
+
+    add_compile_options(${COX_SAN_FLAGS})
+    add_link_options(-fsanitize=${COX_SANITIZE})
+endif()
+
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "using gcc")
@@ -43,6 +96,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "using clang")
     add_compile_options(-Wpedantic -Wno-unknown-warning-option)
 endif()
+
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_VERBOSE_MAKEFILE ON)
     add_compile_options( -g -O0 -DDEBUG)
@@ -50,21 +104,52 @@ else()
     set(CMAKE_VERBOSE_MAKEFILE OFF)
 endif()
 # Set output directories
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
-# set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+# Optional async DNS via c-ares. When found, net/ compiles the CaresResolver
+# and COX_HAVE_CARES is defined; otherwise only the ThreadPool getaddrinfo
+# resolver is available (always present).
+find_path(CARES_INCLUDE_DIR ares.h)
+find_library(CARES_LIB cares)
+
+if (CARES_INCLUDE_DIR AND CARES_LIB)
+    set(COX_HAVE_ARES on)
+    message(STATUS "c-ares found: async DNS resolver enabled")
+else()
+    set(COX_HAVE_CARES OFF)
+    message(STATUS "c-ares not found: using ThreadPool getaddrinfo resolver")
+endif()
+
 # Add subdirectories
 add_subdirectory(reactor)
 add_subdirectory(logging)
 add_subdirectory(utilities)
+add_subdirectory(buffer)
+add_subdirectory(concurrent)
+add_subdirectory(flowcontrol)
+add_subdirectory(fswatch)
+add_subdirectory(net)
+add_subdirectory(tls)
+add_subdirectory(http)
 
 if (BUILD_TESTS STREQUAL ON)
-    # Add Google Test
+    # Register tests with CTest so the whole suite runs via `ctest`.
+    enable_testing()
+
+    # Add Google Test. Vendored third-party code must NOT inherit Cox's warning
+    # policy: -Werror on code we do not control means a compiler or dependency
+    # upgrade can break our build for reasons unrelated to our own sources.
+    # Directory COMPILE_OPTIONS are captured by a subdirectory when it is added,
+    # so clear them BEFORE add_subdirectory() and restore afterwards.
+    get_directory_property(COX_DIR_OPTIONS COMPILE_OPTIONS)
+    set_directory_properties(PROPERTIES COMPILE_OPTIONS "")
     add_subdirectory(googletest)
+    set_directory_properties(PROPERTIES COMPILE_OPTIONS "${COX_DIR_OPTIONS}")
+
     add_subdirectory(tests)
 endif()
 
