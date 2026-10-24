@@ -9,6 +9,7 @@
 #include <chrono>
 #include <vector>
 #include <future>
+#include <stdexcept>
 
 class MockPoller : public reactor::Poller {
 public:
@@ -98,6 +99,26 @@ TEST(EventLoopTest, HandlePendingTasks) {
     ASSERT_TRUE(taskExecuted);
 }
 
+// A task that throws must not tear down the loop; subsequent tasks still run.
+TEST(EventLoopTest, PendingTaskExceptionDoesNotKillLoop)
+{
+    reactor::EventLoop loop;
+    std::atomic<bool> survivorRan{false};
+
+    std::thread producer([&]{
+        // Give the loop a moment to start and block in poll().
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        loop.runInLoop([](){ throw std::runtime_error("boom"); });
+        loop.runInLoop([&](){ survivorRan = true; });
+        std::this_thread::sleep_for(std::chrono::milliseconds(80));
+        loop.quit();
+    });
+
+    loop.loop();
+    producer.join();
+
+    EXPECT_TRUE(survivorRan.load());
+}
 #if defined(DEBUG)
 TEST(EventLoopTest, PollerHandlesEvents) {
     std::unique_ptr<MockPoller> poller_p = std::make_unique<MockPoller>();
@@ -286,11 +307,14 @@ TEST(EventLoopBenchmark, ConcurrencyPerformance) {
     const int totalTasks = numThreads * tasksPerThread;
 
     std::atomic<int> counter = {0};
-    reactor::EventLoop* loop_ptr = nullptr;
+    // Published by the loop thread and read by the main thread. Must be atomic:
+    // a plain pointer here is a data race (found by ThreadSanitizer), and the
+    // spin-wait below would be reading it without any synchronization.
+    std::atomic<reactor::EventLoop*> loop_ptr{nullptr};
     // Create the EventLoop in the loop thread
     std::thread loopThread([&]() {
         reactor::EventLoop loop;
-        loop_ptr = &loop;
+        loop_ptr.store(&loop);
         // Measure the time taken to execute all tasks
         auto startTime = std::chrono::high_resolution_clock::now();
         // Start the event loop
@@ -307,7 +331,7 @@ TEST(EventLoopBenchmark, ConcurrencyPerformance) {
         EXPECT_EQ(counter.load(), totalTasks);
     });
 
-    while(!loop_ptr) {
+    while(!loop_ptr.load()) {
         // Wait for the loop thread to initialize the EventLoop
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -315,8 +339,9 @@ TEST(EventLoopBenchmark, ConcurrencyPerformance) {
     std::vector<std::thread> workers;
     for (int i = 0; i < numThreads; ++i) {
         workers.emplace_back([&]() {
+            reactor::EventLoop* loop = loop_ptr.load();
             for (int j = 0; j < tasksPerThread; ++j) {
-                loop_ptr->runInLoop([&]() {
+                loop->runInLoop([&]() {
                     counter++;
                 });
             }
@@ -327,7 +352,7 @@ TEST(EventLoopBenchmark, ConcurrencyPerformance) {
     for (auto& worker : workers) {
         worker.join();
     }
-    loop_ptr->quit(); // Quit the loop to allow it to finish processing
+    loop_ptr.load()->quit(); // Quit the loop to allow it to finish processing
     // Join the loop thread
     loopThread.join();
 }
