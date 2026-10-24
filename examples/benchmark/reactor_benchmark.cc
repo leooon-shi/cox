@@ -11,14 +11,15 @@ void benchmarkTaskScheduling(reactor::EventLoop* loop, int numTasks) {
 
     for (int i = 0; i < numTasks; ++i) {
         loop->runInLoop([i]() {
-            // Simulate a lightweight task
+            // Simulate a lightweight task. Read the volatile back so the
+            // computation cannot be optimized away AND the variable is used.
             volatile int x = i * i;
+            (void)x;
         });
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
-
     
     std::cout << "Scheduled " << numTasks << " tasks in " << elapsed.count() << " seconds." << std::endl;
 }
@@ -31,8 +32,9 @@ void benchmarkConcurrency(reactor::EventLoop* loop, int numThreads, int numTasks
         threads.emplace_back([loop, numTasksPerThread]() {
             for (int i = 0; i < numTasksPerThread; ++i) {
                 loop->runInLoop([i]() {
-                    // Simulate a lightweight task
+                    // Simulate a lightweight task ( see note above).
                     volatile int x = i * i;
+                    (void)x;
                 });
             }
         });
