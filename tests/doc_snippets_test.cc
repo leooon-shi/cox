@@ -179,7 +179,7 @@ TEST(DocSnippets, LoggingSinksAndAsync)
     // JSON formatter + rotating file sink, exactly as documented.
     auto rot = logging::Sink::newRotatingFileSink("/tmp/cox_doc_snip.log",
                                                  64 << 20, 5);
-    loggign::Logger jlog(logging::LogLevel::Info,
+    logging::Logger jlog(logging::LogLevel::Info,
                          logging::Formatter::newJsonFormatter(),
                          std::shared_ptr<logging::Sink>(std::move(rot)));
     jlog.info("to rotating file");

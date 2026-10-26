@@ -164,7 +164,6 @@ TEST(HttpServerTest, PostEcho)
         loop_ptr = &loop;
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "http");
         server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp) {
-            request_count++;
             resp->setStatus(200);
             resp->setBody(req.body());   // echo the posted body
         });
