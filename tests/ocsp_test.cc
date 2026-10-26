@@ -299,7 +299,7 @@ TEST(OcspTest, AbsentNextUpdateIsReportedDistinctly)
     // must be cached and stapled...
     EXPECT_TRUE(stapler.hasResponse());
     // ...but reported as -1 ("no expiry hint"), NOT 0 ("expiry"), so a caller
-    // does not mistake it for a state staple.
+    // does not mistake it for a stale staple.
     EXPECT_EQ(stapler.secondsUntilExpiry(), -1);
 }
 

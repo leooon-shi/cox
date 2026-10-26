@@ -29,7 +29,7 @@ struct HttpServer::PerConn
 {
     HttpContext ctx;
     tls::TlsConnectionPtr tls;      // null for plaintext
-    buffer::Buffer in;              // reassemebled plaintext (TLS path)
+    buffer::Buffer in;              // reassembled plaintext (TLS path)
 };
 
 HttpServer::HttpServer(reactor::EventLoop* loop, const net::InetAddress& addr, 
