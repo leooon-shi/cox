@@ -1,9 +1,9 @@
-set(SOURCES
+set(SOURCES 
     thread/current_thread.cc
     file/file_opts.cc
 )
 
-set(HEADERS
+set(HEADERS 
     thread/current_thread.h
     thread/likely.h
 )

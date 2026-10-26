@@ -77,7 +77,7 @@ if (NOT COX_SANITIZE STREQUAL "OFF")
         list(APPEND COX_SAN_FLAGS -fsanitize-address-use-after-scope)
     elseif (COX_SANITIZE STREQUAL "undefined")
         # Make UBSan failures fatal; by default it only warns, which is easy to
-        # miss in CI output
+        # miss in CI output.
         list(APPEND COX_SAN_FLAGS -fno-sanitize-recover=all)
     endif()
 
@@ -115,7 +115,7 @@ find_path(CARES_INCLUDE_DIR ares.h)
 find_library(CARES_LIB cares)
 
 if (CARES_INCLUDE_DIR AND CARES_LIB)
-    set(COX_HAVE_CARES on)
+    set(COX_HAVE_CARES ON)
     message(STATUS "c-ares found: async DNS resolver enabled")
 else()
     set(COX_HAVE_CARES OFF)

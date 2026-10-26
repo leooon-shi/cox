@@ -1,4 +1,4 @@
-// Tests for TLS connection pooling and multi-origin pooling
+// Tests for TLS connection pooling and multi-origin pooling.
 
 #include "connection_pool.h"
 #include "multi_origin_pool.h"
@@ -89,7 +89,7 @@ private:
             auto tc = std::make_shared<tls::TlsConnection>(c, ctx_,
                                                            tls::Role::kServer);
             tc->setMessageCallback(
-                [](const tls::TlsConnectionPtr& t, std::string& msg){
+                [](const tls::TlsConnectionPtr& t, std::string& msg) {
                     // Respond once we see the end of request headers.
                     if (msg.find("\r\n\r\n") != std::string::npos)
                     {
@@ -118,7 +118,7 @@ private:
     std::mutex m_;
     std::map<std::string, tls::TlsConnectionPtr> conns_map_;
 };
-} // namespace
+}   // namespace
 
 TEST(TlsPoolTest, ReusesTlsConnectionAcrossRequests)
 {
@@ -160,14 +160,14 @@ TEST(TlsPoolTest, ReusesTlsConnectionAcrossRequests)
         std::function<void(int)> fire = [&](int n) {
             if (n == 0) { loop.quit(); return; }
             pool->request(getReq("/x"), 
-                        [&, n](const HttpResponse& resp, const std::string& err) {
-                            if (err.empty() && resp.statusCode() == 200 &&
-                                    resp.body() == "tls-ok")
-                            {
-                                completed++;
-                            }
-                            fire(n - 1);
-                        });
+                          [&, n](const HttpResponse& resp, const std::string& err) {
+                              if (err.empty() && resp.statusCode() == 200 &&
+                                  resp.body() == "tls-ok")
+                              {
+                                  completed++;
+                              }
+                              fire(n - 1);
+                           });
         };
         fire(3);
         cli_started = true;
@@ -183,7 +183,7 @@ TEST(TlsPoolTest, ReusesTlsConnectionAcrossRequests)
     }
 
     EXPECT_EQ(completed.load(), 3);
-    EXPECT_EQ(server_conns.load(), 1);          // handshake amortized over 1 connection
+    EXPECT_EQ(server_conns.load(), 1);   // handshake amortized over 1 connection
 
     client_thread.join();
     srv_loop->quit();
@@ -209,7 +209,7 @@ TEST(MultiOriginPoolTest, RoutesToDistinctOrigins)
             std::string t = tag;
             server.setHttpHandler([t](const HttpRequest&, HttpResponse* resp) {
                 resp->setStatus(200);
-                resp->setBody(t);           // Identify which origin answered.
+                resp->setBody(t);   // identify which origin answered.
             });
             server.start();
             *started = true;
@@ -234,17 +234,17 @@ TEST(MultiOriginPoolTest, RoutesToDistinctOrigins)
         
         pool->request("127.0.0.1", kPortA, getReq("/"),
                       [&](const HttpResponse& resp, const std::string& err) {
-                        if (err.empty()) body_a = resp.body();
-                        if (++got  == 2) loop.quit();
+                          if (err.empty()) body_a = resp.body();
+                          if (++got  == 2) loop.quit();
                       });
 
         pool->request("127.0.0.1", kPortB, getReq("/"),
                       [&](const HttpResponse& resp, const std::string& err) {
-                        if (err.empty()) body_b = resp.body();
-                        if (++got  == 2) loop.quit();
+                          if (err.empty()) body_b = resp.body();
+                          if (++got  == 2) loop.quit();
                       });
 
-        // Two distinct origins -> two sub-pools
+        // Two distinct origins -> two sub-pools.
         cli_started = true;
         loop.loop();
         EXPECT_EQ(pool->originCount(), 2u);

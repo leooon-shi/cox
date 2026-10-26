@@ -81,7 +81,7 @@ int64_t asn1TimeToEpoch(const ASN1_GENERALIZEDTIME* t)
 }
 
 void clearErrors() { ERR_clear_error(); }
-} // namespace
+}   // namespace
 
 OcspStapler::OcspStapler(std::string cert_path, std::string issuer_path)
     : cert_path_(std::move(cert_path)), issuer_path_(std::move(issuer_path)) {}
@@ -96,7 +96,7 @@ std::string OcspStapler::responderUrl() const
     return aiaOcspUrl(cert.get());
 }
 
-bool OcspStapler::setResponserDer(const std::string&  der)
+bool OcspStapler::setResponserDer(const std::string& der)
 {
     if (der.empty()) return false;
 
@@ -207,7 +207,7 @@ bool OcspStapler::refresh()
         clearErrors();
         return false;
     }
-    if (OCSP_request_add0_id(req.get(), id) == nullptr )
+    if (OCSP_request_add0_id(req.get(), id) == nullptr)
     {
         OCSP_CERTID_free(id);
         return false;
@@ -273,7 +273,7 @@ int64_t OcspStapler::secondsUntilExpiry() const
 
 void OcspStapler::attachTo(TlsContext& ctx)
 {
-    // OpenSSL's macro-casts internally; see note in tls_context.cc.
+    // OpenSSL's macro casts internally; see note in tls_context.cc.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
     SSL_CTX_set_tlsext_status_cb(ctx.nativeHandle(),
@@ -311,4 +311,4 @@ int OcspStapler::statusCallback(struct ssl_st* ssl_raw, void* arg)
     }
     return SSL_TLSEXT_ERR_OK;
 }
-} // namespace tls
+}   // namespace tls

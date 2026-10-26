@@ -58,12 +58,12 @@ public:
     using DrainCompleteCallback = std::function<void()>;
 
     // Begin a graceful shutdown / drain:
-    // 1. stop accepting new connections,
-    // 2. ask each live connection to finish (optional onDrain callback) and
-    //    half-close so peers observe EOF once output drains,
-    // 3. wait for connections to close on their own,
-    // 4. after drain_deadline_seconds, force-close any stragglers,
-    // 5. invoke on_complete when the last connection is gone.
+    //   1. stop accepting new connections,
+    //   2. ask each live connection to finish (optional onDrain callback) and
+    //      half-close so peers observe EOF once output drains,
+    //   3. wait for connections to close on their own,
+    //   4. after drain_deadline_seconds, force-close any stragglers,
+    //   5. invoke on_complete when the last connection is gone.
     // Safe to call from any thread. Idempotent.
     void shutdown(uint32_t drain_deadline_seconds = 30,
                   DrainCompleteCallback on_complete = DrainCompleteCallback());
@@ -97,7 +97,7 @@ public:
 
     // Apply an idle timeout (seconds) to every accepted connection. 0 disables.
     // Defeats slowloris-style attacks that hold connections open with little or
-    // no traffic. Set before start() (or before connection arrive).
+    // no traffic. Set before start() (or before connections arrive).
     void setIdleTimeout(uint32_t idle_seconds)
     {
         idle_seconds_ = idle_seconds;
@@ -130,7 +130,7 @@ public:
     }
 
     // Overload notification. Invoked (on the base loop) when the server sheds a
-    // Connection due to overload -- either the connection cap or, if set, an
+    // connection due to overload -- either the connection cap or, if set, an
     // accept-rate limit. The application can use this for metrics/alerts. Cox
     // has already closed the shed connection's fd; the app connot respond on it
     // (there is no protocol context at the TCP layer). For request-level
@@ -179,15 +179,14 @@ private:
     // Accept-rate limiter (nullptr = disabled). Accessed only on the base loop.
     std::unique_ptr<flowcontrol::TokenBucket> accept_limiter_;
 
-    std::atomic<bool> started_ {false};
-    std::atomic<bool> draining_ {false};
-    int next_conn_id_ {1};
-    uint32_t idle_seconds_ {0};
-    uint32_t write_seconds_ {0};
+    std::atomic<bool> started_{false};
+    std::atomic<bool> draining_{false};
+    int next_conn_id_{1};
+    uint32_t idle_seconds_{0};
+    uint32_t write_seconds_{0};
     uint32_t max_input_buffer_size_{0};
     uint32_t max_age_seconds_{0};
     uint32_t max_connections_{0};   // 0 - unlimited
     ConnectionMap connections_;     // accessed only on base loop
 };
-} // namespace net
-
+}   // namespace net

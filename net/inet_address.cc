@@ -15,13 +15,13 @@ namespace
 // Compile-time sanity: the union must be laid out so the family field aliases
 // across sockaddr_in / sockaddr_in6 / sockaddr_un. This holds on POSIX; assert
 // it to document the assumption.
-static_assert(offsetof(struct sockaddr_in, sin_family) == 
+static_assert(offsetof(struct sockaddr_in, sin_family) ==
                   offsetof(struct sockaddr_in6, sin6_family),
-            "sin_family and sin6_family must alias");
+              "sin_family and sin6_family must alias");
 static_assert(offsetof(struct sockaddr_in, sin_family) ==
                   offsetof(struct sockaddr_un, sun_family),
-            "sin_family and sun_family must alias");
-} // namespace
+              "sin_family and sun_family must alias");
+}   // namespace
 
 InetAddress InetAddress::unixDomain(const std::string& path)
 {
@@ -52,7 +52,7 @@ void InetAddress::setSockAddrStorage(const struct sockaddr_storage & ss,
 {
     std::memset(&storage_, 0, sizeof(storage_));
     std::memcpy(&storage_, &ss, len > static_cast<socklen_t>(sizeof(storage_))
-                                    ? sizeof(storage_) 
+                                    ? sizeof(storage_)
                                     : static_cast<size_t>(len));
 }
 
@@ -94,7 +94,7 @@ InetAddress::InetAddress(const std::string& ip, uint16_t port, bool ipv6)
 {
     if (ipv6)
     {
-        std::memset(&addr6_, 0, sizeof(addr_));
+        std::memset(&addr6_, 0, sizeof(addr6_));
         addr6_.sin6_family = AF_INET6;
         addr6_.sin6_port = htons(port);
         if (::inet_pton(AF_INET6, ip.c_str(), &addr6_.sin6_addr) <= 0)
@@ -156,4 +156,4 @@ std::string InetAddress::toIpPort() const
     return ip + ":" + p;
 }
 
-} // namespace net
+}   // namespace net

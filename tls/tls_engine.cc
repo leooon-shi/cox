@@ -18,16 +18,16 @@ std::string opensslError(const std::string& what)
     return what + ": " + buf;
 }
 
-// SNI must carry a DNS name, never an IP address (RFC 6066 $3). Cheap check:
+// SNI must carry a DNS name, never an IP address (RFC 6066 §3). Cheap check:
 // an IPv4 literal is all digits and dots; an IPv6 literal contains ':'.
 bool looksLikeIpLiteral(const std::string& host)
 {
-    if (host.find(":") != std::string::npos) return true;   // IPv6
+    if (host.find(":") != std::string::npos) return true;  // IPv6
 
     bool all_digits_dots = true;
     for (char c : host)
     {
-        if (!(( c >= '0' && c <= '9') || c == '.'))
+        if (!((c >= '0' && c <= '9') || c == '.'))
         {
             all_digits_dots = false;
             break;
@@ -35,7 +35,7 @@ bool looksLikeIpLiteral(const std::string& host)
     }
     return all_digits_dots;
 }
-} // namespace
+}   // namespace
 
 TlsEngine::TlsEngine(const TlsContext& ctx, Role role)
     : ssl_(nullptr), rbio_(nullptr), wbio_(nullptr)
@@ -76,7 +76,7 @@ void TlsEngine::init(const TlsContext& ctx, Role role,
         SSL_free(ssl_);
         throw std::runtime_error("BIO_new(BIO_s_mem) failed");
     }
-    SSL_set_bio(ssl_, rbio_, wbio_);        // Take ownership of the BIOs
+    SSL_set_bio(ssl_, rbio_, wbio_);  // take ownership of the BIOs
 
     if (role == Role::kServer)
     {
@@ -110,7 +110,7 @@ TlsEngine::~TlsEngine()
 {
     if (ssl_)
     {
-        SSL_free(ssl_);             // Also frees the attatched BIOs
+        SSL_free(ssl_);  // also frees the attatched BIOs
     }
 }
 
@@ -121,7 +121,7 @@ size_t TlsEngine::feedEncrypted(const char* data, size_t len)
     return n > 0 ? static_cast<size_t>(n) : 0;
 }
 
-size_t TlsEngine::takeEncrypted(std::string & out)
+size_t TlsEngine::takeEncrypted(std::string& out)
 {
     size_t total = 0;
     char buf[16384];
@@ -133,7 +133,7 @@ size_t TlsEngine::takeEncrypted(std::string & out)
             out.append(buf, static_cast<size_t>(n));
             total += static_cast<size_t>(n);
         } else {
-            break;      // No more pending outbound bytes.
+            break;   // no more pending outbound bytes.
         }
     }
     return total;
@@ -142,7 +142,7 @@ size_t TlsEngine::takeEncrypted(std::string & out)
 TlsEngine::Status TlsEngine::mapError(int ret)
 {
     int err = SSL_get_error(ssl_, ret);
-    switch( err )
+    switch(err)
     {
         case SSL_ERROR_NONE:
             return Status::kOk;
@@ -150,7 +150,7 @@ TlsEngine::Status TlsEngine::mapError(int ret)
         case SSL_ERROR_WANT_WRITE:
             return Status::kWantIo;
         case SSL_ERROR_ZERO_RETURN:
-            return Status::kClosed;         // peer sent close_notify
+            return Status::kClosed;   // peer sent close_notify
         case SSL_ERROR_SYSCALL:
         case SSL_ERROR_SSL:
         default:
@@ -161,10 +161,10 @@ TlsEngine::Status TlsEngine::mapError(int ret)
 
 TlsEngine::Status TlsEngine::handshake()
 {
-    if ret = SSL_do_handshake(ssl_);
+    int ret = SSL_do_handshake(ssl_);
     if ( ret == 1 )
     {
-        return Status::kOk;     // handshake complete
+        return Status::kOk;  // handshake complete
     }
     return mapError(ret);
 }
@@ -173,16 +173,16 @@ bool TlsEngine::handshakeDone() const {
     return SSL_is_init_finished(ssl_) != 0;
 }
 
-TlsEngine::Status TlsEngine::writePlaintext(const char*, size_t len,
+TlsEngine::Status TlsEngine::writePlaintext(const char* data, size_t len,
                                             size_t* consumed)
 {
     *consumed = 0;
     if (len == 0) return Status::kOk;
-    if ret = SSL_write(ssl_, data, static_cast<int>(len));
+    int ret = SSL_write(ssl_, data, static_cast<int>(len));
     if (ret > 0)
     {
         *consumed = static_cast<size_t>(ret);
-        return status::kOk;
+        return Status::kOk;
     }
     return mapError(ret);
 }
@@ -196,23 +196,23 @@ TlsEngine::Status TlsEngine::readPlaintext(std::string& out)
         if (ret > 0)
         {
             out.append(buf, static_cast<size_t>(ret));
-            continue;       // Drain all conrrently-available plaintext
+            continue;   // drain all conrrently-available plaintext
         }
 
         Status s = mapError(ret);
-        // kWantIo with some data already appended is stil kOk from the
+        // kWantIo with some data already appended is still kOk from the
         // caller's perspective (they got data; more needs network input).
         if (s == Status::kWantIo)
         {
             return Status::kOk;
         }
-        return s;   // kClosed / kError
+        return s;  // kClosed / kError
     }
 }
 
 void TlsEngine::shutdown()
 {
-    SSL_shutdown(ssl_);         // Best-effort close_notify; caller flushes wbio
+    SSL_shutdown(ssl_);   // best-effort close_notify; caller flushes wbio
 }
 
 std::string TlsEngine::protocolVersion() const
@@ -232,4 +232,4 @@ std::string TlsEngine::requestedServerName() const
     return TlsContext::requestedServerName(ssl_);
 }
 
-} // namespace tls
+}   // namespace tls

@@ -15,13 +15,13 @@ logging::Logger& log()
     static logging::Logger logger;
     return logger;
 }
-} // namespace
+}   // namespace
 
 TcpClient::TcpClient(reactor::EventLoop* loop, const InetAddress& server_addr,
                      std::string name)
-: loop_(loop),
-  connector_(std::make_shared<Connector>(loop, server_addr)),
-  name_(std::move(name))
+    : loop_(loop),
+      connector_(std::make_shared<Connector>(loop, server_addr)),
+      name_(std::move(name))
 {
     connector_->setNewConnectionCallback([this](int sockfd) {
         newConnection(sockfd);
@@ -103,7 +103,7 @@ void TcpClient::newConnection(int sockfd)
     loop_->assertInLoopThread();
     InetAddress peer = sockets::getPeerAddr(sockfd);
     InetAddress local = sockets::getLocalAddr(sockfd);
-    std::string conn_name = 
+    std::string conn_name =
         name_ + "-" + peer.toIpPort() + "#" + std::to_string(next_conn_id_++);
     log().info("TcpClient::newConnection [" + name_ + "] " + conn_name);
 
@@ -133,9 +133,9 @@ void TcpClient::removeConnection(const TcpConnectionPtr& conn)
     if (retry_ && connect_)
     {
         log().info("TcpClient::removeConnection [" + name_ + 
-                    "] reconnecting to " +
-                    connector_->serverAddress().toIpPort());
+                   "] reconnecting to " +
+                   connector_->serverAddress().toIpPort());
         connector_->restart();
     }
 }
-} // namespace net
+}   // namespace net

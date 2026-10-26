@@ -29,7 +29,7 @@ int createNonBlockingOrDie(sa_family_t family) {
     int sockfd = ::socket(family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC,
                           protocol);
 
-    if (sockfd < 0 ) {
+    if (sockfd < 0) {
         log().fatal("sockets::createNonBlockingOrDie failed: " +
                     std::string(std::strerror(errno)));
         std::abort();
@@ -137,7 +137,7 @@ void setKeepAlive(int sockfd, bool on)
 int getSocketError(int sockfd) {
     int optval;
     socklen_t optlen = sizeof(optval);
-    if (::getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0 ) {
+    if (::getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0) {
         return errno;
     }
     return optval;
@@ -182,13 +182,13 @@ bool isSelfConnect(int sockfd) {
     }
     if (local.isUnix())
     {
-        return false;   // Unix sockets don't self-connect in this sense
+        return false;  // unix sockets don't self-connect in this sense
     }
 
     return local.port() == peer.port() && local.toIp() == peer.toIp();
 }
 
-} // namespace sockets
+}   // namespace sockets
 
 Socket::~Socket() { reset(); }
 
@@ -200,6 +200,4 @@ void Socket::reset()
         sockfd_ = -1;
     }
 }
-} // namespace net
-
-
+}   // namespace net

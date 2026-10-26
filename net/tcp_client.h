@@ -32,7 +32,7 @@ public:
 
     // Initiate connection (idempotent).
     void connect();
-    // Disconnect the active connection (half-close), if any
+    // Disconnect the active connection (half-close), if any.
     void disconnect();
     // Stop connecting and prevent reconnection.
     void stop();
@@ -68,12 +68,12 @@ private:
     MessageCallback message_callback_;
     WriteCompleteCallback write_complete_callback_;
 
-    std::atomic<bool> retry_{false};   // reconnect on disconnect
-    std::atomic<bool> connect_{true};  // whether connecting is desired
+    std::atomic<bool> retry_{false};    // reconnect on disconnect
+    std::atomic<bool> connect_{true};   // whether connecting is desired
     int next_conn_id_{1};
 
     mutable std::mutex mutex_;
-    TcpConnectionPtr connection_;       // guarded by mutex_
+    TcpConnectionPtr connection_;   // guarded by mutex_
 };
 
-} // namespace net
+}   // namespace net

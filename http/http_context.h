@@ -26,10 +26,10 @@ public:
     {
         kExpectRequestLine,
         kExpectHeaders,
-        kExpectBody,            // Content-Length body
-        kExpectChunkSize,       // chunked: size line
-        kExpectChunkData,       // chunked: chunk bytes
-        kExpectChunkCrlf,       // chunked: trailing CRLF after a chunk
+        kExpectBody,        // Content-Length body
+        kExpectChunkSize,   // chunked: size line
+        kExpectChunkData,   // chunked: chunk bytes
+        kExpectChunkCrlf,   // chunked: trailing CRLF after a chunk
         kGotAll,
         kError
     };
@@ -61,4 +61,4 @@ private:
     size_t header_bytes_{0};
     size_t chunk_remaining_{0};
 };
-} // namespace http
+}   // namespace http

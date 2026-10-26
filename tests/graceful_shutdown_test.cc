@@ -1,4 +1,4 @@
-// Graceful shutdown / drain tests for TcpServer
+// Graceful shutdown / drain tests for TcpServer.
 #include "tcp_server.h"
 
 #include "buffer.h"
@@ -49,10 +49,10 @@ int connectClient(uint16_t port)
     waitWritable(fd, 1000);
     return fd;
 }
-} // namespace
+}  // namespace
 
 // Drain completes once connected clients close; the completion callback fires.
-TEST(GracefulShutdownTest, DrainCompleteWhenClientsClose)
+TEST(GracefulShutdownTest, DrainCompletesWhenClientsClose)
 {
     const uint16_t kPort = 48001;
     std::atomic<bool> started{false};
@@ -75,7 +75,7 @@ TEST(GracefulShutdownTest, DrainCompleteWhenClientsClose)
         loop.runAfter(200, [&server, &loop, &drain_done]() {
             server.shutdown(10, [&loop, &drain_done]() {
                 drain_done = true;
-                loop.quit();        // stop the loop once fully drained
+                loop.quit();   // stop the loop once fully drained
             });
         });
 
@@ -116,7 +116,7 @@ TEST(GracefulShutdownTest, RejectsNewConnectionsWhileDraining)
     std::atomic<int> accepted{0};
     reactor::EventLoop* loop_ptr = nullptr;
 
-    std::thread sever_thread([&] {
+    std::thread server_thread([&] {
         reactor::EventLoop loop;
         loop_ptr = &loop;
         InetAddress addr("127.0.0.1", kPort);
@@ -134,7 +134,7 @@ TEST(GracefulShutdownTest, RejectsNewConnectionsWhileDraining)
 
     while (!started.load()) std::this_thread::sleep_for(1ms);
     // Wait until draining has begun.
-    std::this_thread:;sleep_for(80ms);
+    std::this_thread::sleep_for(80ms);
 
     // Attempt to connect after drain started; the server must not accept it.
     int client = connectClient(kPort);
@@ -169,7 +169,7 @@ TEST(GracefulShutdownTest, ForceCloseAtDeadline)
 
         // Short 1s force-close deadline so the test is quick.
         loop.runAfter(150, [&server, &loop, &drain_done]() {
-            server.shutdown(1, [&loop, &drain_done](){
+            server.shutdown(1, [&loop, &drain_done]() {
                 drain_done = true;
                 loop.quit();
             });

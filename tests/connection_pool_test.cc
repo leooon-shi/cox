@@ -31,7 +31,7 @@ HttpRequest getReq(const std::string& path)
     r.setPath(path);
     return r;
 }
-} // namespace
+}  // namespace
 
 // Fire several concurrent requests through a pool; all should complete, and the
 // pool should open no more than maxConnections.
@@ -39,7 +39,7 @@ TEST(ConnectionPoolTest, ConcurrentRequestsRespectCap)
 {
     const uint16_t kPort = 55701;
     std::atomic<bool> srv_started{false};
-    std::atomic<int> server_counts{0};
+    std::atomic<int> server_conns{0};
     reactor::EventLoop* srv_loop = nullptr;
 
     std::thread server_thread([&] {
@@ -67,7 +67,7 @@ TEST(ConnectionPoolTest, ConcurrentRequestsRespectCap)
     std::atomic<int> completed{0};
     std::atomic<bool> cli_started{false};
 
-    std::thread client_thread([&]{
+    std::thread client_thread([&] {
         reactor::EventLoop loop;
         auto pool = std::make_shared<ConnectionPool>(
             &loop, net::InetAddress("127.0.0.1", kPort), "localhost");
@@ -76,16 +76,16 @@ TEST(ConnectionPoolTest, ConcurrentRequestsRespectCap)
         for (int i = 0; i < kNumRequests; ++i)
         {
             pool->request(getReq("/r" + std::to_string(i)),
-                            [&](const HttpResponse& resp, const std::string& err) {
-                                if (err.empty() && resp.statusCode() == 200)
-                                {
-                                    completed++;
-                                }
-                                if(completed.load() == kNumRequests)
-                                {
-                                    loop.quit();
-                                }
-                            });
+                          [&](const HttpResponse& resp, const std::string& err) {
+                              if (err.empty() && resp.statusCode() == 200)
+                              {
+                                  completed++;
+                              }
+                              if(completed.load() == kNumRequests)
+                              {
+                                loop.quit();
+                              }
+                          });
         }
         cli_started = true;
         loop.loop();
@@ -115,7 +115,7 @@ TEST(ConnectionPoolTest, SequentialReuseSingleConnection)
 {
     const uint16_t kPort = 55702;
     std::atomic<bool> srv_started{false};
-    std::atomic<int> server_couns{0};
+    std::atomic<int> server_conns{0};
     reactor::EventLoop* srv_loop = nullptr;
 
     std::thread server_thread([&] {
@@ -143,19 +143,18 @@ TEST(ConnectionPoolTest, SequentialReuseSingleConnection)
 
     std::thread client_thread([&] {
         reactor::EventLoop loop;
-        auto pool = std::make_unique<ConnectionPool>(
+        auto pool = std::make_shared<ConnectionPool>(
             &loop, net::InetAddress("127.0.0.1", kPort), "localhost");
         pool->setMaxConnections(4);
 
         // Chain 3 sequential requests (each issued from the prior's callback).
-        std::function<void(int)> fire = [&](int n)
-        {
-            if (n == 0) { loop.quit(); return;}
+        std::function<void(int)> fire = [&](int n) {
+            if (n == 0) { loop.quit(); return; }
             pool->request(getReq("/s"),
-                            [&, n](const HttpResponse&, const std::string& err) {
-                                if (err.empty()) completed++;
-                                fire(n - 1);
-                            });
+                          [&, n](const HttpResponse&, const std::string& err) {
+                              if (err.empty()) completed++;
+                              fire(n - 1);
+                           });
         };
         fire(3);
         cli_started = true;

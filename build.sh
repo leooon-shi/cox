@@ -2,7 +2,7 @@
 #
 # Convenience wrapper around CMake presets (see CMakePresets.json).
 #
-# Build configuration lives in the presets, not here, so that CI, this script
+# Build configuration lives in the presets, not here, so that CI, this script,
 # and a manual `cmake --preset ...` all produce identical builds. Each preset
 # uses its own directory under build/, so configurations no longer clobber one
 # another and rebuilds are incremental (this script used to `rm -rf` the build
@@ -49,26 +49,26 @@ EOF
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --release)          BUILD_TYPE="release"; shift ;;
-        --debug)            BUILD_TYPE="debug"; shift ;;
-        --gcc)              COMPILER="gcc"; shift ;;
-        --clang)            COMPILER="clang"; shift ;;
-        --asan)             SANITIZER="asan"; shift ;;
-        --tsan)             SANITIZER="tsan"; shift ;;
-        --ubsan)            SANITIZER="ubsan"; shift ;;
-        --build-examples)   BUILD_EXAMPLES="ON"; shift ;;
-        --test)             RUN_TESTS="ON"; shift ;;
-        --clean)            CLEAN="ON"; shift ;;
-        -h|--help)          print usage 0 ;;
-        *)                  echo "Unknown option: $1"; print_usage ;;
+        --release)            BUILD_TYPE="release"; shift ;;
+        --debug)              BUILD_TYPE="debug"; shift ;;
+        --gcc)                COMPILER="gcc"; shift ;;
+        --clang)              COMPILER="clang"; shift ;;
+        --asan)               SANITIZER="asan"; shift ;;
+        --tsan)               SANITIZER="tsan"; shift ;;
+        --ubsan)              SANITIZER="ubsan"; shift ;;
+        --build-examples)     BUILD_EXAMPLES="ON"; shift ;;
+        --test)               RUN_TESTS="ON"; shift ;;
+        --clean)              CLEAN="ON"; shift ;;
+        -h|--help)            print usage 0 ;;
+        *)                    echo "Unknown option: $1"; print_usage ;;
     esac
 done
 
 # Map the flags onto a preset name.
 if [[ -n "$SANITIZER" ]]; then
-    PRESET="$SANITIZER"             # sanitizer presets are Debug + clang
+    PRESET="$SANITIZER"          # sanitizer presets are Debug + clang
 elif [[ "$BUILD_EXAMPLES" == "ON" ]]; then
-    PRESET="examples"               # Release + clang + examples
+    PRESET="examples"            # Release + clang + examples
 else
     PRESET="${COMPILER}-${BUILD_TYPE}"
 fi

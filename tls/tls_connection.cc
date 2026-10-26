@@ -16,7 +16,7 @@ logging::Logger& log()
     static logging::Logger logger;
     return logger;
 }
-} // namespace
+}   // namespace
 
 TlsConnection::TlsConnection(std::shared_ptr<net::TcpConnection> conn,
                              const TlsContextPtr& ctx, Role role)
@@ -34,7 +34,7 @@ void TlsConnection::start()
 {
     // Intercept the underlying TCP connection's byte stream.
     //
-    // WEAK capture: this object holds conn_ (a shared_ptr back to the TcpConnection)
+    // WEAK capture: this object holds conn_ (a shared_ptr to the TcpConnection)
     // so installing callbacks that own a shared_ptr back to this TlsConnection
     // forms a cycle and neither is ever freed -- along with the SSL object and
     // its buffers. LeakSanitizer reported this as ~900KB across ~12900
@@ -42,7 +42,7 @@ void TlsConnection::start()
     // unreclaimed engine.
     std::weak_ptr<TlsConnection> weak = weak_from_this();
     conn_->setMessageCallback(
-        [weak](const net::TcpConnectionPtr&, buffer::Buffer* buf){
+        [weak](const net::TcpConnectionPtr&, buffer::Buffer* buf) {
             if (auto self = weak.lock()) self->onTcpMessage(buf);
         });
     conn_->setConnectionCallback([weak](const net::TcpConnectionPtr& c) {
@@ -64,7 +64,7 @@ void TlsConnection::driveHandshake()
     }
 
     TlsEngine::Status s = engine_.handshake();
-    flushOutbound();            // Send whatever handshake bytes were produced.
+    flushOutbound();   // send whatever handshake bytes were produced.
 
     if (s == TlsEngine::Status::kError)
     {
@@ -102,7 +102,7 @@ void TlsConnection::onTcpMessage(buffer::Buffer* buf)
         driveHandshake();
         if (!handshake_done_)
         {
-            return;             // still handshaking
+            return;   // still handshaking
         }
         // Handshake just finished; fall through to read any early app data.
     }
@@ -140,7 +140,7 @@ void TlsConnection::onTcpClose()
     }
 }
 
-void TlsConnection::send( const std::string& data)
+void TlsConnection::send(const std::string& data)
 {
     if (!handshake_done_ || closed_)
     {
@@ -160,7 +160,7 @@ void TlsConnection::send( const std::string& data)
         }
         else if (s == TlsEngine::Status::kWantIo)
         {
-            flushOutbound();            // Push what we have; retry remaining
+            flushOutbound(); // push what we have; retry remaining
         }
         else
         {
@@ -174,9 +174,9 @@ void TlsConnection::send( const std::string& data)
 void TlsConnection::shutdown()
 {
     if (closed_) return;
-    engine_.shutdown();         // Queue close_notify
+    engine_.shutdown();   // queue close_notify
     flushOutbound();
-    conn_->shutdown();          // half-close the TCP side after flushing
+    conn_->shutdown();    // half-close the TCP side after flushing
 }
 
 void TlsConnection::flushOutbound()
@@ -188,4 +188,4 @@ void TlsConnection::flushOutbound()
         conn_->send(enc);
     }
 }
-} // namespace tls
+}  // namespace tls

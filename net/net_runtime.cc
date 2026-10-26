@@ -21,4 +21,4 @@ void initNetRuntime() {
     (void)&g_ignore_sigpipe;
     ::signal(SIGPIPE, SIG_IGN);
 }
-} // namespace net
+}   // namespace net

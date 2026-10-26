@@ -1,5 +1,5 @@
 // LogLevel string mapping. The Formatter base is header-only (defaulted dtor);
-// factories live in default_formatter.cc
+// factories live in default_formatter.cc.
 #include "log_record.h"
 
 namespace logging {
@@ -16,4 +16,4 @@ const char* toString(LogLevel level)
     return "UNKNOWN";
 }
 
-} // namespace logging
+}   // namespace logging

@@ -1,5 +1,5 @@
 // HttpClient tests: response-parser unit tests + end-to-end HttpClient <->
-// HttpServer (both using_Cox).
+// HttpServer (both using Cox).
 
 #include "http_client.h"
 #include "http_request.h"
@@ -31,7 +31,7 @@ buffer::Buffer bufOf(const std::string& s)
     b.append(s);
     return b;
 }
-} // namespace
+}   // namespace
 
 // ---- Response parser unit tests ----
 
@@ -66,7 +66,7 @@ TEST(ResponseParserTest, EofDelimitedBody)
     // No Content-Length, no chunked -> body until EOF.
     auto buf = bufOf("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\nsome data");
     ASSERT_TRUE(p.parse(&buf));
-    EXPECT_FALSE(p.gotAll());       // Not complete until EOF
+    EXPECT_FALSE(p.gotAll());  // not complete until EOF
     p.onEof();
     EXPECT_TRUE(p.gotAll());
     EXPECT_EQ(p.response().body(), "some data");
@@ -116,9 +116,10 @@ TEST(HttpClientTest, GetAgainstCoxServer)
     std::thread client_thread([&] {
         reactor::EventLoop loop;
         cli_loop = &loop;
-        auto client = std::make_unique<HttpClient>(
+        auto client = std::make_shared<HttpClient>(
             &loop, net::InetAddress("127.0.0.1", kPort), "localhost");
-        client->get("/world", [&](const HttpResponse& resp, const std::string& err) {
+        client->get("/world", [&](const HttpResponse& resp,
+                                  const std::string& err) {
             if (err.empty())
             {
                 status = resp.statusCode();
@@ -131,7 +132,7 @@ TEST(HttpClientTest, GetAgainstCoxServer)
         loop.loop();
     });
 
-    while ( !cli_started.load()) std::this_thread::sleep_for(1ms);
+    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
     for (int i = 0; i < 200 && !got.load(); ++i) std::this_thread::sleep_for(5ms);
 
     EXPECT_TRUE(got.load());
@@ -210,8 +211,8 @@ TEST(HttpClientTest, KeepAliveReusesConnection)
 {
     const uint16_t kPort = 55603;
     std::atomic<bool> srv_started{false};
-    std::atomic<int> server_reqs{0};               // Requests the server handled
-    std::atomic<int> server_conns{0};              // Connections accepted (via observer)
+    std::atomic<int> server_reqs{0};    // requests the server handled
+    std::atomic<int> server_conns{0};   // Connections accepted (via observer)
     reactor::EventLoop* srv_loop = nullptr;
 
     std::thread server_thread([&] {
@@ -269,14 +270,14 @@ TEST(HttpClientTest, KeepAliveReusesConnection)
     });
 
     while (!cli_started.load()) std::this_thread::sleep_for(1ms);
-    for(int i = 0; i < 300 && replies.load() < 2; ++i)
+    for (int i = 0; i < 300 && replies.load() < 2; ++i)
         std::this_thread::sleep_for(5ms);
 
     EXPECT_EQ(replies.load(), 2);
     EXPECT_EQ(body1, "r:/a");
     EXPECT_EQ(body2, "r:/b");
-    EXPECT_EQ(server_reqs.load(), 2);           // both requests handled
-    EXPECT_EQ(server_conns.load(), 1);          // over a single reused connection
+    EXPECT_EQ(server_reqs.load(), 2);   // both requests handled
+    EXPECT_EQ(server_conns.load(), 1);  // over a single reused connection
     
     client_thread.join();
     srv_loop->quit();

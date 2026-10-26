@@ -60,7 +60,7 @@ void HttpResponse::appendTo(buffer::Buffer* buf) const {
         head += "\r\n";
     }
 
-    head += "\r\n";     // end of headers
+    head += "\r\n"; // end of headers
 
     buf->append(head);
     if (!body_.empty())
@@ -69,4 +69,4 @@ void HttpResponse::appendTo(buffer::Buffer* buf) const {
     }
 }
 
-} // namespace http
+}   // namespace http

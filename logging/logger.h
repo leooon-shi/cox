@@ -18,7 +18,7 @@ class Sink;
 // Info, so Debug is suppressed unless enabled).
 // 
 // Structured fields: pass LogFields to attach context, e.g.
-//   log.info("request done", {{"method", "GET"}, {"path", "/x"}, {"status", "200"}});
+//   log.info("request done", {{"method","GET"},{"path","/x"},{"status","200"}});
 //
 // Sinks: stdout by default. Use Sink::newFileSink / newRotatingFileSink, and
 // wrap in an AsyncSink to keep file I/O off an event-loop thread.
@@ -28,14 +28,14 @@ class Sink;
 class Logger {
 public:
     explicit Logger(LogLevel logLevel);
-    Logger();                               // Defaults to Info + DefaultFormatter + stdout sink
+    Logger();  // defaults to Info + DefaultFormatter + stdout sink
     // Construct with an explicit formatter (e.g. JSON).
     Logger(LogLevel logLevel, std::unique_ptr<Formatter> formatter);
     // Full control: level + formatter + destination.
     Logger(LogLevel logLevel, std::unique_ptr<Formatter> formatter,
            std::shared_ptr<Sink> sink);
     virtual ~Logger();
-    
+
     void setLevel(LogLevel level) { level_ = level; }
     LogLevel level() const { return level_; }
 
@@ -49,18 +49,18 @@ public:
     void setFlushLevel(LogLevel level) { flush_level_ = level; }
 
     // Plain-message logging.
-    void debug(std::string message)   { log(LogLevel::Debug,    std::move(message), {});}
-    void info(std::string message)    { log(LogLevel::Info,     std::move(message), {});}
-    void warning(std::string message) { log(LogLevel::Warning,  std::move(message), {});}
-    void error(std::string message)   { log(LogLevel::Error,    std::move(message), {});}
-    void fatal(std::string message)   { log(LogLevel::Fatal,    std::move(message), {});}
+    void debug(std::string message)   { log(LogLevel::Debug,   std::move(message), {}); }
+    void info(std::string message)    { log(LogLevel::Info,    std::move(message), {}); }
+    void warning(std::string message) { log(LogLevel::Warning, std::move(message), {}); }
+    void error(std::string message)   { log(LogLevel::Error,   std::move(message), {}); }
+    void fatal(std::string message)   { log(LogLevel::Fatal,   std::move(message), {}); }
 
     // Structured logging (message + key-value fields).
-    void debug(std::string message, LogFields fields)   { log(LogLevel::Debug,    std::move(message), std::move(fields));}
-    void info(std::string message, LogFields fields)    { log(LogLevel::Info,     std::move(message), std::move(fields));}
-    void warning(std::string message, LogFields fields) { log(LogLevel::Warning,  std::move(message), std::move(fields));}
-    void error(std::string message, LogFields fields)   { log(LogLevel::Error,    std::move(message), std::move(fields));}
-    void fatal(std::string message, LogFields fields)   { log(LogLevel::Fatal,    std::move(message), std::move(fields));}
+    void debug(std::string message, LogFields fields)   { log(LogLevel::Debug,   std::move(message), std::move(fields)); }
+    void info(std::string message, LogFields fields)    { log(LogLevel::Info,    std::move(message), std::move(fields)); }
+    void warning(std::string message, LogFields fields) { log(LogLevel::Warning, std::move(message), std::move(fields)); }
+    void error(std::string message, LogFields fields)   { log(LogLevel::Error,   std::move(message), std::move(fields)); }
+    void fatal(std::string message, LogFields fields)   { log(LogLevel::Fatal,   std::move(message), std::move(fields)); }
 
 private:
     void log(LogLevel level, std::string message, LogFields fields);
@@ -72,4 +72,4 @@ private:
     std::string pid_;
 };
 
-} // namespace logging
+}   // namespace logging

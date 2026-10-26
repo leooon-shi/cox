@@ -11,6 +11,8 @@ class EventLoop;
 
 namespace net
 {
+
+class InetAddress;
 // Acceptor is the passive-open side of the Acceptor-Connector pattern. It owns
 // a listening socket registered with an EventLoop and, on each readable event,
 // accepts pending connections and hands each new connection fd (plus the peer
@@ -24,7 +26,7 @@ class Acceptor
 public:
     // Called with (connfd, peer_address) for each accepted connection. The
     // callback takes ownership of connfd.
-    using NewConnectionCallback = 
+    using NewConnectionCallback =
         std::function<void(int sockfd, const InetAddress& peer)>;
 
     Acceptor(reactor::EventLoop* loop, const InetAddress& listen_addr,
@@ -58,4 +60,4 @@ private:
     int idle_fd_;
 };
 
-} // namespace net
+}   // namespace net

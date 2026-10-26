@@ -6,9 +6,9 @@
 
 namespace logging {
 
-// Structured JSON formatter, one object per line (JSON lines), suitable for log
-// aggregation (ELK, Loki, CloudWatch)
-//      {"ts":"...", "level":"INFO", "tid":"123", "msg":"...", "key1":"val1"}
+// Structured JSON formatter, one object per line (JSON Lines), suitable for log
+// aggregation (ELK, Loki, CloudWatch):
+//   {"ts":"...", "level":"INFO", "tid":"123", "msg":"...", "key1":"val1"}
 
 class JsonFormatter final : public Formatter
 {
@@ -18,4 +18,4 @@ public:
 private:
     static void appendEscaped(std::string& out, const std::string& s);
 };
-} // namespace logging
+}   // namespace logging

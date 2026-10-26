@@ -3,7 +3,7 @@ set(BUFFER_SOURCES
 )
 
 set(BUFFER_HEADERS
-    bufer.h
+    buffer.h
 )
 
 add_library(cow_buffer STATIC ${BUFFER_SOURCES} ${BUFFER_HEADERS})

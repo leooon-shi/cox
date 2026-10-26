@@ -1,6 +1,7 @@
 #pragma once
 
 // Small helpers shared by the socket-based tests.
+//
 // WHY THIS EXISTS: glibc marks write()/read()/system() warn_unused_result, and
 // optimized GCC builds turn an ignored return into a -Werror=unused-result
 // failure. Tests legitimately drive I/O just to set up a scenario, where the
@@ -9,9 +10,9 @@
 // assertions meaningless rather than failing loudly.
 //
 // These wrappers make the intent explicit at each call site:
-//   sendAll()   -- Write and REQUIRE it fully succeeded (setup that must work)
-//   drainSome() -- Read whatever is available, tolerating none (teardown/drain)
-//   runCmd()    -- Run a shell command and return its status for checking
+//   sendAll()  -- write and REQUIRE it fully succeeded (setup that must work)
+//   drainSome()-- read whatever is available, tolerating none (teardown/drain)
+//   runCmd()   -- run a shell command and return its status for checking
 
 #include <unistd.h>
 
@@ -51,5 +52,6 @@ inline int runCmd(const std::string& cmd)
 {
     return std::system(cmd.c_str());
 }
-} // namespace test_util
+
+}   // namespace test_util
 

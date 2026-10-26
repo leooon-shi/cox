@@ -13,7 +13,7 @@ namespace flowcontrol
 // connections are cheap, while a few connections each with heavy in-flight
 // work can saturate CPU/memory. This limiter caps the concurrent work directly.
 //
-// Usage (RAII permit)
+// Usage (RAII permit):
 //   ConcurrencyLimiter limiter(100);
 //   if (auto permit = limiter.tryAcquire()) {
 //       // admitted: do the work; permit releases on scope exit
@@ -70,7 +70,7 @@ public:
 
     // max_concurrency: maximum in-flight units. 0 means unlimited.
     explicit ConcurrencyLimiter(size_t max_concurrency)
-    : max_(max_concurrency), in_flight_(0) {}
+        : max_(max_concurrency), in_flight_(0) {}
 
     // Try to acquire a slot without waiting. Returns a truthy Permit on success
     // (slot held until the Permit is destroyed/released), or an empty (falsy)
@@ -87,14 +87,14 @@ public:
         while (cur < max_)
         {
             if (in_flight_.compare_exchange_weak(cur, cur + 1,
-                                                std::memory_order_acquire,
-                                                std::memory_order_relaxed))
+                                                 std::memory_order_acquire,
+                                                 std::memory_order_relaxed))
             {
                 return Permit(this);
             }
             // cur reloaded by compare_exchange_weak on failure; loop retries.
         }
-        return Permit();    // at capacity -> empty permit
+        return Permit();  // at capacity -> empty permit
     }
 
     size_t inFlight() const { return in_flight_.load(std::memory_order_relaxed); }
@@ -110,4 +110,5 @@ private:
     const size_t max_;
     std::atomic<size_t> in_flight_;
 };
-} // namespace flowcontrol
+}   // namespace flowcontrol
+

@@ -25,7 +25,7 @@ void ThreadPool::start(int num_threads)
     threads_.reserve(static_cast<size_t>(num_threads));
     for (int i = 0; i < num_threads; ++i)
     {
-        threads_.emplace_back([this]{ runInThread(); });
+        threads_.emplace_back([this] { runInThread(); });
     }
     // num_threads == 0 => tasks run inline in run()/tryRun().
 }
@@ -63,12 +63,12 @@ void ThreadPool::run(Task task)
 {
     if (threads_.empty())
     {
-        task();     // no workers: run inline
+        task();  // no workers: run inline
         return;
     }
     std::unique_lock<std::mutex> lock(mutex_);
     // Block while the queue is full and the pool is still running.
-    not_full_.wait(lock, [this]{ return !isFull() || !running_.load(); });
+    not_full_.wait(lock, [this] { return !isFull() || !running_.load(); });
     if (!running_.load())
     {
         return;   // dropped: pool is stopping

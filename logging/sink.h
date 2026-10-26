@@ -20,7 +20,7 @@ namespace logging
 // Thread-safety contract: a Logger may be shared across threads, so
 // implementations MUST tolerate concurrent append()/flush(). The synchronous
 // sinks here use a mutex; AsyncSink instead hands off to one writer thread.
-class Sink{
+class Sink {
 public:
     virtual ~Sink() = default;
 
@@ -69,4 +69,4 @@ private:
     size_t flush_count_{0};
 };
 
-} // namespace logging
+}   // namespace logging

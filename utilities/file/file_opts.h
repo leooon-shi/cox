@@ -7,6 +7,6 @@ namespace file_opts{
     void closePipe(int read_fd, int write_fd);
 
     // Create a non-blocking, close-on-exec eventfd for cross-thread wakeup of
-    // an event loop (Linux-only). Returns the eventfd; throw on failure.
+    // an event loop (Linux-only). Returns the eventfd; throws on failure.
     int createEventfd();
 }

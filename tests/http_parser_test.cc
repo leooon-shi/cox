@@ -18,7 +18,7 @@ buffer::Buffer bufOf(const std::string& s)
     b.append(s);
     return b;
 }
-} // namespace
+}   // namespace
 
 TEST(HttpParserTest, SimpleGet)
 {
@@ -51,12 +51,12 @@ TEST(HttpParserTest, PartialThenComplete)
     // Feed the request in two pieces to exercise incremental parsing.
     auto buf = bufOf("GET / HTTP/1.1\r\nHo");
     ASSERT_TRUE(ctx.parseRequest(&buf));
-    EXPECT_FALSE(ctx.gotAll());     // header line incomplete
+    EXPECT_FALSE(ctx.gotAll());  // header line incomplete
     buf.append("st: x\r\n\r\n");
     ASSERT_TRUE(ctx.parseRequest(&buf));
     EXPECT_TRUE(ctx.gotAll());
     EXPECT_EQ(ctx.request().header("host"), "x");
-} 
+}
 
 TEST(HttpParserTest, ChunkedBody)
 {
@@ -97,10 +97,10 @@ TEST(HttpParserTest, KeepAliveHttp100ptIn)
     HttpContext ctx2;
     auto buf2 = bufOf("GET / HTTP/1.0\r\n\r\n");
     ASSERT_TRUE(ctx2.parseRequest(&buf2));
-    EXPECT_FALSE(ctx2.request().keepAlive());           // 1.0 defaults to close
+    EXPECT_FALSE(ctx2.request().keepAlive());  // 1.0 defaults to close
 }
 
-TEST(HttpResponseTest, SerializesStatusHeaderBody)
+TEST(HttpResponseTest, SerializesStatusHeadersBody)
 {
     HttpResponse resp(/*keep_alive=*/true);
     resp.setStatus(200);
@@ -124,5 +124,6 @@ TEST(HttpResponseTest, NotFoundReason)
     resp.setStatus(404);
     buffer::Buffer out;
     resp.appendTo(&out);
-    EXPECT_NE(out.retrieveAllAsString().find("404 Not Found"), std::string::npos);
+    EXPECT_NE(out.retrieveAllAsString().find("404 Not Found"),
+              std::string::npos);
 }

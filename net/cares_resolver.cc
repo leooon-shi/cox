@@ -22,7 +22,7 @@ logging::Logger& log() {
     static logging::Logger logger;
     return logger;
 }
-} // namespace
+}   // namespace
 
 // Impl drives the c-ares channel from the event loop. c-ares tells us which of
 // its sockets to watch (read/write); we register each as a Channel and pump
@@ -56,7 +56,7 @@ public:
     struct Query {
         uint16_t port;
         Callback cb;
-        std::shared_ptr<Impl> self;     // Keep Impl alive until callback
+        std::shared_ptr<Impl> self;  // keep Impl alive until callback
     };
 
     void resolve(const std::string& host, uint16_t port, Callback cb)
@@ -103,7 +103,7 @@ private:
         InetAddress addr;
         bool ok = false;
         for (auto* node = result->nodes; node != nullptr; node = node->ai_next) {
-            if (node->ai_family == AF_NET )
+            if (node->ai_family == AF_INET )
             {
                 auto* sin = reinterpret_cast<struct sockaddr_in*>(node->ai_addr);
                 sin->sin_port = htons(port);
@@ -116,8 +116,6 @@ private:
                 addr = InetAddress(*s6);
                 ok = true;
                 break;
-            // } else {
-            //     log().error("CaresResolver::onResult Unknown node->ai_family.");
             }
             
         }
@@ -164,7 +162,7 @@ private:
             }
 
             // Set interest.
-            if (readable) ch->eanbleRead(); else ch->disableRead();
+            if (readable) ch->enableRead(); else ch->disableRead();
             if (writable) ch->enableWrite(); else ch->disableWrite();
 
             next[fd] = std::move(ch);
@@ -195,12 +193,12 @@ private:
     }
 
     reactor::EventLoop* loop_;
-    ares_channel channel_{ nullptr };
+    ares_channel channel_{nullptr};
     std::map<int, std::unique_ptr<reactor::Channel>> channels_;
 };
 
 CaresResolver::CaresResolver(reactor::EventLoop* loop)
-: impl_(std::make_unique<Impl>(loop)) {}
+    : impl_(std::make_unique<Impl>(loop)) {}
 
 CaresResolver::~CaresResolver() = default;
 
@@ -209,4 +207,4 @@ void CaresResolver::resolve(const std::string& host, uint16_t port,
 {
     impl_->resolve(host, port, std::move(cb));
 }
-} // namespace net
+}   // namespace net

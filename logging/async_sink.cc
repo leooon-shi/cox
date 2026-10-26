@@ -6,14 +6,14 @@
 
 namespace logging {
 AsyncSink::AsyncSink(std::unique_ptr<Sink> downstream, size_t max_buffered_lines,
-                    uint32_t flush_interval_ms)
-: downstream_(std::move(downstream)),
- max_lines_(max_buffered_lines == 0 ? 1 : max_buffered_lines),
- flush_interval_ms_(flush_interval_ms)
-{
-    running_ = true;
-    thread_ = std::thread([this] { writerThread(); });
-}
+                     uint32_t flush_interval_ms)
+    : downstream_(std::move(downstream)),
+    max_lines_(max_buffered_lines == 0 ? 1 : max_buffered_lines),
+    flush_interval_ms_(flush_interval_ms)
+    {
+        running_ = true;
+        thread_ = std::thread([this] { writerThread(); });
+    }
 
 AsyncSink::~AsyncSink() { stop(); }
 
@@ -131,4 +131,4 @@ void AsyncSink::writerThread()
     }
 }
 
-} // namespace logging
+}   // namespace logging

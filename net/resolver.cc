@@ -28,7 +28,7 @@ int resolveBlocking(const std::string& host, uint16_t port, InetAddress* out,
 {
     struct addrinfo hints;
     std::memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;            //IPv4 or IPv6
+    hints.ai_family = AF_UNSPEC;      //IPv4 or IPv6
     hints.ai_socktype = SOCK_STREAM;
 
     struct addrinfo* res = nullptr;
@@ -57,14 +57,14 @@ int resolveBlocking(const std::string& host, uint16_t port, InetAddress* out,
     ::freeaddrinfo(res);
     return 0;
 }
-} // namespace
+}   // namespace
 
 class ThreadPoolResolver::Impl 
     : public std::enable_shared_from_this<Impl>
 {
 public:
     Impl(reactor::EventLoop* loop, concurrent::ThreadPool* pool)
-    : loop_(loop), pool_(pool) {}
+        : loop_(loop), pool_(pool) {}
 
     struct CacheEntry {
         InetAddress addr;
@@ -111,7 +111,7 @@ public:
                     std::lock_guard<std::mutex> lock(self->mutex_);
                     self->cache_[h] = CacheEntry{addr, logging::Timestamp::now()};
                 }
-                self->loop_->runInLoop([cb, addr] { cb(addr, ""); });
+                self->loop_->runInLoop([cb, addr]() { cb(addr, ""); });
             } else {
                 // Log the failure here: the callback only receives the message
                 // string, so without this a resolution failure leaves no trace
@@ -149,4 +149,4 @@ void ThreadPoolResolver::resolve(const std::string& host, uint16_t port,
 {
     impl_->resolve(host, port, std::move(cb), cache_ttl_s_);
 }
-} // namespace net
+}   // namespace net

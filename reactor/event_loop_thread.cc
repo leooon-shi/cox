@@ -6,7 +6,7 @@
 
 namespace reactor {
 EventLoopThread::EventLoopThread(ThreadInitCallback cb, std::string name)
-: init_callback_(std::move(cb)), name_(std::move(name)) {}
+    : init_callback_(std::move(cb)), name_(std::move(name)) {}
 
 EventLoopThread::~EventLoopThread()
 {
@@ -53,12 +53,12 @@ void EventLoopThread::threadFunc()
         cond_.notify_one();
     }
 
-    loop.loop(); // runs until quit()
+    loop.loop();  // runs until quit()
 
-    // Loop has exited; clear the pointer so the desctructor won't touch a stale
-    // stack object
+    // Loop has exited; clear the pointer so the destructor won't touch a stale
+    // stack object.
     std::lock_guard<std::mutex> lock(mutex_);
     loop_ = nullptr;
 }
 
-} // namespace reactor
+}   // namespace reactor

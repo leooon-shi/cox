@@ -47,7 +47,7 @@ void readTimerfd(int fd)
 {
     uint64_t howmany = 0;
     ssize_t n = ::read(fd, &howmany, sizeof(howmany));
-    (void)n; // count of expirations; not needed here
+    (void)n;   // count of expirations; not needed here
 }
 
 void resetTimerfd(int fd, logging::Timestamp expiration)
@@ -63,23 +63,23 @@ void resetTimerfd(int fd, logging::Timestamp expiration)
     }
 }
 
-} // namespace
+}   // namespace
 
 TimerQueue::TimerQueue(EventLoop* loop)
-: loop_(loop),
-  timerfd_(createTimerfd()),
-  timerfd_channel_(std::make_unique<Channel>(timerfd_, loop))
-  {
+    : loop_(loop),
+    timerfd_(createTimerfd()),
+    timerfd_channel_(std::make_unique<Channel>(timerfd_, loop))
+{
     timerfd_channel_->setReadCallback([this] { handleRead(); });
     timerfd_channel_->enableRead();
-  }
+}
 
 TimerQueue::~TimerQueue()
 {
     timerfd_channel_->disableAll();
     loop_->removeChannel(timerfd_channel_.get());
     ::close(timerfd_);
-    for (const auto & entry : timers_)
+    for (const auto& entry : timers_)
     {
         delete entry.second;
     }
@@ -150,7 +150,7 @@ std::vector<TimerQueue::Entry> TimerQueue::getExpired(logging::Timestamp now)
 
 void TimerQueue::reset(const std::vector<Entry>& expired, logging::Timestamp now)
 {
-    for ( const auto & entry : expired)
+    for (const auto & entry : expired)
     {
         Timer* timer = entry.second;
         const uint64_t seq = timer->sequence();
@@ -194,4 +194,4 @@ void TimerQueue::handleRead()
 
     reset(expired, now);
 }
-} // namespace reactor
+}   // namespace reactor

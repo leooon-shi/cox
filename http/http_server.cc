@@ -21,19 +21,19 @@ logging::Logger& log()
     static logging::Logger logger;
     return logger;
 }
-} // namespace
+}   // namespace
 
 // Per-connection state. For TLS, holds the TlsConnection and a reassembly
 // buffer for decrypted plaintext; always holds the HTTP parse context.
 struct HttpServer::PerConn
 {
     HttpContext ctx;
-    tls::TlsConnectionPtr tls;              // Null for plaintext
-    buffer::Buffer in;                      // reassemebled plaintext (TLS path)
+    tls::TlsConnectionPtr tls;      // null for plaintext
+    buffer::Buffer in;              // reassemebled plaintext (TLS path)
 };
 
 HttpServer::HttpServer(reactor::EventLoop* loop, const net::InetAddress& addr, 
-                        std::string name)
+                       std::string name)
     : server_(loop, addr, std::move(name))
 {
     server_.setConnectionCallback(
@@ -50,7 +50,7 @@ HttpServer::HttpServer(reactor::EventLoop* loop, const net::InetAddress& addr,
 }
 
 HttpServer::HttpServer(reactor::EventLoop* loop, const net::InetAddress& addr, 
-                        std::string name, tls::TlsContextPtr tls_ctx)
+                       std::string name, tls::TlsContextPtr tls_ctx)
     : tls_ctx_(std::move(tls_ctx)), server_(loop, addr, std::move(name))
 {
     server_.setConnectionCallback(
@@ -86,10 +86,10 @@ void HttpServer::onConnection(const net::TcpConnectionPtr& conn)
             pc->tls = tc;
             std::string name = conn->name();
             tc->setMessageCallback(
-                [this, name](const tls::TlsConnectionPtr&, std::string& pt){
+                [this, name](const tls::TlsConnectionPtr&, std::string& pt) {
                     // Route decrypted bytes; find state by connection name.
                     auto it = conns_.find(name);
-                    if(it == conns_.end()) return;
+                    if (it == conns_.end()) return;
                     auto pcp = it->second;
                     pcp->in.append(pt);
                     auto self_tls = pcp->tls;
@@ -97,8 +97,9 @@ void HttpServer::onConnection(const net::TcpConnectionPtr& conn)
                         name, &pcp->in, 
                         [self_tls](const std::string& data) {
                             self_tls->send(data);
-                        }, [self_tls](){ self_tls->shutdown(); });
-            });
+                        },
+                        [self_tls]() { self_tls->shutdown(); });
+                });
             conns_[conn->name()] = pc;
             tc->start();
         }
@@ -117,13 +118,13 @@ void HttpServer::onConnection(const net::TcpConnectionPtr& conn)
 void HttpServer::onPlainMessage(const net::TcpConnectionPtr& conn,
                                 buffer::Buffer* buf)
 {
-    if (tls_ctx_) return;   // TLS path handles bytes via TlsConnection
+    if (tls_ctx_) return;  // TLS path handles bytes via TlsConnection
     std::string name = conn->name();
     net::TcpConnectionPtr c = conn;
     processInput(
         name, buf,
         [c](const std::string& data) { c->send(data); },
-        [c](){ c->shutdown(); });
+        [c]() { c->shutdown(); });
 }
 
 void HttpServer::processInput(
@@ -186,4 +187,4 @@ void HttpServer::processInput(
     }
 }
 
-} // namespace http
+}   // namespace http

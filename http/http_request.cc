@@ -39,7 +39,7 @@ namespace
 std::string toLower(std::string s)
 {
     std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c){ return std::tolower(c); });
+                   [](unsigned char c) { return std::tolower(c); });
     return s;
 }
 } // namespace
@@ -95,9 +95,9 @@ bool HttpRequest::keepAlive() const
 
     if (version_ == "HTTP/1.1")
     {
-        return conn != "close";         // keep-alive default in 1.1
+        return conn != "close"; // keep-alive default in 1.1
     }
-    return conn == "keep-alive";        // opt-in for 1.0
+    return conn == "keep-alive";  // opt-in for 1.0
 }
 
 void HttpRequest::reset()
@@ -134,7 +134,7 @@ void HttpRequest::appendTo(buffer::Buffer* buf, const std::string& host) const
     }
     for (const auto& [key, value] : headers_)
     {
-        if (key == "content-length") continue;      // we set it below
+        if (key == "content-length") continue;  // we set it below
         head += key;
         head += ": ";
         head += value;
@@ -150,4 +150,4 @@ void HttpRequest::appendTo(buffer::Buffer* buf, const std::string& host) const
         buf->append(body_);
     }
 }
-} // namespace http
+}   // namespace http

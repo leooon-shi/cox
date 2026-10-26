@@ -21,7 +21,7 @@ namespace http
 // An HTTP/1.1 connection pool to a single origin (host:port), optionally over
 // TLS. It maintains a set of reusable keep-alive connections, dispatches
 // requests over idle ones (opening new connections up to a cap), returns
-// connections to the idle set after each response, evicts connections idle 
+// connections to the idle set after each response, evicts connections idle
 // beyond a timeout, and queues requests when all connections are busy and the
 // cap is reached.
 //
@@ -40,24 +40,24 @@ namespace http
 // the pool needs no locking. Create one pool per origin.
 class ConnectionPool : public std::enable_shared_from_this<ConnectionPool> {
 public:
-    using ResponseCallback = 
+    using ResponseCallback =
         std::function<void(const HttpResponse& resp, const std::string& error)>;
     // Plaintext (HTTP) pool.
     ConnectionPool(reactor::EventLoop* loop, const net::InetAddress& origin,
-                    std::string host_header = "");
+                   std::string host_header = "");
     // TLS (HTTPS/mTLS) pool: tls_ctx must be a client-role TlsContext.
     ConnectionPool(reactor::EventLoop* loop, const net::InetAddress& origin,
-                    tls::TlsContextPtr tls_ctx, std::string host_header = "");
+                   tls::TlsContextPtr tls_ctx, std::string host_header = "");
     // Hostname pools: the origin is given as a DNS name and resolved through
     // `resolver` (which must outlive the pool) before the first connection.
     // Requests issued while resolution is in flight are queued; if resolution
     // fails they all complete with that error. host_header defaults to `host`.
     ConnectionPool(reactor::EventLoop* loop, const std::string& host,
-                    uint16_t port, net::Resolver* resolver,
-                    std::string host_header = "");
+                   uint16_t port, net::Resolver* resolver,
+                   std::string host_header = "");
     ConnectionPool(reactor::EventLoop* loop, const std::string& host,
-                    uint16_t port, net::Resolver* resolver,
-                    tls::TlsContextPtr tls_ctx, std::string host_header = "");
+                   uint16_t port, net::Resolver* resolver,
+                   tls::TlsContextPtr tls_ctx, std::string host_header = "");
     ~ConnectionPool();
 
     ConnectionPool(const ConnectionPool&) = delete;
@@ -84,4 +84,4 @@ private:
     uint32_t idle_timeout_s_{60};
 };
 
-}    // namespace http
+}   // namespace http

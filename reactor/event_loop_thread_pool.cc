@@ -9,7 +9,7 @@
 namespace reactor {
 
 EventLoopThreadPool::EventLoopThreadPool(EventLoop* base_loop, std::string name)
-: base_loop_(base_loop), name_(std::move(name)) {}
+    : base_loop_(base_loop), name_(std::move(name)) {}
 
 EventLoopThreadPool::~EventLoopThreadPool()
 {
@@ -64,4 +64,4 @@ std::vector<EventLoop*> EventLoopThreadPool::getAllLoops()
     return loops_;
 }
 
-} // namespace reactor
+}   // namespace reactor

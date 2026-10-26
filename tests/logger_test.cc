@@ -17,7 +17,7 @@
 #include <vector>
 
 using namespace logging;
-using namepsace std::chrono_literals;
+using namespace std::chrono_literals;
 
 namespace
 {
@@ -36,17 +36,17 @@ struct Harness {
 
 Harness makeDefault(LogLevel level = LogLevel::Info)
 {
-    return Harness(level, Formatter::newDefaultFormmater());
+    return Harness(level, Formatter::newDefaultFormater());
 }
 
 Harness makeJson(LogLevel level = LogLevel::Info) {
     return Harness(level, Formatter::newJsonFormatter());
 }
-} // namespace
+}   // namespace
 
 TEST(LoggerTest, LevelFilteringDropsBelowThreshold)
 {
-    auto h = makeDefault(LogLevel::Warning);            // Only Warning+ emitted
+    auto h = makeDefault(LogLevel::Warning);    // only Warning+ emitted
     h.log->debug("dbg");
     h.log->info("inf");
     h.log->warning("warn");
@@ -66,7 +66,7 @@ TEST(LoggerTest, DefaultFormatterHumanReadable)
     std::string out = h.text();
     EXPECT_NE(out.find("INFO"), std::string::npos);
     EXPECT_NE(out.find("hello"), std::string::npos);
-    EXPECT_EQ(out.find("\"msg\""), std::string::npos);      // not JSON
+    EXPECT_EQ(out.find("\"msg\""), std::string::npos);    // not JSON
 }
 
 TEST(LoggerTest, JsonFormatterEmitsJson)
@@ -102,13 +102,13 @@ TEST(LoggerTest, StructuredFieldsJson)
 TEST(JsonFormatterTest, EscapesSpecialCharacters)
 {
     JsonFormatter fmt;
-    LogRecord rec{LogLevel::info, Timestamp::now(), "1",
-                  "quote \" back \\slash\new\nnewline", {}};
+    LogRecord rec{LogLevel::Info, Timestamp::now(), "1",
+                  "quote\" back\\slash\new\nnewline", {}};
     std::string out = fmt.format(rec);
     EXPECT_NE(out.find("\\\""), std::string::npos);
     EXPECT_NE(out.find("\\\\"), std::string::npos);
     EXPECT_NE(out.find("\\n"), std::string::npos);
-    EXPECT_NE(out.find('\n'), std::string::npos);
+    EXPECT_EQ(out.find('\n'), std::string::npos);    // no raw newline
 }
 
 TEST(LoggerTest, LevelToString)
@@ -180,12 +180,12 @@ TEST(SinkTest, FileSinkWritesLines)
     std::string path = "/tmp/cox_sink_test.log";
     std::remove(path.c_str());
     {
-        auto sink = Sink::newFileSink(path, /*append-mode=*/false);
+        auto sink = Sink::newFileSink(path, /*append_mode=*/false);
         Logger log(LogLevel::Info, Formatter::newDefaultFormatter(),
                    std::shared_ptr<Sink>(std::move(sink)));
         log.info("line one");
         log.info("line two");
-    } // dtor flushes and closes
+    }   // dtor flushes and closes
 
     std::FILE* fp = std::fopen(path.c_str(), "re");
     ASSERT_NE(fp, nullptr);
@@ -211,9 +211,9 @@ TEST(SinkTest, RotatingFileSinkRollsAndBoundsFileCount)
     {
         // Tiny cap so a few lines force several rotations.
         auto sink = Sink::newRotatingFileSink(path, /*max_bytes=*/80,
-                                                    /*max_files=*/2);
+                                              /*max_files=*/2);
         Logger log(LogLevel::Info, Formatter::newDefaultFormatter(),
-                            std::shared_ptr<Sink>(std::move(sink)));
+                   std::shared_ptr<Sink>(std::move(sink)));
         for (int i = 0; i < 30; ++i)
         {
             log.info("rotating line number " + std::to_string(i));
@@ -226,12 +226,12 @@ TEST(SinkTest, RotatingFileSinkRollsAndBoundsFileCount)
         return false;
     }
 
-    EXPECT_TRUE(exists(path));                  // An active file
-    EXPECT_TRUE(exists(path + ".1"));           // Rolled
+    EXPECT_TRUE(exists(path));            // an active file
+    EXPECT_TRUE(exists(path + ".1"));     // rolled
     // max_files=2 means .3 must never appear, however many rotations occurred.
     EXPECT_FALSE(exists(path + ".3"));
 
-    for(int i = 0; i <= 5; ++i)
+    for (int i = 0; i <= 5; ++i)
     {
         std::remove((i == 0 ? path : path + "." + std::to_string(i)).c_str());
     }
@@ -280,7 +280,7 @@ TEST(AsyncSinkTest, DeliversAllLinesToDownstream)
         for (int i = 0; i < kLines; ++i) log.info("msg " + std::to_string(i));
         async->flush();
         EXPECT_EQ(async->droppedCount(), 0u);
-    } // stop() drains the remainder
+    }   // stop() drains the remainder
 
     EXPECT_EQ(captured->lines().size(), static_cast<size_t>(kLines));
     EXPECT_NE(captured->text().find("msg 0"), std::string::npos);
@@ -298,7 +298,7 @@ TEST(AsyncSinkTest, DropsAndCountsWhenBufferFull)
     };
 
     auto async = std::make_unique<AsyncSink>(std::make_unique<SlowSink>(),
-                                            /*max_buffered_lines=*/8);
+                                             /*max_buffered_lines=*/8);
     for (int i = 0; i < 2000; ++i)
     {
         async->append("line " + std::to_string(i));
@@ -320,7 +320,7 @@ TEST(AsyncSinkTest, ProducerDoesNotBlockOnSlowSink)
 
     auto async = std::make_unique<AsyncSink>(std::make_unique<SlowSink>(), 4096);
     auto start = std::chrono::steady_clock::now();
-    for (int i = 0; i < 2000; ++i)
+    for (int i = 0; i < 200; ++i)
     {
         async->append("x");
     }
@@ -328,8 +328,9 @@ TEST(AsyncSinkTest, ProducerDoesNotBlockOnSlowSink)
     
     // 200 synchronous 5ms writes would be ~1s; the async path must be far
     // faster since it only appends to a buffer.
-    EXPECt_LT(std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count(),
-                300);
+    EXPECT_LT(std::chrono::duration_cast<std::chrono::milliseconds>(elapsed)
+                  .count(),
+              300);
     async->stop();
 }
 
@@ -343,11 +344,10 @@ TEST(AsyncSinkTest, StopDrainsPendingLines)
         void flush() override { to->flush(); }
     };
 
-     auto async = std::make_shared<AsyncSink>(
-         std::make_unique<Forward>(captured), /*max_buffered_lines=*/4096,
-            /*flush_interval_ms=*/10000);
+    auto async = std::make_shared<AsyncSink>(
+        std::make_unique<Forward>(captured), 4096, /*flush_interval_ms=*/10000);
     for (int i = 0; i < 50; ++i) async->append("pending " + std::to_string(i));
-    async->stop();      // Must not lose anything still queued.
+    async->stop();   // must not lose anything still queued.
 
     EXPECT_EQ(captured->lines().size(), 50u);
 }

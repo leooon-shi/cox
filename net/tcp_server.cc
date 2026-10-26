@@ -18,7 +18,7 @@ logging::Logger& log()
     static logging::Logger logger;
     return logger;
 }
-} // namespace
+}   // namespace
 
 TcpServer::TcpServer(reactor::EventLoop* loop, const InetAddress& listen_addr,
                      std::string name, Option option)
@@ -30,7 +30,7 @@ TcpServer::TcpServer(reactor::EventLoop* loop, const InetAddress& listen_addr,
       thread_pool_(std::make_shared<reactor::EventLoopThreadPool>(loop, name_))
 {
     acceptor_->setNewConnectionCallback(
-        [this](int sockfd, const InetAddress& peer){
+        [this](int sockfd, const InetAddress& peer) {
             newConnection(sockfd, peer);
         });
 }
@@ -68,7 +68,7 @@ void TcpServer::start()
 {
     if (started_.exchange(true))
     {
-        return;     // Already started.
+        return;  // already started.
     }
     thread_pool_->start(thread_init_callback_);
     loop_->runInLoop([this]() { acceptor_->listen(); });
@@ -89,7 +89,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peer)
     // configured budget (absorbs accept storms without unbounded work).
     if (accept_limiter_ && !accept_limiter_->tryAcquire())
     {
-        log().warning("TcpServer::newConnection [" + name_ + 
+        log().warning("TcpServer::newConnection [" + name_ +
                       "] accept rate limit exceeded; shedding " +
                       peer.toIpPort());
         sockets::close(sockfd);
@@ -118,7 +118,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peer)
     std::string conn_name =
         name_ + "-" + ip_port_ + "#" + std::to_string(next_conn_id_++);
     log().debug("TcpServer::newConnection [" + name_ + "] new connection " +
-                conn_name + " from " + peer.toIpPort());
+               conn_name + " from " + peer.toIpPort());
     // Assign this connection to an io loop (round-robin). In single-threaded
     // mode this is the base loop.
     reactor::EventLoop* io_loop = thread_pool_->getNextLoop();
@@ -126,7 +126,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peer)
     InetAddress local = sockets::getLocalAddr(sockfd);
     auto conn = std::make_shared<TcpConnection>(io_loop, conn_name, sockfd,
                                                 local, peer);
-    connections_[conn_name] = conn;     // map is owned by the base loop
+    connections_[conn_name] = conn;  // map is owned by the base loop
     conn->setConnectionCallback(connection_callback_);
     conn->setMessageCallback(message_callback_);
     conn->setWriteCompleteCallback(write_complete_callback_);
@@ -165,10 +165,10 @@ void TcpServer::removeConnectionInLoop(const TcpConnectionPtr& conn)
 {
     loop_->assertInLoopThread();
     log().debug("TcpServer::removeConnectionInLoop [" + name_ + "] " +
-                conn->name());
+               conn->name());
 
     connections_.erase(conn->name());
-    conn->getLoop()->runInLoop([conn](){ conn->connectDestroyed(); });
+    conn->getLoop()->runInLoop([conn]() { conn->connectDestroyed(); });
 
     // If we are draining and this was the last connection, drain is complete.
     if (draining_)
@@ -178,14 +178,14 @@ void TcpServer::removeConnectionInLoop(const TcpConnectionPtr& conn)
 }
 
 void TcpServer::shutdown(uint32_t drain_deadline_seconds,
-                        DrainCompleteCallback on_complete)
+                         DrainCompleteCallback on_complete)
 {
     // Marshal onto the base loop; all shutdown state lives there.
     loop_->runInLoop([this, drain_deadline_seconds,
                       cb = std::move(on_complete)]() mutable {
         if (draining_.exchange(true))
         {
-            return;     // already draining
+            return;  // already draining
         }
         drain_complete_callback_ = std::move(cb);
         shutdownInLoop(drain_deadline_seconds);
@@ -198,6 +198,7 @@ void TcpServer::shutdownInLoop(uint32_t drain_deadline_seconds)
     log().info("TcpServer::shutdown [" + name_ + "] draining " +
                std::to_string(connections_.size()) + " connection(s), deadline " +
                std::to_string(drain_deadline_seconds) + "s");
+
     // 1. Stop accepting new connections.
     acceptor_->stopListening();
 
@@ -216,7 +217,7 @@ void TcpServer::shutdownInLoop(uint32_t drain_deadline_seconds)
             {
                 drain_callback_(conn);  // app-level orderly close hook
             }
-            conn->shutdown();           // half-close: peer sees EOF once output drains
+            conn->shutdown();   // half-close: peer sees EOF once output drains
         });
     }
     // 3. If there were no connections, we're already done.
@@ -254,7 +255,7 @@ void TcpServer::forceCloseAllInLoop()
 
     for(const auto& conn : conns)
     {
-        conn->forceClose();             //marshals to the connection's own loop
+        conn->forceClose();  //marshals to the connection's own loop
     }
 }
 
@@ -265,9 +266,9 @@ void TcpServer::maybeFinishDrain()
     {
         log().info("TcpServer::shutdown [" + name_ + "] drain complete");
         DrainCompleteCallback cb;
-        cb.swap(drain_complete_callback_);      // fire once
+        cb.swap(drain_complete_callback_);   // fire once
         cb();
     }
 }
 
-} // namespace net
+}   // namespace net

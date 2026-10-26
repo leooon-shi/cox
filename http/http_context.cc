@@ -22,7 +22,7 @@ const char* findCrlf(const char* begin, const char* end)
     }
     return nullptr;
 }
-} // namespace
+}   // namespace
 
 bool HttpContext::parseRequestLine(const char* begin, const char* end)
 {
@@ -37,7 +37,7 @@ bool HttpContext::parseRequestLine(const char* begin, const char* end)
     const char* space2 = std::find(target, end, ' ');
     if (space2 == end) return false;
 
-    // Split path and Optional query.
+    // Split path and optional query.
     const char* q = std::find(target, space2, '?');
     request_.setPath(std::string(target, q));
     if (q != space2)
@@ -88,7 +88,7 @@ bool HttpContext::parseRequest(buffer::Buffer* buf)
                     buf->retrieve(2);
                     std::string te = request_.header("transfer-encoding");
                     std::transform(te.begin(), te.end(), te.begin(),
-                                    [](unsigned char c){ return std::tolower(c); });
+                                   [](unsigned char c) { return std::tolower(c); });
                     if (te.find("chunked") != std::string::npos)
                     {
                         state_ = State::kExpectChunkSize;
@@ -97,7 +97,7 @@ bool HttpContext::parseRequest(buffer::Buffer* buf)
                     {
                         std::string c1 = request_.header("content-length");
                         content_length_ = c1.empty() ? 0
-                                    : static_cast<size_t>(std::strtoul(c1.c_str(), nullptr, 10));
+                            : static_cast<size_t>(std::strtoul(c1.c_str(), nullptr, 10));
                         body_received_ = 0;
                         state_ = (content_length_ > 0) ? State::kExpectBody
                                                        : State::kGotAll;
@@ -109,12 +109,12 @@ bool HttpContext::parseRequest(buffer::Buffer* buf)
                     const char* colon = std::find(buf->peek(), crlf, ':');
                     if (colon == crlf)
                     {
-                        state_ = State::kError; // malformed header line
+                        state_ = State::kError;     // malformed header line
                         return false;
                     }
                     std::string key(buf->peek(), colon);
                     const char* vbegin = colon + 1;
-                    while (vbegin < crlf && *vbegin == ' ') ++vbegin;    // trim SP
+                    while (vbegin < crlf && *vbegin == ' ') ++vbegin;   // trim SP
                     request_.addHeader(std::move(key), std::string(vbegin, crlf));
                     header_bytes_ += (crlf + 2) - buf->peek();
                     if (header_bytes_ > kMaxHeaderBytes)
@@ -154,7 +154,7 @@ bool HttpContext::parseRequest(buffer::Buffer* buf)
                 std::string line(buf->peek(), crlf);
                 chunk_remaining_ = static_cast<size_t>(
                     std::strtoul(line.c_str(), nullptr, 16));
-                buf->retrieve((crlf+2) - buf->peek());
+                buf->retrieve((crlf + 2) - buf->peek());
                 state_ = (chunk_remaining_ == 0) ? State::kGotAll
                                                  : State::kExpectChunkData;
                 progress = true;
@@ -180,7 +180,7 @@ bool HttpContext::parseRequest(buffer::Buffer* buf)
         {
             if (buf->readableBytes() >= 2)
             {
-                buf->retrieve(2);           // Trailing CRLF after chunk data
+                buf->retrieve(2);   // Trailing CRLF after chunk data
                 state_ = State::kExpectChunkSize;
                 progress = true;
             }
@@ -199,4 +199,4 @@ void HttpContext::reset()
     header_bytes_ = 0;
     chunk_remaining_ = 0;
 }
-} // namespace http
+}   // namespace http

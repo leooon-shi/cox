@@ -19,7 +19,7 @@ std::vector<std::string> Router::splitPath(const std::string& path)
         }
         size_t j = path.find('/', i);
         if (j == std::string::npos) j = path.size();
-        segs.push_back(path.substr(i, j - 1));
+        segs.push_back(path.substr(i, j - i));
         i = j;
     }
     return segs;
@@ -32,12 +32,12 @@ void Router::addRoute(Method method, const std::string& pattern,
     r.method = method;
     r.segments = splitPath(pattern);
     r.is_param.reserve(r.segments.size());
-    for (auto & seg : r.segments)
+    for (auto& seg : r.segments)
     {
         bool param = seg.size() >= 2 && seg.front() == '{' && seg.back() == '}';
         if (param)
         {
-            seg = seg.substr(1, seg.size() - 2);    // strip braces -> param name
+            seg = seg.substr(1, seg.size() - 2);  // strip braces -> param name
         }
         r.is_param.push_back(param);
     }
@@ -59,7 +59,7 @@ bool Router::matchRoute(const Route& r,
             // splitting means an encoded '/' (%2F) stays inside one segment
             // and cannot smuggle an extra path level.
             captured[r.segments[i]] = urlDecode(path_segs[i],
-                                                /*plus_as_space*/false);
+                                                /*plus_as_space=*/false);
         } else if (r.segments[i] != path_segs[i])
         {
             return false;
@@ -71,7 +71,7 @@ bool Router::matchRoute(const Route& r,
 
 bool Router::route(const HttpRequest& req, HttpResponse* resp) const {
     auto path_segs = splitPath(req.path());
-    bool path_matched = false;      // For 405 vs 404 distinction
+    bool path_matched = false;   // for 405 vs 404 distinction
 
     for (const auto& r : routes_)
     {
@@ -89,7 +89,7 @@ bool Router::route(const HttpRequest& req, HttpResponse* resp) const {
 
     if (path_matched)
     {
-        resp->setStatus(405);           // Method Not Allowed
+        resp->setStatus(405);  // Method Not Allowed
         resp->setContentType("text/plain");
         resp->setBody("Method Not Allowed");
     } else {
@@ -100,4 +100,4 @@ bool Router::route(const HttpRequest& req, HttpResponse* resp) const {
     return false;
 }
 
-} // namespace http
+}   // namespace http

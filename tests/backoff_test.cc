@@ -16,12 +16,12 @@ TEST(BackoffTest, ExponentialGrowth)
     // Unknown key returns initial.
     EXPECT_EQ(bo.baseDelay(key), 100ms);
 
-    bo.next(key);   // first failure -> initial
+    bo.next(key);  // first failure -> initial
     EXPECT_EQ(bo.baseDelay(key), 100ms);
 
-    bo.next(key);   // -> 200ms
+    bo.next(key);  // -> 200ms
     EXPECT_EQ(bo.baseDelay(key), 200ms);
-    bo.next(key);   // -> 400ms
+    bo.next(key);  // -> 400ms
     EXPECT_EQ(bo.baseDelay(key), 400ms);
 }
 
@@ -31,7 +31,7 @@ TEST(BackoffTest, CapsAtMax)
     const std::string key = "k";
     for (int i = 0; i < 20; ++i) bo.next(key);
 
-    EXPECT_EQ(bo.baseDelay(key), 500ms);        // capped
+    EXPECT_EQ(bo.baseDelay(key), 500ms);  // capped
 }
 
 TEST(BackoffTest, ResetClearState)
@@ -42,7 +42,7 @@ TEST(BackoffTest, ResetClearState)
     bo.next(key);
     EXPECT_EQ(bo.baseDelay(key), 200ms);
     bo.reset(key);
-    EXPECT_EQ(bo.baseDelay(key), 100ms);    // Back to initial for unknown key
+    EXPECT_EQ(bo.baseDelay(key), 100ms);  // back to initial for unknown key
 }
 
 TEST(BackoffTest, PerKeyIndependent)
@@ -50,8 +50,8 @@ TEST(BackoffTest, PerKeyIndependent)
     Backoff bo(100ms, 10s, 0.0);
     bo.next("a");
     bo.next("a");
-    bo.next("a");   // b -> 100ms
-    bo.next("b");   // b -> 400ms
+    bo.next("a");  // b -> 100ms
+    bo.next("b");  // b -> 400ms
     
     EXPECT_EQ(bo.baseDelay("a"), 400ms);
     EXPECT_EQ(bo.baseDelay("b"), 100ms);
@@ -61,7 +61,7 @@ TEST(BackoffTest, JitterWithinRange)
 {
     Backoff bo(1000ms, 10s, /*jitter=*/0.5);
     const std::string key = "k";
-    bo.next(key);           // base 1000ms
+    bo.next(key);  // base 1000ms
     // Jittered delay must be in [base, base*(1+jitter)) = [1000ms, 1500ms).
     for (int i = 0; i < 100; ++i)
     {
@@ -76,7 +76,7 @@ TEST(BackoffTest, NextDelayAdvancesAndReturns)
     Backoff bo(100ms, 10s, 0.0);
     const std::string key = "k";
 
-    EXPECT_EQ(bo.nextDelay(key), 100ms);    // first
+    EXPECT_EQ(bo.nextDelay(key), 100ms);   // first
     EXPECT_EQ(bo.nextDelay(key), 200ms);
     EXPECT_EQ(bo.nextDelay(key), 400ms);
 }

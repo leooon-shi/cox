@@ -17,14 +17,12 @@ public:
     using TimerCallback = std::function<void()>;
 
     Timer(TimerCallback cb, logging::Timestamp when, uint64_t interval_ms)
-    : callback_(std::move(cb)),
-      expiration_(when),
-      interval_ms_(interval_ms),
-      repeat_(interval_ms > 0),
-      sequence_(++s_num_created_)
-    {
-    }
-    
+        : callback_(std::move(cb)),
+        expiration_(when),
+        interval_ms_(interval_ms),
+        repeat_(interval_ms > 0),
+        sequence_(++s_num_created_) {}
+
     void run() const
     {
         if (callback_) callback_();

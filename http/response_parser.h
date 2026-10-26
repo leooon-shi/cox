@@ -27,7 +27,7 @@ public:
         kExpectChunkSize,
         kExpectChunkData,
         kExpectChunkCrlf,
-        kExpectEofBody,     // body runs until connection clsoe
+        kExpectEofBody,   // body runs until connection clsoe
         kGotAll,
         kError
     };
@@ -49,7 +49,7 @@ public:
 private:
     bool parseStatusLine(const char* begin, const char* end);
 
-    State state_ { State::kExpectStatusLine };
+    State state_{ State::kExpectStatusLine };
     HttpResponse response_;
     std::map<std::string, std::string> lower_headers_;  // for framing lookups
     size_t content_length_{0};
@@ -60,4 +60,4 @@ private:
     std::string body_accum_;
 };
 
-} // namespace http
+}   // namespace http

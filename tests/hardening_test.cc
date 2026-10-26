@@ -1,4 +1,4 @@
-// Deferred-hardening tests: connection max-age, max input buffer, write timeout
+// Deferred-hardening tests: connection max-age, max input buffer, write timeout.
 #include "tcp_server.h"
 
 #include "buffer.h"
@@ -30,7 +30,7 @@ namespace
 {
 bool waitReadable(int fd, int ms)
 {
-    struct pullfd pfd{fd, POLLIN, 0};
+    struct pollfd pfd{fd, POLLIN, 0};
     return ::poll(&pfd, 1, ms) > 0 && (pdf.revents & POLLIN);
 }
 
@@ -48,9 +48,9 @@ int connectClient(uint16_t port)
     waitWritable(fd, 1000);
     return fd;
 }
-} // namespace
+}  // namespace
 
-// A connection is force-closed once it reached the configured max age, even if
+// A connection is force-closed once it reaches the configured max age, even if
 // it is actively exchanging data.
 TEST(HardeningTest, MaxConnectingAgeRecyclesConnection)
 {
@@ -69,7 +69,7 @@ TEST(HardeningTest, MaxConnectingAgeRecyclesConnection)
             if (!conn->connected()) disconnects++;
         });
         server.setMessageCallback(
-            [](const TcpConnectionPtr& conn, buffer::Buffer* buf){
+            [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
                 conn->send(buf->retrieveAllAsString());
             });
 
@@ -87,7 +87,8 @@ TEST(HardeningTest, MaxConnectingAgeRecyclesConnection)
     // loaded and timer dispatch slips, which made a 1.5s bound flaky while it
     // passed in isolation.
     auto start = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - start < 8000ms && disconnects.load() == 0 )
+    while (std::chrono::steady_clock::now() - start < 8000ms &&
+           disconnects.load() == 0 )
     {
         ASSERT_TRUE(test_util::sendAll(client, "x", 1));
         char b[8];
@@ -95,7 +96,7 @@ TEST(HardeningTest, MaxConnectingAgeRecyclesConnection)
         std::this_thread::sleep_for(100ms);
     }
 
-    EXPECT_EQ(disconnects.load(), 1);   // recycled despite actvity
+    EXPECT_EQ(disconnects.load(), 1);  // recycled despite actvity
 
     ::close(client);
     loop_ptr->quit();
@@ -116,14 +117,14 @@ TEST(HardeningTest, MaxInputBufferClosesFlood)
         loop_ptr = &loop;
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "maxinput");
-        server.setMaxInputBufferSize(4096);     // small cap.
+        server.setMaxInputBufferSize(4096);  // small cap.
         server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
             if (!conn->connected()) disconnects++;
         });
         // Message callback that does NOT consume the buffer -> it grows.
         server.setMessageCallback(
-            [](const TcpConnectionPtr&, buffer::Buffer*){
-                // Intentionally leave data in the input buffer
+            [](const TcpConnectionPtr&, buffer::Buffer*) {
+                // intentionally leave data in the input buffer
             });
 
         server.start();
@@ -139,7 +140,7 @@ TEST(HardeningTest, MaxInputBufferClosesFlood)
     std::string payload(16384, 'x');
     ASSERT_TRUE(test_util::sendAll(client, payload));
 
-    for (int i = 0; i < 200 && disconnects.load()) == 0; ++i)
+    for (int i = 0; i < 200 && disconnects.load() == 0; ++i)
     {
         std::this_thread::sleep_for(5ms);
     }
@@ -164,7 +165,7 @@ TEST(HardeningTest, WriteTimeoutClosesSlowConsumer)
         loop_ptr = &loop;
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "writeto");
-        server.setWriteTimeout(1);     // 1 second to drain output
+        server.setWriteTimeout(1);  // 1 second to drain output
         server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
             if (conn->connected())
             {

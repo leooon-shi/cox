@@ -43,7 +43,7 @@ public:
             loop.loop();
         });
         while (!ready_.load()) std::this_thread::sleep_for(1ms);
-        std::this_thread::sleep_for(20ms);                      // Let the listen socket settle
+        std::this_thread::sleep_for(20ms);  // let the listen socket settle
     }
 
     void stop()
@@ -57,7 +57,7 @@ private:
     reactor::EventLoop* loop_{nullptr};
     std::thread thread_;
 };
-} // namespace
+}   // namespace
 
 TEST(DnsClientTest, HttpClientResolvesHostname)
 {
@@ -138,11 +138,11 @@ TEST(DnsClientTest, HttpClientReportsResolutionFailure)
         << "error: " << error;
 }
 
-TEST(DnsClientTest, PoolQueueRequestsDuringResolution)
+TEST(DnsClientTest, PoolQueuesRequestsDuringResolution)
 {
     const uint16_t kPort = 18132;
     ServerThread server(kPort);
-    server.start([](const HttpRequest&, HttpResponse* resp){
+    server.start([](const HttpRequest&, HttpResponse* resp) {
         resp->setStatus(200);
         resp->setBody("ok");
     });
@@ -172,7 +172,7 @@ TEST(DnsClientTest, PoolQueueRequestsDuringResolution)
                                   const std::string& err) {
                 if (!err.empty() && first_error.empty()) first_error = err;
                 if (resp.statusCode() == 200) ++completed;
-                if(completed.load() == 3)
+                if (completed.load() == 3)
                 {
                     resolved_after = pool.resolved();
                     finished = true;
@@ -217,7 +217,7 @@ TEST(DnsClientTest, MultiOriginPoolResolvesHostname)
     int status = 0;
     std::string body, error;
 
-    std::thread client_thread([&]{
+    std::thread client_thread([&] {
         reactor::EventLoop loop;
         net::ThreadPoolResolver resolver(&loop, &dns_pool);
         MultiOriginPool pool(&loop);
@@ -227,13 +227,13 @@ TEST(DnsClientTest, MultiOriginPoolResolvesHostname)
         req.setMethod(Method::kGet);
         req.setPath("/multi");
         pool.request("localhost", kPort, req,
-                    [&](const HttpResponse& resp, const std::string& err) {
-                        status = resp.statusCode();
-                        body = resp.body();
-                        error = err;
-                        done = true;
-                        loop.quit();
-                    });
+                     [&](const HttpResponse& resp, const std::string& err) {
+                         status = resp.statusCode();
+                         body = resp.body();
+                         error = err;
+                         done = true;
+                         loop.quit();
+                     });
         loop.loop();
     });
 
@@ -252,7 +252,7 @@ TEST(DnsClientTest, MultiOriginPoolResolvesHostname)
     dns_pool.stop();
 }
 
-TEST(DnsClientTest, NumbericOriginIsResolvedImmediately)
+TEST(DnsClientTest, NumericOriginIsResolvedImmediately)
 {
     concurrent::ThreadPool dns_pool("dns");
     dns_pool.start(1);

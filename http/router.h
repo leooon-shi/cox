@@ -25,7 +25,7 @@ public:
                                        const PathParams& params,
                                        HttpResponse* resp)>;
     void addRoute(Method method, const std::string& pattern, Handler handler);
-    
+
     // Convenience helpers.
     void get(const std::string& pattern, Handler h)  { addRoute(Method::kGet, pattern, std::move(h)); }
     void post(const std::string& pattern, Handler h) { addRoute(Method::kPost, pattern, std::move(h)); }
@@ -47,8 +47,8 @@ private:
     static std::vector<std::string> splitPath(const std::string& path);
     bool matchRoute(const Route& r, const std::vector<std::string>& path_segs,
                     PathParams* params) const;
-    
+
     std::vector<Route> routes_;
 };
 
-} // namespace http
+}   // namespace http

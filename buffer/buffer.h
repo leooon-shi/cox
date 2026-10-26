@@ -29,9 +29,7 @@ public:
     explicit Buffer(size_t initial_size = kInitialSize)
     : data_(kCheapPrepend + initial_size),
       reader_index_(kCheapPrepend),
-      writer_index_(kCheapPrepend)
-      {
-      }
+      writer_index_(kCheapPrepend) {}
     
     size_t readableBytes() const { return writer_index_ - reader_index_; }
     size_t writableBytes() const { return data_.size() - writer_index_; }
@@ -58,7 +56,7 @@ public:
         writer_index_ = kCheapPrepend;
     }
 
-    // Consume all readable bytes and return them as a string
+    // Consume all readable bytes and return them as a string.
     std::string retrieveAllAsString() {
         return retrieveAsString(readableBytes());
     }
@@ -128,7 +126,7 @@ private:
             size_t readable = readableBytes();
             std::memmove(begin() + kCheapPrepend, begin() + reader_index_, readable);
             reader_index_ = kCheapPrepend;
-            writer_index_ = reader_index_ +  readable;
+            writer_index_ = reader_index_ + readable;
         }
     }
 

@@ -50,7 +50,7 @@ int connectClient(uint16_t port)
     return fd;
 }
 
-} // namespace
+}   // namespace
 
 TEST(TcpServerTest, EchoRoundTrip)
 {
@@ -64,10 +64,10 @@ TEST(TcpServerTest, EchoRoundTrip)
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "echo");
         server.setMessageCallback(
-            [](const TcpConnectionPtr& conn, buffer::Buffer* buf){
-            // Echo everything back.
-            conn->send(buf->retrieveAllAsString());
-        });
+            [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
+                // Echo everything back.
+                conn->send(buf->retrieveAllAsString());
+            });
         server.start();
         started = true;
         loop.loop();
@@ -194,7 +194,7 @@ TEST(TcpServerTest, IdleTimeoutClosesSilentClient)
         loop_ptr = &loop;
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "idle");
-        server.setIdleTimeout(1);           // 1 second idle timeout
+        server.setIdleTimeout(1);  // 1 second idle timeout
         server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
             if (!conn->connected())
             {
@@ -209,7 +209,6 @@ TEST(TcpServerTest, IdleTimeoutClosesSilentClient)
     while (!started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(20ms);
 
-    // Connect but send nothing (slowloris-style silent hold).
     int client = connectClient(kPort);
 
     // Within a few seconds the server's idle timeout should force-close the
@@ -287,7 +286,7 @@ TEST(TcpServerTest, IdleTimeoutResetOnActivity)
     server_thread.join();
 }
 
-TEST(TcpServerTest, MaxConnectionCap)
+TEST(TcpServerTest, MaxConnectionsCap)
 {
     const uint16_t kPort = 46008;
     const size_t kMax = 3;
@@ -343,7 +342,7 @@ TEST(TcpServerTest, MaxConnectionCap)
 TEST(TcpServerTest, WriteToClosedClientDoesNotCrash)
 {
     // Regression for SIGPIPE handling: if the server writes to a connection
-    // whose peer has gone away, the process must not be killed by SIGPIPE
+    // whose peer has gone away, the process must not be killed by SIGPIPE.
     const uint16_t kPort = 46007;
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -358,7 +357,7 @@ TEST(TcpServerTest, WriteToClosedClientDoesNotCrash)
                 buf->retrieveAll();
                 // Reply with a large payload; the client will have gone away.
                 conn->send(std::string(1024 * 1024, 'y'));
-        });
+            });
         server.start();
         started = true;
         loop.loop();
@@ -371,13 +370,14 @@ TEST(TcpServerTest, WriteToClosedClientDoesNotCrash)
 
     const char req = 'q';
     ASSERT_EQ(::write(client, &req, 1), 1);
-    // Immediately abandon the client so the server's wirte hits a closed peer.
+    // Immediately abandon the client so the server's write hits a closed peer.
     ::close(client);
 
     // Give the server time to attempt the write(s). If SIGPIPE were not
     // ignored, the process would have died and this test would not complete.
     std::this_thread::sleep_for(200ms);
     SUCCEED();
+
     loop_ptr->quit();
     server_thread.join();
 }
@@ -410,9 +410,9 @@ TEST(TcpServerTest, ServerDetectsClientClose)
 
     int client = connectClient(kPort);
     std::this_thread::sleep_for(30ms);
-    ::close(client);                    // client closes -> server should see EOF
+    ::close(client);  // client closes -> server should see EOF
 
-    for (int i = 0; i < 100 && disconnects.load() = 0; ++i)
+    for (int i = 0; i < 100 && disconnects.load() == 0; ++i)
     {
         std::this_thread::sleep_for(5ms);
     }
@@ -433,7 +433,7 @@ TEST(TcpServerTest, MultiThreadedEcho)
         loop_ptr = &loop;
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "mt-echo");
-        server.setThreadNum(3);                 // Distribute connections across 3 io_loops
+        server.setThreadNum(3);  // distribute connections across 3 io_loops
         server.setMessageCallback(
             [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
                 conn->send(buf->retrieveAllAsString());
@@ -450,7 +450,7 @@ TEST(TcpServerTest, MultiThreadedEcho)
     // regardless of which io loop handled it.
     constexpr int kNumClients = 12;
     std::vector<int> clients;
-    for (int i = 0; i < kNumberClients; ++i)
+    for (int i = 0; i < kNumClients; ++i)
     {
         clients.push_back(connectClient(kPort));
     }

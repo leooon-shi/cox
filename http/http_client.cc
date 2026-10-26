@@ -13,23 +13,23 @@ namespace http
 // duplicating it, and keeps one code path for the subtle reuse/TLS logic.
 
 HttpClient::HttpClient(reactor::EventLoop* loop, const net::InetAddress& server,
-                        std::string host_header)
+                       std::string host_header)
     : pool_(std::make_shared<ConnectionPool>(loop, server, std::move(host_header)))
 {
-    pool_->setMaxConnections(1);            // Single connection, resued (keep-alive)
+    pool_->setMaxConnections(1);    // single connection, resued (keep-alive)
 }
 
 HttpClient::HttpClient(reactor::EventLoop* loop, const net::InetAddress& server,
-                        tls::TlsContextPtr tls_ctx, std::string host_header)
+                       tls::TlsContextPtr tls_ctx, std::string host_header)
     : pool_(std::make_shared<ConnectionPool>(loop, server, std::move(tls_ctx),
-                                            std::move(host_header)))
+                                             std::move(host_header)))
 {
     pool_->setMaxConnections(1);
 }
 
 HttpClient::HttpClient(reactor::EventLoop* loop, const std::string& host,
-                        uint16_t port, net::Resolver* resolver,
-                        std::string host_header)
+                       uint16_t port, net::Resolver* resolver,
+                       std::string host_header)
     : pool_(std::make_shared<ConnectionPool>(loop, host, port, resolver,
                                              std::move(host_header)))
 {
@@ -37,8 +37,8 @@ HttpClient::HttpClient(reactor::EventLoop* loop, const std::string& host,
 }
 
 HttpClient::HttpClient(reactor::EventLoop* loop, const std::string& host,
-                        uint16_t port, net::Resolver* resolver,
-                        tls::TlsContextPtr tls_ctx, std::string host_header)
+                       uint16_t port, net::Resolver* resolver,
+                       tls::TlsContextPtr tls_ctx, std::string host_header)
     : pool_(std::make_shared<ConnectionPool>(loop, host, port, resolver,
                                              std::move(tls_ctx),
                                              std::move(host_header)))
@@ -61,4 +61,4 @@ void HttpClient::get(const std::string& path, ResponseCallback cb)
     send(req, std::move(cb));
 }
 
-} // namespace http
+}   // namespace http

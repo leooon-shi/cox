@@ -63,9 +63,9 @@ private:
     // Parse from `in`, dispatch complete requests, write responses via `send`,
     // and half-close via `close` when a request is not keep-alive.
     void processInput(const std::string& conn_name, buffer::Buffer* in,
-                      const std::function<void(const std::string&)>& send, 
+                      const std::function<void(const std::string&)>& send,
                       const std::function<void()>& close);
-    tls::TlsContextPtr tls_ctx_;            // Null for plaintext
+    tls::TlsContextPtr tls_ctx_;   // null for plaintext
     HttpHandler handler_;
     ConnectionObserver connection_observer_;
 

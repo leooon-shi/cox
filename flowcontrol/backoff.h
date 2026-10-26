@@ -4,12 +4,12 @@
 #include <cstdint>
 #include <mutex>
 #include <string>
-#include <unordered_map>>
+#include <unordered_map>
 
 namespace flowcontrol
 {
 // Per-key exponential backoff with jitter, modeled after client-go's 
-// flowcontrol.Backoff. Each key (e.g., a server address, a client id) has its
+// flowcontrol.Backoff. Each key (e.g. a server address, a client id) has its
 // own backoff state that grows exponentially on repeated failures and resets
 // after a period of success/inactivity.
 //
@@ -17,12 +17,12 @@ namespace flowcontrol
 // keys back off in lockstep (e.g. mass reconnect after a server restart).
 //
 // Typical use:
-//   Backoff bo(1s, 30s);               // initial 1s, cap 30s
+//   Backoff bo(1s, 30s);            // initial 1s, cap 30s
 //   ... on failure:
-//  bo.next(key);                       // record failure, advance backoff
-//  auto delay = bo.get(key);           // jittered delay to wait before retry
-//  ... on success:
-//  bo.reset(key);                      // clear backoff for the key
+//   bo.next(key);                   // record failure, advance backoff
+//   auto delay = bo.get(key);       // jittered delay to wait before retry
+//   ... on success:
+//   bo.reset(key);                  // clear backoff for the key
 //
 // All methods are thread-safe.
 class Backoff
@@ -33,7 +33,7 @@ public:
 
     // initial: base backoff duration.
     // max:     cap on the backoff duration.
-    // jitter:  fractional jitter in [0, 1]. The returned delay is multiplied by
+    // jitter:  fractional jitter in [0,1). The returned delay is multiplied by
     //          a random factor in [1, 1+jitter). Default 0.5 (client-go-like).
     Backoff(Duration initial, Duration max, double jitter = 0.5);
 
@@ -71,6 +71,6 @@ private:
     const double jitter_;
     std::mutex mutex_;
     std::unordered_map<std::string, Entry> entries_;
-    uint64_t rng_state_;    // xorshift, guided by mutex_
+    uint64_t rng_state_;  // xorshift, guided by mutex_
 };
-} // namepace flowcontrol
+}   // namepace flowcontrol

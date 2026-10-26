@@ -27,7 +27,7 @@ using tls::TlsContextPtr;
 
 namespace
 {
-std::string makeTempDir (const char* tag)
+std::string makeTempDir(const char* tag)
 {
     std::string dir = std::string("/tmp/cox_certreload_") + tag + "_" +
                       std::to_string(::getpid());
@@ -40,7 +40,7 @@ bool genCert(const std::string& cer_path, const std::string& key_path,
 {
     std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
                       key_path + " -out " + cert_path + " -days 1 -subj '/CN=" +
-                      cn +"' >/dev/null 2>&1";
+                      cn + "' >/dev/null 2>&1";
     return std::system(cmd.c_str()) == 0;
 }
 
@@ -49,7 +49,7 @@ void writeFile(const std::string& path, const std::string& content)
     std::ofstream f(path, std::ios::trunc);
     f << content;
 }
-} // namespace
+}  // namespace
 
 TEST(CertReloaderTest, ReloadOnFileChange)
 {
@@ -88,12 +88,12 @@ TEST(CertReloaderTest, ReloadOnFileChange)
         std::this_thread::sleep_for(5ms);
     }
     // Reload eventually succeeds once a consistent cert/key pair is present.
-    // Transient failiure are acceptable and safe: a non-atomic multi-file
+    // Transient failures are acceptable and safe: a non-atomic multi-file
     // update can momentarily present a mismatched cert/key, which reload()
     // correctly rejects while keeping the previous certificate. (Kubernetes
-    // udpates secrets atomically via the ..data symblink swap, avoiding this;
+    // udpates secrets atomically via the ..data symlink swap, avoiding this;
     // genCert here writes the two files non-atomically, so we tolerate it.)
-    EXPECT_GT(reload_ok.load(), 0);             // reload succeeded on rotation
+    EXPECT_GT(reload_ok.load(), 0);       // reload succeeded on rotation
 
     loop_ptr->quit();
     loop_thread.join();
@@ -122,7 +122,7 @@ TEST(CertReloaderTest, BadCertKeepsPreviousViaPoll)
 
         CertReloader reloader(&loop, ctx);
         reloader.setReloadCallback([&](bool ok) {
-            if (ok) reload_ok++ else reload_fail++;
+            if (ok) reload_ok++; else reload_fail++;
         });
         // Poll mode: check every 50ms.
         reloader.startPolling(cert, key, "", 50);
@@ -134,7 +134,7 @@ TEST(CertReloaderTest, BadCertKeepsPreviousViaPoll)
     std::this_thread::sleep_for(20ms);
 
     // Write a corrupt cert file (simulate a partial/bad rotation).
-    std::this_thread::sleep_for(1100ms);        // ensure mtime advances (1s resoluton)
+    std::this_thread::sleep_for(1100ms);   // ensure mtime advances (1s resoluton)
     writeFile(cert, "-----BEGIN CERTIFICATE-----\ngarbage\n-----END CERTIFICATE-----\n");
 
     for (int i = 0; i < 200 && reload_fail.load() == 0; ++i)

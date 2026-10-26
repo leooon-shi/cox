@@ -14,7 +14,7 @@ void setNonBlocking(int fd) {
     ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
-int createEventFd() {
+int createEventfd() {
     int fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     if (fd < 0)
     {

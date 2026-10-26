@@ -1,7 +1,7 @@
 # Cox formatting rules.
 #
 # The README states the project follows the Google C++ Style Guide, and this
-# file makes that claim mechanically checkable (`clang-format --dry-run 
+# file makes that claim mechanically checkable (`clang-format --dry-run
 # --Werror`) instead of merely aspirational.
 #
 # ONE DELIBERATE DEVIATION: IndentWidth is 4, not Google's 2. That matches the

@@ -51,11 +51,11 @@ public:
     // origin will pool HTTPS/mTLS connections. Without a registered context an
     // origin is treated as plaintext HTTP.
     void setTlsContext(const std::string& host, uint16_t port,
-                        tls::TlsContextPtr ctx);
+                       tls::TlsContextPtr ctx);
     
     // Route a request to the origin's sub-pool (creating it on demand).
     // host_header defaults to the origin host if empty.
-    void request(const std::string& host, uint16_t port, const HttpRequest& req, 
+    void request(const std::string& host, uint16_t port, const HttpRequest& req,
                  ResponseCallback cb, const std::string& host_header = "");
     
     size_t originCount() const { return pools_.size(); }
@@ -73,11 +73,11 @@ private:
     };
 
     reactor::EventLoop* loop_;
-    net::Resolver* resolver_{nullptr};   // nullptr -> origins must be numberic IPs
+    net::Resolver* resolver_{nullptr};  // nullptr -> origins must be numberic IPs
     size_t max_per_origin_{8};
     uint32_t idle_timeout_s_{60};
     std::map<std::pair<std::string, uint16_t>, tls::TlsContextPtr> tls_ctx_;
     std::map<Origin, std::shared_ptr<ConnectionPool>> pools_;
 };
 
-} // namespace http
+}   // namespace http

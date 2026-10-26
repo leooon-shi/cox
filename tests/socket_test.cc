@@ -43,9 +43,9 @@ bool waitReadable(int fd, int timeout_ms)
     struct pollfd pfd{fd, POLLIN, 0};
     return ::poll(&pfd, 1, timeout_ms) > 0 && (pfd.revents & POLLIN);
 }
-} // namespace
+}   // namespace
 
-TEST(SocketTest, CreatedbindListenIpv4)
+TEST(SocketTest, CreatedBindListenIpv4)
 {
     InetAddress bound;
     Socket listener = makeListener(/*ipv6=*/false, &bound);
@@ -54,7 +54,7 @@ TEST(SocketTest, CreatedbindListenIpv4)
     EXPECT_GT(bound.port(), 0);
 }
 
-TEST(SocketTest, CreatedbindListenIpv6)
+TEST(SocketTest, CreatedBindListenIpv6)
 {
     InetAddress bound;
     Socket listener = makeListener(/*ipv6=*/true, &bound);
@@ -85,7 +85,7 @@ TEST(SocketTest, ConnectAcceptRoundTripIpv4)
     Socket conn(connfd);
 
     // Client connect completes.
-    ASSERT_TRUE(waitwritable(client.fd(), 1000));
+    ASSERT_TRUE(waitWritable(client.fd(), 1000));
     EXPECT_EQ(sockets::getSocketError(client.fd()), 0);
 
     // Peer address seen by the server matches the client's local address.
@@ -136,7 +136,7 @@ TEST(SocketTest, MoveSemantics)
     int fd = a.fd();
     Socket b(std::move(a));
     EXPECT_EQ(b.fd(), fd);
-    EXPECT_EQ(a.fd(), -1)       // moved-from is emptied
+    EXPECT_EQ(a.fd(), -1)   // moved-from is emptied
 }
 
 TEST(SocketTest, Release)
@@ -145,5 +145,5 @@ TEST(SocketTest, Release)
     int fd = s.release();
     EXPECT_GT(fd, 0);
     EXPECT_EQ(s.fd(), -1);
-    sockets::close(fd);         // caller now owns it
+    sockets::close(fd);   // caller now owns it
 }

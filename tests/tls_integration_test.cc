@@ -90,14 +90,14 @@ TEST(TlsIntegrationTest, HandshakeAndEncryptedEcho)
 
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "tls-srv");
-        server.setConnectionCallback([&](const TcpConnectionPtr & conn) {
+        server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
             if (conn->connected())
             {
                 auto tls_conn =
                     std::make_shared<TlsConnection>(conn, ctx, Role::kServer);
                 tls_conn->setMessageCallback(
                     [](const TlsConnectionPtr& tc, std::string& msg) {
-                        tc->send(msg);          // echo decrypted plaintext back
+                        tc->send(msg);  // echo decrypted plaintext back
                     });
                 {
                     std::lock_guard<std::mutex> lock(srv_mutex);
@@ -131,7 +131,7 @@ TEST(TlsIntegrationTest, HandshakeAndEncryptedEcho)
         auto ctx = std::make_shared<TlsContext>(Role::kClient);
         ctx->setVerifyPeer(false);  // self-signed test cert
 
-        InetAddress addr("127.0.0.1", kPort);        
+        InetAddress addr("127.0.0.1", kPort);
         TcpClient client(&loop, addr, "tls-cli");
         client.setConnectionCallback([&](const TcpConnectionPtr & conn) {
             if (conn->connected())
@@ -139,7 +139,7 @@ TEST(TlsIntegrationTest, HandshakeAndEncryptedEcho)
                 auto tc =
                     std::make_shared<TlsConnection>(conn, ctx, Role::kClient);
                 tc->setHandshakeDoneCallback([](const TlsConnectionPtr& t) {
-                    t->send("secret hello");          // send once secure
+                    t->send("secret hello");   // send once secure
                 });
                 tc->setMessageCallback(
                     [&](const TlsConnectionPtr&, std::string& msg) {
@@ -171,7 +171,7 @@ TEST(TlsIntegrationTest, HandshakeAndEncryptedEcho)
         std::lock_guard<std::mutex> lock(cli_mutex);
         if (client_tls)
         {
-            EXPECT_TURE(clien_tls->handshakeDone());
+            EXPECT_TURE(client_tls->handshakeDone());
             EXPECT_FALSE(client_tls->protocolVersion().empty());
         }
     }

@@ -37,7 +37,8 @@ void Channel::handleEvents()
     }
 }
 
-void Channel::handleEventsGuarded() {
+void Channel::handleEventsGuarded()
+{
     if (revents_ & IO_ERROR && errorCallback_) 
     {
         errorCallback_();
@@ -61,11 +62,12 @@ void Channel::update()
     loop_->updateChannel(this);
 }
 
-void Channel::remove() {
+void Channel::remove()
+{
     assert(loop_ != nullptr);
     assert(loop_->isInLoopThread());
 
     loop_->removeChannel(this);
 }
 
-} // namespace reactor
+}   // namespace reactor

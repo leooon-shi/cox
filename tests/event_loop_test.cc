@@ -38,7 +38,7 @@ TEST(EventLoopTest, QuitBeforeLoop) {
     }
 
     // Verify that the loop exits immediately
-    SUCCEED(); // If no exceptions or errors occur, the test passes
+    SUCCEED(); // if no exceptions or errors occur, the test passes
 }
 
 
@@ -119,6 +119,7 @@ TEST(EventLoopTest, PendingTaskExceptionDoesNotKillLoop)
 
     EXPECT_TRUE(survivorRan.load());
 }
+
 #if defined(DEBUG)
 TEST(EventLoopTest, PollerHandlesEvents) {
     std::unique_ptr<MockPoller> poller_p = std::make_unique<MockPoller>();

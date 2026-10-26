@@ -10,7 +10,7 @@ name: CI
 #       && ctest --preset clang-debug
 #
 # That keeps CI reproducible on a developer machine and keeps the choice of CI
-# system repliceable (a Jenkinsfile would invoke the same three commands).
+# system replaceable (a Jenkinsfile would invoke the same three commands).
 
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive   # googletest is a submodel
+          submodules: recursive   # googletest is a submodule
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -40,8 +40,8 @@ jobs:
           # the ThreadPool fallback.
           sudo apt-get install -y --no-install-recommends \
             cmake ninja-build clang g++ libssl-dev libc-ares-dev openssl
-      
-      - name: Configure 
+
+      - name: Configure
         run: cmake --preset ${{ matrix.preset }}
 
       - name: Build
@@ -49,7 +49,7 @@ jobs:
 
       - name: Test
         run: ctest --preset ${{ matrix.preset }}
-      
+
       - name: Upload test logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -59,7 +59,7 @@ jobs:
           retention-days: 7
   examples:
     name: examples + benchmarks build
-    runs-on: unbuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -76,7 +76,7 @@ jobs:
         run: |
           cmake --preset examples
           cmake --build --preset examples --parallel
-  
+
   format:
     name: clang-format check
     runs-on: ubuntu-24.04
@@ -85,7 +85,7 @@ jobs:
     # files, mostly hand-aligned columns and >80-char lines being reflowed).
     # Bringing it into conformance is a single mechanical commit that touches
     # nearly every file, so it is left as a deliberate decision rather than
-    # bundled into unrelated work. This job reports the diff meanWhile; drop
+    # bundled into unrelated work. This job reports the diff meanwhile; drop
     # continue-on-error once the tree is formatted.
     continue-on-error: true
     steps:
@@ -101,7 +101,7 @@ jobs:
             | grep -v '^googletest/')
           echo "checking $(echo "$files" | wc -l) files"
           clang-format --dry-run --Werror $files
-  
+
   sanitizers:
     name: ${{ matrix.preset }}
     runs-on: ubuntu-24.04
@@ -109,12 +109,12 @@ jobs:
     # each), so any new finding is a regression and should fail the build. The
     # backlog these were originally added to observe -- an EventLoop wakeup-fd
     # race, a Connector use-after-free, and four shared_ptr reference cycles --
-    # has been fixed (See insights/roadmap.md, CI/CD item 3)
+    # has been fixed (See insights/roadmap.md, CI/CD item 3).
     strategy:
       fail-fast: false
       matrix:
         preset: [asan, tsan, ubsan]
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -132,7 +132,7 @@ jobs:
         run: ctest --preset ${{ matrix.preset }}
       - name: Upload sanitizer logs
         if: always()
-        uses: actions/upload-artifcat@v4
+        uses: actions/upload-artifact@v4
         with:
           name: sanitizer-logs-${{ matrix.preset }}
           path: build/${{ matrix.preset }}/Testing/

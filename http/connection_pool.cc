@@ -36,10 +36,10 @@ public:
     using ResponseCallback = ConnectionPool::ResponseCallback;
 
     PooledConn(reactor::EventLoop* loop, const net::InetAddress& origin,
-                std::string host, tls::TlsContextPtr tls_ctx)
+               std::string host, tls::TlsContextPtr tls_ctx)
         : client_(loop, origin, "pool-conn"),
           host_(std::move(host)),
-          tls_ctx_(std::move(tls_ctx)){}
+          tls_ctx_(std::move(tls_ctx)) {}
     
     bool busy() const { return busy_; }
     bool connected() const { return ready_; }
@@ -57,7 +57,7 @@ public:
         // - along with its 1KB input/output Buffers - can never be freed.
         // LeakSanitizer found this as a set of indirect leaks with no direct
         // leak, which is the signature of a cycle. Lock the weak_ptr per event:
-        // callbacks only fire hwile the loop is alive, and if the pool has
+        // callbacks only fire while the loop is alive, and if the pool has
         // already dropped this connection there is nothing to do.
         std::weak_ptr<PooledConn> weak = weak_from_this();
         client_.setConnectionCallback([weak](const net::TcpConnectionPtr& c) {
@@ -128,7 +128,7 @@ private:
             if (tls_ctx_)
             {
                 // Wrap in TLS; ready only after the handshake completes.
-                // host_is passed as SNI so a multi-domain origin serves the
+                // host_ is passed as SNI so a multi-domain origin serves the
                 // right certificate (and so the cert is checked against the
                 // name we asked for).
                 // WEAK for the same reason as in init(): this object owns
@@ -138,8 +138,7 @@ private:
                 tls_conn_ = std::make_shared<tls::TlsConnection>(
                     c, tls_ctx_, tls::Role::kClient, host_);
                 tls_conn_->setHandleshakeDoneCallback(
-                    [weak](const tls::TlsConnectionPtr&)
-                    {
+                    [weak](const tls::TlsConnectionPtr&) {
                         auto self = weak.lock();
                         if (!self) return;
                         self->ready_ = true;
@@ -147,8 +146,7 @@ private:
                         if (self->on_ready) self->on_ready(self);
                     });
                 tls_conn_->setMessageCallback(
-                    [weak](const tls::TlsConnectionPtr&, std::string& pt)
-                    {
+                    [weak](const tls::TlsConnectionPtr&, std::string& pt) {
                         if (auto self = weak.lock()) self->onPlaintext(pt);
                     });
                 tls_conn_->start();
@@ -169,7 +167,7 @@ private:
                 if (parser_.gotAll())
                 {
                     if (cb) cb(parser_.response(), "");
-                } else if (cb){ 
+                } else if (cb) { 
                     cb(HttpResponse(), "Connection closed before response");
                 }
             }
@@ -227,14 +225,14 @@ private:
 
     net::TcpClient client_;
     std::string host_;
-    tls::TlsContextPtr tls_ctx_;            // null for plaintext
+    tls::TlsContextPtr tls_ctx_;                // null for plaintext
     net::TcpConnectionPtr conn_;
-    tls::TlsConnectionPtr tls_conn_;        // set when TLS
-    buffer::Buffer in_buf_;                 // reassembles TLS plaintext
+    tls::TlsConnectionPtr tls_conn_;            // set when TLS
+    buffer::Buffer in_buf_;                     // reassembles TLS plaintext
     ResponseParser parser_;
     ResponseCallback callback_;
     logging::Timestamp last_used_;
-    bool ready_{flase};
+    bool ready_{false};
     bool busy_{false};
     bool done_{false};
 };
@@ -243,30 +241,30 @@ private:
 class ConnectionPool::Impl : public std::enable_shared_from_this<Impl> {
 public:
     Impl(reactor::EventLoop* loop, const net::InetAddress& origin,
-        std::string host, tls::TlsContextPtr tls_ctx, size_t* max_conns,
-        uint32_t* idle_s)
-    : loop_(loop),
-      origin_(origin),
-      host_(std::move(host)),
-      tls_ctx_(std::move(tls_ctx)),
-      max_connections_(max_conns),
-      idle_timeout_s_(idle_s),
-      resolved_(true) {}
+         std::string host, tls::TlsContextPtr tls_ctx, size_t* max_conns,
+         uint32_t* idle_s)
+        : loop_(loop),
+          origin_(origin),
+          host_(std::move(host)),
+          tls_ctx_(std::move(tls_ctx)),
+          max_connections_(max_conns),
+          idle_timeout_s_(idle_s),
+          resolved_(true) {}
 
     // Hostname origin: the address is unknown until DNS resolves.
     Impl(reactor::EventLoop* loop, std::string dns_host, uint16_t port,
-        net::Resolver* resolver, std::string host, tls::TlsContextPtr tls_ctx,
-    size_t* max_conns, uint32_t* idle_s)
-    :loop_(loop),
-     host_(std::move(host)),
-     tls_ctx_(std::move(tls_ctx)),
-     max_connections_(max_conns),
-     idle_timeout_s_(idle_s),
-     resolved_(false),
-     dns_host_(std::move(dns_host)),
-     dns_port_(port),
-     resolver_(resolver) {
-     }
+         net::Resolver* resolver, std::string host, tls::TlsContextPtr tls_ctx,
+         size_t* max_conns, uint32_t* idle_s)
+        : loop_(loop),
+          host_(std::move(host)),
+          tls_ctx_(std::move(tls_ctx)),
+          max_connections_(max_conns),
+          idle_timeout_s_(idle_s),
+          resolved_(false),
+          dns_host_(std::move(dns_host)),
+          dns_port_(port),
+          resolver_(resolver) {}
+
     bool useTls() const { return tls_ctx_ != nullptr; }
     bool resolved() const { return resolved_; }
 
@@ -283,7 +281,7 @@ public:
         // indirect leaks). With a weak_ptr the timer becomes a no-op once the
         // pool is gone.
         std::weak_ptr<Impl> weak = weak_from_this();
-        eviction_timer_ = loop_->runEvery(5000, [weak](){
+        eviction_timer_ = loop_->runEvery(5000, [weak]() {
             if (auto self = weak.lock()) self->evictIdle();
         });
         eviction_timer_armed_ = true;
@@ -311,10 +309,10 @@ public:
         dispatch(req, std::move(cb));
     }
 
-    size_t idleCount() const  { return idle_.size(); }
-    size_t busyCount() const  { return busy_.size(); }
-    size_t total() const  { return idle_.size() + busy_.size() + connecting_.size(); }
-    size_t queued() const  { return queue_.size() + waiting_on_dns_.size(); }
+    size_t idleCount() const { return idle_.size(); }
+    size_t busyCount() const { return busy_.size(); }
+    size_t total() const { return idle_.size() + busy_.size() + connecting_.size(); }
+    size_t queued() const { return queue_.size() + waiting_on_dns_.size(); }
 private:
     using ConnPtr = std::shared_ptr<PooledConn>;
 
@@ -325,10 +323,10 @@ private:
         resolving_ = true;
         auto self = shared_from_this();
         resolver_->resolve(dns_host_, dns_port_,
-                [self](const net::InetAddress& addr,
-                        const std::string& err){
-                    self->onResolved(addr, err);
-                });
+                           [self](const net::InetAddress& addr,
+                                  const std::string& err) {
+                               self->onResolved(addr, err);
+                           });
     }
 
     // Resolver callbacks arrive on the loop thread.
@@ -395,8 +393,8 @@ private:
         // direct leak, which is the signature of a cycle rather than a missing
         // delete.
         std::weak_ptr<Impl> weak = weak_from_this();
-        c->on_ready = [weak](const ConnPtr& conn){
-            if( auto self = weak.lock()) self->onReady(conn);
+        c->on_ready = [weak](const ConnPtr& conn) {
+            if(auto self = weak.lock()) self->onReady(conn);
         };
         c->on_free = [weak](const ConnPtr& conn) {
             if (auto self = weak.lock()) self->onFree(conn);
@@ -478,7 +476,8 @@ private:
         for (auto& c : idle_)
         {
             uint64_t idle_ms =
-                (now.microSecondsSinceEpoch() - c->lastUsed().microSecondsSinceEpoch()) / 1000;
+                (now.microSecondsSinceEpoch() - 
+                 c->lastUsed().microSecondsSinceEpoch()) / 1000;
             if (idle_ms > static_cast<uint64_t>(*idle_timeout_s_) * 1000)
             {
                 to_close.push_back(c);
@@ -488,7 +487,7 @@ private:
         for (auto& c : to_close)
         {
             removeFrom(idle_, c);
-            c->close();     // onClosed wil fully remove it.
+            c->close(); // onClosed wil fully remove it.
         }
     }
 
@@ -502,8 +501,8 @@ private:
     std::vector<ConnPtr> idle_;
     std::vector<ConnPtr> busy_;
     std::vector<ConnPtr> connecting_;
-    std::map<PooledConn*, Pending> pending_;    // connecting -> its request
-    std::deque<Pending> queue_;                 // waiting for a free connection
+    std::map<PooledConn*, Pending> pending_;   // connecting -> its request
+    std::deque<Pending> queue_;                // waiting for a free connection
 
     // DNS state (hostname origins only). resolved_ is true from construction
     // for numeric origins, so those pay nothing for this path.
@@ -512,7 +511,7 @@ private:
     std::string dns_host_;
     uint16_t dns_port_{0};
     net::Resolver* resolver_{nullptr};
-    std::deque<Pending> waiting_on_dns_;            // parked until the name resolves
+    std::deque<Pending> waiting_on_dns_;   // parked until the name resolves
 
     reactor::TimerId eviction_timer_{};
     bool eviction_timer_armed_{false};
@@ -521,18 +520,18 @@ private:
 // ---- ConnectionPool facade ----
 
 ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
-                                     const net::InetAddress& origin,
-                                     std::string host_header) {
+                               const net::InetAddress& origin,
+                               std::string host_header) {
     impl_ = std::make_shared<Impl>(loop, origin, std::move(host_header),
-                                    /*tls_ctx*/nullptr, &max_connections_,
-                                    &idle_timeout_s_);
+                                   /*tls_ctx*/nullptr, &max_connections_,
+                                   &idle_timeout_s_);
     impl_->startEviction();
 }
 
 ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
-                                     const net::InetAddress& origin,
-                                     tls::TlsContextPtr tls_ctx,
-                                     std::string host_header) {
+                               const net::InetAddress& origin,
+                               tls::TlsContextPtr tls_ctx,
+                               std::string host_header) {
     impl_ = std::make_shared<Impl>(loop, origin, std::move(host_header),
                                    std::move(tls_ctx), &max_connections_,
                                    &idle_timeout_s_);
@@ -540,21 +539,21 @@ ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
 }
 
 ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
-                                     const std::string& host, uint16_t port,
-                                     net::Resolver* resolver,
-                                     std::string host_header) {
+                               const std::string& host, uint16_t port,
+                               net::Resolver* resolver,
+                               std::string host_header) {
     std::string hdr = host_header.empty() ? host : std::move(host_header);
     impl_ = std::make_shared<Impl>(loop, host, port, resolver, std::move(hdr),
-                                    /*tls_ctx*/nullptr, &max_connections_,
-                                    &idle_timeout_s_);
+                                   /*tls_ctx=*/nullptr, &max_connections_,
+                                   &idle_timeout_s_);
     impl_->startEviction();
 }
 
 ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
-                                     const std::string& host, uint16_t port,
-                                     net::Resolver* resolver,
-                                     tls::TlsContextPtr tls_ctx,
-                                     std::string host_header) {
+                               const std::string& host, uint16_t port,
+                               net::Resolver* resolver,
+                               tls::TlsContextPtr tls_ctx,
+                               std::string host_header) {
     std::string hdr = host_header.empty() ? host : std::move(host_header);
     impl_ = std::make_shared<Impl>(loop, host, port, resolver, std::move(hdr),
                                    std::move(tls_ctx), &max_connections_,
@@ -597,5 +596,3 @@ bool ConnectionPool::resolved() const {
 }
 
 } // namespace Http
-
-

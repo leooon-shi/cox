@@ -14,15 +14,13 @@ uint64_t seedFromClock()
     uint64_t s = static_cast<uint64_t>(now);
     return s ? s : 0x9e3779b97f4a7c15ULL;
 }
-} // namespace
+}   // namespace
 
 Backoff::Backoff(Duration initial, Duration max, double jitter)
-: initial_(initial.count() > 0 ? initial : Duration(1)),
-  max_(max >= initial ? max : initial),
-  jitter_(jitter < 0 ? 0 : jitter),
-  rng_state_(seedFromClock())
-  {
-  }
+    : initial_(initial.count() > 0 ? initial : Duration(1)),
+      max_(max >= initial ? max : initial),
+      jitter_(jitter < 0 ? 0 : jitter),
+      rng_state_(seedFromClock()) {}
 
 Backoff::Duration Backoff::applyJitter(Duration d)
 {
@@ -30,13 +28,13 @@ Backoff::Duration Backoff::applyJitter(Duration d)
     {
         return d;
     }
-    // xorshift64->uniform double n [0,1).
+    // xorshift64 -> uniform double n [0,1).
     rng_state_ ^= rng_state_ << 13;
     rng_state_ ^= rng_state_ >> 7;
     rng_state_ ^= rng_state_ << 17;
     
     double r = static_cast<double>(rng_state_ >> 11) / static_cast<double>(1ULL << 53);
-    double factor = 1.0 + jitter_ * r;  // in [1, jitter)
+    double factor = 1.0 + jitter_ * r;  // in [1, 1+jitter)
     return Duration(static_cast<Duration::rep>(d.count() * factor));
 }
 
@@ -115,4 +113,4 @@ Backoff::Duration Backoff::baseDelay(const std::string& key)
     return (it == entries_.end()) ? initial_ : it->second.duration;
 }
 
-} // namespace flowcontrol
+}   // namespace flowcontrol

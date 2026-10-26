@@ -3,7 +3,7 @@
 #include "tls_context.h"
 #include "tls_engine.h"
 
-#include <functional
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -28,9 +28,9 @@ using TlsConnectionPtr = std::shared_ptr<TlsConnection>;
 // connection.
 //
 // Lifecycle: create a TlsConnection wrapping a freshly established
-// TcpConnection (e.g. in TcpServer's connection callback). set callbacks, and
+// TcpConnection (e.g. in TcpServer's connection callback), set callbacks, and
 // call start(). The TLS handshake runs first; the onHandshakeDone callback
-// fires when the secure channel is ready, after which send/onMessage carry
+// fires when the secure channel is ready, after which send()/onMessage carry
 // application plaintext.
 class TlsConnection : public std::enable_shared_from_this<TlsConnection>
 {
@@ -42,7 +42,7 @@ public:
 
     TlsConnection(std::shared_ptr<net::TcpConnection> conn,
                   const TlsContextPtr& ctx, Role role);
-    // Client role `server_hostname` is sent as SNI (so a multi-domain server
+    // Client role: `server_hostname` is sent as SNI (so a multi-domain server
     // selects the right certificate) and used for certificate hostname
     // verification. Ignored for the server role.
     TlsConnection(std::shared_ptr<net::TcpConnection> conn,
@@ -106,4 +106,4 @@ private:
     MessageCallback message_callback_;
     CloseCallback close_callback_;
 };
-} // namespace tls
+}   // namespace tls

@@ -18,18 +18,18 @@ logging::Logger& log()
     static logging::Logger logger;
     return logger;
 }
-} // namespace
+}   // namespace
 
 TcpConnection::TcpConnection(reactor::EventLoop* loop, std::string name,
-                            int sockfd, const InetAddress& local,
-                            const InetAddress& peer)
-: loop_(loop),
-  name_(name),
-  state_(State::kConnecting),
-  socket_(sockfd),
-  channel_(sockfd, loop),
-  local_addr_(local),
-  peer_addr_(peer)
+                             int sockfd, const InetAddress& local,
+                             const InetAddress& peer)
+    : loop_(loop),
+    name_(name),
+    state_(State::kConnecting),
+    socket_(sockfd),
+    channel_(sockfd, loop),
+    local_addr_(local),
+    peer_addr_(peer)
 {
     channel_.setReadCallback([this] { handleRead(); });
     channel_.setWriteCallback([this] { handleWrite(); });
@@ -77,7 +77,7 @@ void TcpConnection::connectDestroyed()
     // Cancel any armed timers FIRST. Each timer callback captures
     // shared_from_this() to stay valid until it fires, so an armed timer keeps
     // this connection (and its input/output Buffers) alive indefinitely when the
-    // loop is stopping and the timer will never run. handleClose alreay does
+    // loop is stopping and the timer will never run. handleClose() alreay does
     // this; connectDestroyed() is the other teardown path (client/server
     // shutdown) and was missing it, which LeakSanitizer reported as an
     // unreclaimed TcpConnection.
@@ -109,7 +109,7 @@ void TcpConnection::handleRead()
     ssize_t n = input_buffer_.readFd(channel_.fd(), &saved_errno);
     if (n > 0)
     {
-        resetIdleTimer();   // Activity: push the idle deadline forward
+        resetIdleTimer();  // activity: push the idle deadline forward
         if (message_callback_)
         {
             message_callback_(shared_from_this(), &input_buffer_);
@@ -123,8 +123,8 @@ void TcpConnection::handleRead()
         {
             log().warning("TcpConnection [" + name_ +
                           "] input buffer exceeded " +
-                           std::to_string(max_input_buffer_size_) +
-                           " bytes; closing");
+                          std::to_string(max_input_buffer_size_) +
+                          " bytes; closing");
             forceClose();
         }
     }
@@ -152,7 +152,7 @@ void TcpConnection::resetIdleTimer() {
     // no-op via forceClose's state guard.
     auto self = shared_from_this();
     idle_timer_ = loop_->runAfter(
-        static_cast<uint64_t>(idle_seconds_) * 1000, [self](){
+        static_cast<uint64_t>(idle_seconds_) * 1000, [self]() {
             log().warning("TcpConnection [" + self->name_ +
                           "] idle timeout; closing");
             self->forceClose();
@@ -188,7 +188,7 @@ void TcpConnection::armWriteTimer()
                               "] write timeout (slow consumer); closing");
                 self->forceClose();
             }
-    });
+        });
     write_timer_armed_ = true;
 }
 
@@ -216,8 +216,7 @@ void TcpConnection::armMaxAgeTimer()
             log().info("TcpConnection [" + self->name_ +
                        "] max age reached; closing");
             self->forceClose();
-        }
-    );
+        });
     max_age_timer_armed_ = true;
 }
 
@@ -226,7 +225,7 @@ void TcpConnection::handleWrite()
     loop_->assertInLoopThread();
     if (!channel_.isWriting())
     {
-        return;     // write already disabled; nothing to do.
+        return;  // write already disabled; nothing to do.
     }
     ssize_t n = ::write(channel_.fd(), output_buffer_.peek(),
                         output_buffer_.readableBytes());
@@ -237,14 +236,14 @@ void TcpConnection::handleWrite()
         {
             // All buffered output flushed: stop watching for writability.
             channel_.disableWrite();
-            cancelWriteTimer();     // Output drained: no longer slow
+            cancelWriteTimer();  // output drained: no longer slow
             if (write_complete_callback_)
             {
                 write_complete_callback_(shared_from_this());
             }
             if (state_ == State::kDisconnecting)
             {
-                shutdownInLoop();   // Complete a pending half-close
+                shutdownInLoop();  // complete a pending half-close
             }
         }
     } else {
@@ -269,12 +268,12 @@ void TcpConnection::handleClose()
     TcpConnectionPtr guard(shared_from_this());
     if (connection_callback_)
     {
-        connection_callback_(guard);    // Notify app of disconnect
+        connection_callback_(guard);   // notify app of disconnect
     }
 
     if(close_callback_)
     {
-        close_callback_(guard);     // Notify owner (TcpServer) to remove us
+        close_callback_(guard);   // notify owner (TcpServer) to remove us
     }
 }
 
@@ -286,7 +285,7 @@ void TcpConnection::handleError()
     if (err != 0)
     {
         log().error("TcpConnection::handleError [ " + name_ + "] SO_ERROR=" +
-                    std::string(std::strerror(err)));
+                    std::to_string(err) + " " + std::string(std::strerror(err)));
     }
     handleClose();
 }
@@ -453,4 +452,4 @@ void TcpConnection::startReadInLoop()
     }
 }
 
-} // namespace net
+}   // namespace net

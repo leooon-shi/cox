@@ -42,10 +42,10 @@ public:
     // Begin connecting. Safe to call from any thread.
     void start();
 
-    // Retry after a failed attempt (used internally / for reconection).
+    // Retry after a failed attempt (used internally / for reconnection).
     void restart();
 
-    // Stop connecting; cancels any pending retry
+    // Stop connecting; cancels any pending retry.
     void stop();
 
     const InetAddress& serverAddress() const { return server_addr_; }
@@ -82,4 +82,4 @@ private:
 };
 
 using ConnectorPtr = std::shared_ptr<Connector>;
-} // namespace net
+}   // namespace net

@@ -10,7 +10,7 @@ namespace logging
 {
 namespace
 {
-// --- stdout ---
+// ---- stdout ----
 
 // Writes to stdout via a FILE*. Uses the C stdio layer rather than std::cout so
 // buffering and flushing are explicit and cheap.
@@ -70,21 +70,21 @@ private:
 
 // ---- rotating file ----
 
-// Rolls the active file once it exceeds max_bytes: <path>.N-1 -> <path>.N, 
-// <path> -> <path>.1, then reopens <path> empty. Bounds total disk use to 
+// Rolls the active file once it exceeds max_bytes: <path>.N-1 -> <path>.N,
+// <path> -> <path>.1, then reopens <path> empty. Bounds total disk use to
 // roughly max_bytes * (max_files + 1) so logging cannot fill a volume.
 class RotatingFileSink final : public Sink {
 public:
     RotatingFileSink(const std::string& path, size_t max_bytes,
                      size_t max_files)
-    : path_(path),
-      max_bytes_(max_bytes == 0 ? 1 : max_bytes),
-      max_files_(max_files)
+        : path_(path),
+        max_bytes_(max_bytes == 0 ? 1 : max_bytes),
+        max_files_(max_files)
     {
         open();
     }
 
-    ~RotatingFileSink() override { close(); };
+    ~RotatingFileSink() override { close(); }
 
     void append(const std::string& line) override {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -92,7 +92,7 @@ public:
 
         // Rotate BEFORE writing when this line would exceed the cap, so the
         // limit is never overshot by more than one line.
-        if (written_ + line.size() +1 > max_bytes_ && written_ > 0)
+        if (written_ + line.size() + 1 > max_bytes_ && written_ > 0)
         {
             rotate();
         }
@@ -158,7 +158,7 @@ private:
     size_t max_bytes_;
     size_t max_files_;
     std::FILE* fp_{nullptr};
-    size_t written_{ 0 };
+    size_t written_{0};
 };
 
 
@@ -169,22 +169,21 @@ private:
 class MultiSink final : public Sink {
 public:
     explicit MultiSink(std::vector<std::unique_ptr<Sink>> sinks)
-    : sinks_(std::move(sinks))
-    {
-    }
+        : sinks_(std::move(sinks)) {}
+
     void append(const std::string& line) override {
         for (auto& s : sinks_) s->append(line);
     }
 
     void flush() override {
-        for ( auto& s : sinks_) s->flush();
+        for (auto& s : sinks_) s->flush();
     }
 private:
     // Each downstream sink does its own locking, so no mutex is needed here.
     std::vector<std::unique_ptr<Sink>> sinks_;
 };
 
-} // namespace
+}   // namespace
 
 std::unique_ptr<Sink> Sink::newStdoutSink() {
     return std::make_unique<StdoutSink>();
@@ -247,4 +246,4 @@ void MemorySink::clear() {
     flush_count_ = 0;
 }
 
-} // namespace logging
+}   // namespace logging

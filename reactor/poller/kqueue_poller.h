@@ -13,6 +13,7 @@ namespace logging {
 
 namespace reactor {
 class Channel;
+
 class KQueuePoller : public Poller {
 public:
     KQueuePoller();
@@ -27,7 +28,8 @@ private:
     std::unique_ptr<logging::Logger> logger_;
     int kqueueFd_;
     std::vector<struct kevent> events_;
-    std::map<int, short*> registeredEvents;
+    std::map<int, short> registeredEvents;
 };
-}
+}   // namespace reactor
+
 #endif // BSD / macOS

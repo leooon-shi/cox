@@ -16,11 +16,12 @@ namespace reactor
 class EventLoop;
 class Channel;
 
-// TimerQueue schedules callbacks to run at ( or after) a given time, using a
+// TimerQueue schedules callbacks to run at (or after) a given time, using a
 // single Linux timerfd registered with the owning EventLoop. All mutating
 // operations must happen in the loop thread; EventLoop is responsible for
 // marshalling cross-thread calls via runInLoop before touching the queue.
 class TimerQueue {
+public:
     using TimerCallback = std::function<void()>;
 
     explicit TimerQueue(EventLoop* loop);

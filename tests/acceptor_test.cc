@@ -45,9 +45,9 @@ TEST(AcceptorTest, CallbackFiresOnConnect)
         started = true;
         loop.loop();
     });
-    
+
     while (!started.load()) std::this_thread::sleep_for(1ms);
-    std::this_thread::sleep_for(20ms);      // ensure listen() ran in loop.
+    std::this_thread::sleep_for(20ms);  // ensure listen() ran in loop.
 
     // Connect from the test thread.
     Socket client(sockets::createNonBlockingOrDie(AF_INET));
@@ -89,13 +89,13 @@ TEST(AcceptorTest, MultipleConnections)
     });
 
     while (!started.load()) std::this_thread::sleep_for(1ms);
-    std::this_thread::sleep_for(20ms);      // ensure listen() ran in loop.
+    std::this_thread::sleep_for(20ms);
 
     constexpr int kNumClients = 5;
     std::vector<Socket> clients;
     for (int i = 0; i < kNumClients; ++i)
     {
-        clients.emplace_back(sockets::createNonBlockingOrDie(AF_NET));
+        clients.emplace_back(sockets::createNonBlockingOrDie(AF_INET));
         InetAddress server("127.0.0.1", kPort);
         sockets::connect(clients.back().fd(), server);
     }

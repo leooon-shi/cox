@@ -31,9 +31,9 @@ void ensureOpenSslInit()
         OpenSSL_add_all_algorithms();
     });
 }
-} // namespace
+}   // namespace
 
-TlsContext::TlsContext(Role role): role_(role), ctx_(nullptr)
+TlsContext::TlsContext(Role role) : role_(role), ctx_(nullptr)
 {
     ensureOpenSslInit();
 
@@ -52,8 +52,8 @@ TlsContext::TlsContext(Role role): role_(role), ctx_(nullptr)
     // automatic retry so SSL_read/SSL_write don't return on renegotiation.
     SSL_CTX_set_options(ctx_, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
                                   SSL_OP_NO_COMPRESSION);
-    SSL_CTX_set_mode(ctx_, SSL_MODE_AUTO_RETRY | 
-                               SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | 
+    SSL_CTX_set_mode(ctx_, SSL_MODE_AUTO_RETRY |
+                               SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER |
                                SSL_MODE_ENABLE_PARTIAL_WRITE);
     
     // Client verifies the server by default; server does not request a client
@@ -61,7 +61,7 @@ TlsContext::TlsContext(Role role): role_(role), ctx_(nullptr)
     if (role == Role::kClient)
     {
         SSL_CTX_set_verify(ctx_, SSL_VERIFY_PEER, nullptr);
-        SSL_CTX_set_default_verify_paths(ctx_);     // system CA store
+        SSL_CTX_set_default_verify_paths(ctx_);  // system CA store
     }
     else
     {
@@ -113,16 +113,16 @@ bool TlsContext::reload()
 {
     if (cert_path_.empty() || key_path_.empty())
     {
-        return false;           // Nothing was loaded to reload.
+        return false;   // nothing was loaded to reload.
     }
     // Validate the new material into the live SSL_CTX. OpenSSL replaces the
     // current certificate/key on success; on failure the previous ones remain,
     // so a mid-rotation partially-written file cannot break the running server.
     // (Both files are validated together via check_private_key before we
-    // consider the reload successfull.)
+    // consider the reload successful.)
     if (SSL_CTX_use_certificate_chain_file(ctx_, cert_path_.c_str()) != 1)
     {
-        opensslError("reload certificate");     // Clear the error queue
+        opensslError("reload certificate");   // clear the error queue
         return false;
     }
     if (SSL_CTX_use_PrivateKey_file(ctx_, key_path_.c_str(),
@@ -175,7 +175,7 @@ std::string toLowerAscii(std::string s)
     }
     return s;
 }
-} // namespace
+}   // namespace
 
 void TlsContext::addSniContext(const std::string& hostname,
                                TlsContextPtr ctx)
@@ -223,7 +223,7 @@ TlsContext* TlsContext::findSniContext(const std::string& hostname) const{
         auto w = sni_contexts_.find(wildcard);
         if (w != sni_contexts_.end()) return w->second.get();
     }
-    return nullptr;     // Caller keeps the default context
+    return nullptr;  // caller keeps the default context
 }
 
 size_t TlsContext::sniCount() const { return sni_contexts_.size(); }
@@ -249,6 +249,7 @@ int TlsContext::sniCallback(struct ssl_st* ssl, int* /*alert*/, void* arg)
 
     TlsContext* selected = self->findSniContext(servername);
     if (selected == nullptr)
+    {
         // Unknown name: fall back to the default certificate rather than
         // aborting. Failing the handshake here would make an unrecognized Host
         // a hard connection error; nginx's default_server behaves this way too.
@@ -259,10 +260,10 @@ int TlsContext::sniCallback(struct ssl_st* ssl, int* /*alert*/, void* arg)
     // key, and verification settings all come from it.
     if (SSL_set_SSL_CTX(ssl, selected->nativeHandle()) == nullptr)
     {
-        return SSL_TLSEXT_ERR_OK;           // Keep the default on failure
+        return SSL_TLSEXT_ERR_OK;   // keep the default on failure
     }
     // SSL_set_SSL_CTX does NOT copy these, so re-apply them from the chosen
-    // context; otherwise a per-hsot verification setting would be ignored.
+    // context; otherwise a per-host verification setting would be ignored.
     SSL_set_options(ssl, SSL_CTX_get_options(selected->nativeHandle()));
     SSL_set_verify(ssl, SSL_CTX_get_verify_mode(selected->nativeHandle()),
                    SSL_CTX_get_verify_callback(selected->nativeHandle()));
@@ -270,4 +271,4 @@ int TlsContext::sniCallback(struct ssl_st* ssl, int* /*alert*/, void* arg)
     return SSL_TLSEXT_ERR_OK;
 }
 
-} // namespace tls
+}   // namespace tls

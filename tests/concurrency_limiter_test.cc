@@ -20,7 +20,7 @@ TEST(ConcurrencyLimiterTest, AdmitsUpToMax)
     EXPECT_TRUE(p3);
     EXPECT_EQ(limiter.inFlight(), 3u);
 
-    auto p4 = limiter.tryAcquire();         // Over capacity
+    auto p4 = limiter.tryAcquire();  // over capacity
     EXPECT_FALSE(p4);
     EXPECT_EQ(limiter.inFlight(), 3u);
     EXPECT_TRUE(limiter.isOverloaded());
@@ -32,11 +32,11 @@ TEST(ConcurrencyLimiterTest, ReleaseFreeSlot)
     {
         auto p = limiter.tryAcquire();
         EXPECT_TRUE(p);
-        EXPECT_FALSE(limiter.tryAcquire());     // Full
-    }   // p released here
+        EXPECT_FALSE(limiter.tryAcquire());  // full
+    }  // p released here
 
     EXPECT_EQ(limiter.inFlight(), 0u);
-    auto p2 = limiter.tryAcquire();     // Slot available again.
+    auto p2 = limiter.tryAcquire();  // Slot available again.
     EXPECT_TRUE(p2);
 }
 
@@ -47,7 +47,7 @@ TEST(ConcurrencyLimiterTest, ExplicitRelease)
     EXPECT_TRUE(p);
     p.release();
     EXPECT_EQ(limiter.inFlight(), 0u);
-    p.release();                        // idempotent
+    p.release();  // idempotent
     EXPECT_EQ(limiter.inFlight(), 0u);
 }
 
@@ -57,14 +57,14 @@ TEST(ConcurrencyLimiterTest, MoveTransfersOwnership)
     auto p = limiter.tryAcquire();
     EXPECT_EQ(limiter.inFlight(), 1u);
     auto p2 = std::move(p);
-    EXPECT_FALSE(p);            // moved-from is empty
+    EXPECT_FALSE(p);    // moved-from is empty
     EXPECT_TRUE(p2);
-    EXPECT_EQ(limiter.inFlight(), 1u);          // Still one slot held
+    EXPECT_EQ(limiter.inFlight(), 1u);   // Still one slot held
 }
 
 TEST(ConcurrencyLimiterTest, UnlimitedAlwaysAdmits)
 {
-    ConcurrencyLimiter limiter(0);          // 0 = unlimited
+    ConcurrencyLimiter limiter(0);   // 0 = unlimited
     std::vector<ConcurrencyLimiter::Permit> permits;
     for (int i = 0; i < 1000, ++i)
     {
@@ -73,7 +73,7 @@ TEST(ConcurrencyLimiterTest, UnlimitedAlwaysAdmits)
         permits.push_back(std::move(p));
     }
     EXPECT_EQ(limiter.inFlight(), 1000u);
-    EXPECT_FALSE(limiter.isOverloaded());           // Never overloaded when unlimited
+    EXPECT_FALSE(limiter.isOverloaded());    // never overloaded when unlimited
 }
 
 TEST(ConcurrencyLimiterTest, ConcurrentNeverExceedsMax)
@@ -103,8 +103,8 @@ TEST(ConcurrencyLimiterTest, ConcurrentNeverExceedsMax)
     for (int t = 0; t < 8; ++t) threads.emplace_back(worker);
     for (auto& t : threads) t.join();
 
-    EXPECT_LE(peak.load(), kMax);           // Invariant: never exceed max concurrency
+    EXPECT_LE(peak.load(), kMax);   // invariant: never exceed max concurrency
     EXPECT_GT(admitted.load(), 0);
 
-    EXPECT_EQ(limiter.inFlight(), 0u);      // All released
+    EXPECT_EQ(limiter.inFlight(), 0u);    // all released
 }

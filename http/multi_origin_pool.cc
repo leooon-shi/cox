@@ -68,4 +68,4 @@ void MultiOriginPool::request(const std::string& host, uint16_t port,
     it->second->request(req, std::move(cb));
 }
 
-} // namespace http
+}   // namespace http

@@ -23,7 +23,7 @@ using TlsContextPtr = std::shared_ptr<TlsContext>;
 // per-connection SSL objects are created. One context is typically shared by
 // all connections of a server (or client).
 //
-// TLS 1.2+ is requried; TLS 1.3 is preferred and negotiated automatically.
+// TLS 1.2+ is required; TLS 1.3 is preferred and negotiated automatically.
 class TlsContext
 {
 public:
@@ -43,7 +43,7 @@ public:
     // last passed to useCertificateAndKey()/loadCaFile(). Used for hot cert
     // rotation (e.g. Kubernetes Secret updates): new connections created after
     // reload() use the fresh material; existing connections are unaffected.
-    // Returns true on successs; on failure the previous material remains in
+    // Returns true on success; on failure the previous material remains in
     // effect (atomic-ish: a bad new cert does not break the running context).
     bool reload();
 
@@ -103,4 +103,4 @@ private:
     std::map<std::string, TlsContextPtr> sni_contexts_;
 };
 
-} // namespace tls
+}   // namespace tls

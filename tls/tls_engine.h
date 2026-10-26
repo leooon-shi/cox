@@ -15,14 +15,14 @@ namespace tls
 {
 // TlsEngine drives a single TLS connection's OpenSSL state machine using memory
 // BIOs, with NO knowledge of sockets or event loops. This isolates the tricky
-// TLS logic so it can be uint-tested by piping the two engines' network output
+// TLS logic so it can be unit-tested by piping the two engines' network output
 // into each other.
 //
 // Data flows:
 //   network (encrypted) --feedEncrypted()--> rbio --> SSL --> readPlaintext()
-//   writePlaintext() --> SSL ---> wbio -- takeEncrypted()--> network (encrypted)
+//   writePlaintext() --> SSL --> wbio -- takeEncrypted()--> network (encrypted)
 //
-// Typical driving loop (per side)
+// Typical driving loop (per side):
 //   1. call handshake() until handshakeDone(); after each call, flush
 //      takeEncrypted() to the network and feed any received bytes with
 //      feedEncrypted().
@@ -62,7 +62,7 @@ public:
     // On kOk, `consumed` is set to how many bytes were accepted.
     Status writePlaintext(const char* data, size_t len, size_t* consumed);
 
-    // Decrypt available applicaiton plaintext into `out` (appended). Returns
+    // Decrypt available application plaintext into `out` (appended). Returns
     // kOk (data may be 0 bytes), kWantIo (need more network bytes), kClosed
     // (peer sent close_notify), or kError.
     Status readPlaintext(std::string& out);
@@ -70,14 +70,14 @@ public:
     // Initiate a clean TLS shutdown (sends close_notify). Flush takeEncrypted()
     // afterwards.
     void shutdown();
-    
-    // Negotiated protocol/cipher, for logging (valid after hanshake)
+
+    // Negotiated protocol/cipher, for logging (valid after handshake)
     std::string protocolVersion() const;
     std::string cipherName() const;
-    
+
     // Server role: the hostname the client requested via SNI, or "" if none.
     std::string requestedServerName() const;
-    
+
     // Underlying OpenSSL SSL object. Exposed for features that need direct
     // access (e.g. requesting/reading an OCSP staple); prefer the wrappers.
     SSL* nativeHandle() const { return ssl_; }
@@ -87,12 +87,12 @@ private:
     Status mapError(int ret);
     void init(const TlsContext& ctx, Role role,
               const std::string& server_hostname);
-    
+
     SSL* ssl_;
-    BIO* rbio_; // network -> SSL (we write inbound encrypted bytes here)
-    BIO* wbio_; // SSL -> network ( we read outbound encrypted bytes here)
+    BIO* rbio_;  // network -> SSL (we write inbound encrypted bytes here)
+    BIO* wbio_;  // SSL -> network ( we read outbound encrypted bytes here)
     // NOTE: the role is applied at construction (accept vs connect state, SNI)
     // and never needed afterwards, so it is deliberately NOT stored.
     std::string last_error_;
 };
-} // namespace tls
+}   // namespace tls

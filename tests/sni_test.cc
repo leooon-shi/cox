@@ -31,18 +31,18 @@ struct NamedCert
 
     explicit NamedCert(const std::string& common_name, const std::string& tag)
         : cn(common_name) {
-            cert_path = "/tmp/cox_sni" + tag + "_cert.pem";
-            key_path = "/tmp/cox_sni_" + tag + "_key.pem";
-            // subjectAllName is required for modern hostname verification; CN alone
-            // is no longer honored by OpenSSL's X509_check_host.
-            std::string cmd=
-                "openssl req -x509 -newkey rsa:2048 -nodes -keyout " + key_path +
-                " -out" + cert_path + " -days 1 -subj '/CN=" + common_name +
-                "' -addext 'subjectAltName=DNS:" + common_name + "'"
-                " >/dev/null 2>&1";
-            // Status intentionally unchecked here: valid() below verifies the
-            // files actually appeared, which is the condition that matters.
-            (void)test_util::runCmd(cmd);
+          cert_path = "/tmp/cox_sni" + tag + "_cert.pem";
+          key_path = "/tmp/cox_sni_" + tag + "_key.pem";
+          // subjectAllName is required for modern hostname verification; CN alone
+          // is no longer honored by OpenSSL's X509_check_host.
+          std::string cmd=
+              "openssl req -x509 -newkey rsa:2048 -nodes -keyout " + key_path +
+              " -out" + cert_path + " -days 1 -subj '/CN=" + common_name +
+              "' -addext 'subjectAltName=DNS:" + common_name + "'"
+              " >/dev/null 2>&1";
+          // Status intentionally unchecked here: valid() below verifies the
+          // files actually appeared, which is the condition that matters.
+          (void)test_util::runCmd(cmd);
         }
     ~NamedCert()
     {
@@ -84,10 +84,10 @@ bool driveHandshake(TlsEngine& client, TlsEngine& server)
 
     return client.handshakeDone() && server.handshakeDone();
 }
-} // namespace
+}   // namespace
 
 
-// ----- registry / matching (no handshake) ----
+// ---- registry / matching (no handshake) ----
 
 TEST(SniTest, ExactHostnameLookup)
 {
@@ -167,8 +167,8 @@ TEST(SniTest, ServerSeesRequestedHostname)
 {
     NamedCert base("default.test", "h1");
     ASSERT_TRUE(base.valid());
-
     auto server_ctx = makeServerCtx(base);
+
     auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
     // Not verifying the cert here; this test is only about SNI transmission.
     client_ctx->setVerifyPeer(false);
@@ -189,7 +189,7 @@ TEST(SniTest, NoSniWhenHostnameOmitted)
     auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
     client_ctx->setVerifyPeer(false);
 
-    TlsEngine client(*client_ctx, Role::kClient);  // No hostname
+    TlsEngine client(*client_ctx, Role::kClient);  // no hostname
     TlsEngine server(*server_ctx, Role::kServer);
     ASSERT_TRUE(driveHandshake(client, server));
 
@@ -239,7 +239,7 @@ TEST(SniTest, SelectsPerHostCertificateAndVerifies)
         EXPECT_EQ(server.requestedServerName(), "alpha.example.com");
     }
 
-    // Same server, different name -> beta's cert, verified agianst beta only.
+    // Same server, different name -> beta's cert, verified against beta only.
     {
         auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
         client_ctx->loadCaFile(b_cert.cert_path);
@@ -290,7 +290,7 @@ TEST(SniTest, UnknownHostnameFallsBackToDefaultCert)
     // the DEFAULT cert and asking for an unknown host.
     auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
     client_ctx->loadCaFile(def_cert.cert_path);
-    client_ctx->setVerifyPeer(false);          // Name don't match default cert's CN
+    client_ctx->setVerifyPeer(false);   // name don't match default cert's CN
 
     TlsEngine client(*client_ctx, Role::kClient, "unknown.example.org");
     TlsEngine server(*server_ctx, Role::kServer);
@@ -299,7 +299,7 @@ TEST(SniTest, UnknownHostnameFallsBackToDefaultCert)
     EXPECT_EQ(server.requestedServerName(), "unknown.example.org");
 }
 
-TEST(SniTest, WildcardContextServesSubdomai)
+TEST(SniTest, WildcardContextServesSubdomain)
 {
     NamedCert def_cert("default.test", "wc_def");
     NamedCert wild_cert("*.example.com", "wc_wild");
@@ -311,7 +311,7 @@ TEST(SniTest, WildcardContextServesSubdomai)
     auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
     client_ctx->loadCaFile(wild_cert.cert_path);
     client_ctx->setVerifyPeer(true);
-    
+
     // The wildcard cert covers this subdomain, and the wildcard registry entry
     // selects it.
     TlsEngine client(*client_ctx, Role::kClient, "api.example.com");

@@ -63,7 +63,7 @@ private:
         std::string path;
         Callback callback;
     };
-    std::unordered_map<int, Watch> watches_;            // wd -> watch
-    std::unordered_map<std::string, int> by_path_;      // path -> wd
+    std::unordered_map<int, Watch> watches_;      // wd -> watch
+    std::unordered_map<std::string, int> by_path_;  // path -> wd
 };
-} // namespace fswatch
+}   // namespace fswatch

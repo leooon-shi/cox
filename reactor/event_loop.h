@@ -45,7 +45,7 @@ public:
     // Queue a task to run on a LATER loop iteration, never inline -- even when
     // called from the loop thread. Use this (not runInLoop) to defer destorying
     // an object from inside its own callback: runInLoop executes immediately
-    // When already on the loop thread, which would free the object while its
+    // when already on the loop thread, which would free the object while its
     // caller is still using it. (A real use-after-free found this way; see
     // Connector::removeAndResetChannel.)
     void queueInLoop(Task && task);
@@ -57,7 +57,7 @@ public:
     TimerId runEvery(uint64_t interval_ms, Task task);
     void cancel(TimerId id);
 
-    inline bool isInLoopThread() const { return  current_thread::tid() == loop_thread_id_; }
+    inline bool isInLoopThread() const { return current_thread::tid() == loop_thread_id_; }
     void assertInLoopThread() const;
 
 private:
@@ -81,7 +81,7 @@ private:
     // queueInLoop()), while ~EventLoop() closes the fd on the loop thread. Writing
     // to a closed fd is not merely useless -- the number can be recycled by the
     // OS, so the write could land on an unrelated socket. wakeup_fd_ is
-    // therefore guarded by task_mutex_ (already token on the cross-thred path)
+    // therefore guarded by task_mutex_ (already token on the cross-thread path)
     // and set to -1 before being closed, so a concurrent wakeup() sees the
     // teardown and does nothing. Found by ThreadSanitizer.
     int wakeup_fd_{-1};
@@ -95,4 +95,4 @@ private:
     // Reused across loop iterations to avoid per-iteration heap allocation.
     std::vector<Channel*> active_channels_;
 };
-} // namespace reactor
+}   // namespace reactor

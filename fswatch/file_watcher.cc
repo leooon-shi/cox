@@ -24,12 +24,12 @@ logging::Logger& log()
 
 // Events that indicate a directory's contents changed in a way that matters for
 // config/secret reload (covers the K8s ..data atomic symlink swap).
-constexpr uint32_t kDirMask = IN_CREAE | IN_DELETE | IN_MOVED_TO |
-                                IN_MOVED_FROM | IN_MOVE_SELF | IN_MODIFY;
+constexpr uint32_t kDirMask = IN_CREATE | IN_DELETE | IN_MOVED_TO |
+                              IN_MOVED_FROM | IN_MOVE_SELF | IN_MODIFY;
 constexpr uint32_t kFileMask = IN_MODIFY | IN_MOVE_SELF | IN_DELETE_SELF |
-                                IN_ATTRIB;
+                               IN_ATTRIB;
 
-} // namespace
+}   // namespace
 
 FileWatcher::FileWatcher(reactor::EventLoop* loop): loop_(loop)
 {
@@ -114,7 +114,7 @@ void FileWatcher::handleRead()
         if (len <= 0)
         {
             if (len < 0 && errno == EINTR) continue;
-            break;      // EAGAIN: drained
+            break;  // EAGAIN: drained
         }
         for (char* p = buf; p < buf + len;)
         {

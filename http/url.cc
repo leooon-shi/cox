@@ -21,7 +21,7 @@ bool isUnreserved(unsigned char c)
 {
     return std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~';
 }
-} // namespace
+}   // namespace
 
 std::string urlDecode(const std::string& in, bool plus_as_space)
 {
@@ -34,13 +34,13 @@ std::string urlDecode(const std::string& in, bool plus_as_space)
         {
             int hi = hexValue(in[i + 1]);
             int lo = hexValue(in[i + 2]);
-            if ( hi >= 0 && lo >= 0)
+            if (hi >= 0 && lo >= 0)
             {
                 out.push_back(static_cast<char>((hi << 4) | lo));
                 i += 2;
                 continue;
             }
-            out.push_back(c);       // malformed escape: keep literally
+            out.push_back(c);  // malformed escape: keep literally
         }
         else if (c == '+' && plus_as_space)
         {
@@ -108,4 +108,4 @@ QueryParams parseQuery(const std::string& query)
     return params;
 }
 
-} // namespace http
+}   // namespace http

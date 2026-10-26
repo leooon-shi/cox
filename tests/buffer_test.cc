@@ -37,7 +37,7 @@ TEST(BufferTest, AppendAndRetrieve)
 TEST(BufferTest, GrowsWhenNeeded)
 {
     Buffer buf;
-    std::string big(2000, 'x');     // Exceeds kInitialSize ( 1024 )
+    std::string big(2000, 'x');  // exceeds kInitialSize (1024)
     buf.append(big);
     EXPECT_EQ(buf.readableBytes(), 2000u);
     EXPECT_EQ(buf.retrieveAllAsString(), big);
@@ -73,13 +73,13 @@ TEST(BufferTest, ReadFdReadsAllData)
     int fds[2];
     ASSERT_EQ(::pipe(fds), 0);
 
-    // Payload larger than kInitialSize so both the buffer's writable region and 
+    // Payload larger than kInitialSize so both the buffer's writable region and
     // the readv extrabuf path are exercised.
     std::string payload(100000, 'z');
 
     Buffer buf;
     // Non-blocking write end so writes don't deadlock when the pipe fills; we
-    // interleave writes and reads to drain the pipe
+    // interleave writes and reads to drain the pipe.
     ::fcntl(fds[1], F_SETFL, O_NONBLOCK);
 
     size_t written = 0;

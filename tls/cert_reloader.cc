@@ -28,11 +28,10 @@ long mtimeOf(const std::string& path)
     }
     return static_cast<long>(st.st_mtime);
 }
-} // namespce
+}   // namespce
 
 CertReloader::CertReloader(reactor::EventLoop* loop, TlsContextPtr ctx)
-    : loop_(loop),
-      ctx_(std::move(ctx)) {}
+    : loop_(loop), ctx_(std::move(ctx)) {}
 
 CertReloader::~CertReloader() = default;
 
@@ -118,4 +117,4 @@ void CertReloader::reloadNow()
     }
 }
 
-} // namespace tls
+}   // namespace tls

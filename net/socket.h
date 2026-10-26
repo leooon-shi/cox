@@ -6,11 +6,12 @@
 #include <cstdint>
 
 namespace net {
+
 class InetAddress;
 
 // Thin, stateless helpers over the POSIX socket API. These mirror the pragmatic
 // style of Redis/anet: small functions that do one syscall and report errors
-// via retrn codes / errno, leaving policy to the caller. Family (AF_NET vs
+// via return codes / errno, leaving policy to the caller. Family (AF_INET vs
 // AF_INET6) is passed explicitly so the layer is dual-stack.
 namespace sockets
 {
@@ -56,7 +57,7 @@ InetAddress getPeerAddr(int sockfd);
 // which can happen with a non-blocking connect to localhost.
 bool isSelfConnect(int sockfd);
 
-} // namespace sockets
+}   // namespace sockets
 
 // RAII owner of a socket fd. Move-only: an fd has unique ownership semantics.
 // Closes the fd on destruction unless it has been released.
@@ -108,4 +109,4 @@ private:
     int sockfd_;
 };
 
-} // namespace net
+}   // namespace net

@@ -31,7 +31,7 @@ std::string uniquePath(const char* tag)
     return std::string("/tmp/cox_uds_") + tag + "_" +
            std::to_string(::getpid()) + ".sock";
 }
-} // namespace
+}   // namespace
 
 TEST(UnixSocketTest, EchoOverUnixDomain)
 {
@@ -107,7 +107,7 @@ TEST(UnixSocketTest, EchoOverUnixDomain)
 TEST(UnixSocketTest, RetryUntilServerAvailable)
 {
     const std::string path = uniquePath("retry");
-    ::unlink(path.c_str());         // Ensure the path does not exist yet.
+    ::unlink(path.c_str());  // ensure the path does not exist yet.
 
     // Start the client first, pointing at a socket path with no server. The
     // initial connect fails with ENOENT; with retry enabled the Connector must
@@ -157,7 +157,7 @@ TEST(UnixSocketTest, RetryUntilServerAvailable)
         TcpServer server(&loop, addr, "uds-retry-srv");
         server.setMessageCallback(
             [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
-                conn->send(buf->retrieveAllAsstring());
+                conn->send(buf->retrieveAllAsString());
             });
         server.start();
         srv_started = true;

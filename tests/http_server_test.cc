@@ -70,7 +70,7 @@ std::string readAll(int fd, int ms)
     }
     return out;
 }
-} // namespace
+}   // namespace
 
 TEST(HttpServerTest, GetRequestResponse)
 {
@@ -120,7 +120,7 @@ TEST(HttpServerTest, KeepAliveTwoRequests)
         reactor::EventLoop loop;
         loop_ptr = &loop;
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "http");
-        server.setHttpHanddler([&](const HttpRequest&, HttpResponse* resp) {
+        server.setHttpHandler([&](const HttpRequest&, HttpResponse* resp) {
             request_count++;
             resp->setStatus(200);
             resp->setBody("ok");
@@ -135,7 +135,7 @@ TEST(HttpServerTest, KeepAliveTwoRequests)
 
     int client = connectClient(kPort);
     // First request (keep-alive default in 1.1).
-    std::string r1 = "GET /a HTTP/1.1\r\nHOST: x\r\n\r\n";
+    std::string r1 = "GET /a HTTP/1.1\r\nHost: x\r\n\r\n";
     ASSERT_TRUE(test_util::sendAll(client, r1));
     std::string resp1 = readAll(client, 1000);
     EXPECT_NE(resp1.find("200 OK"), std::string::npos);
@@ -163,10 +163,10 @@ TEST(HttpServerTest, PostEcho)
         reactor::EventLoop loop;
         loop_ptr = &loop;
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "http");
-        server.setHttpHanddler([](const HttpRequest&, HttpResponse* resp) {
+        server.setHttpHandler([](const HttpRequest&, HttpResponse* resp) {
             request_count++;
             resp->setStatus(200);
-            resp->setBody(req.body());          // echo the posted body
+            resp->setBody(req.body());   // echo the posted body
         });
         server.start();
         started = true;
@@ -178,7 +178,7 @@ TEST(HttpServerTest, PostEcho)
 
     int client = connectClient(kPort);
     std::string body = "the payload";
-    std::string req = "POST /submit HTTP/1.1\r\nHost: x\r\nContent-Length: "+
+    std::string req = "POST /submit HTTP/1.1\r\nHost: x\r\nContent-Length: " +
                       std::to_string(body.size()) + "\r\n\r\n" + body;
     ASSERT_TRUE(test_util::sendAll(client, req));
 

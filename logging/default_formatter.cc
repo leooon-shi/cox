@@ -41,4 +41,4 @@ std::unique_ptr<Formatter> Formatter::newJsonFormatter() {
     return std::make_unique<JsonFormatter>();
 }
 
-} // namespace logging
+}   // namespace logging

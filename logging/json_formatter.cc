@@ -14,11 +14,11 @@ void JsonFormatter::appendEscaped(std::string& out, const std::string& s)
         switch (c) {
             case '"':  out += "\\\""; break;
             case '\\': out += "\\\\"; break;
-            case '\n': out += "\\n"; break;
-            case '\r': out += "\\r"; break;
-            case '\t': out += "\\t"; break;
-            case '\b': out += "\\b"; break;
-            case '\f': out += "\\f"; break;
+            case '\n': out += "\\n";  break;
+            case '\r': out += "\\r";  break;
+            case '\t': out += "\\t";  break;
+            case '\b': out += "\\b";  break;
+            case '\f': out += "\\f";  break;
             default:
                 if (static_cast<unsigned char>(c) < 0x20) {
                     // Control character -> \u00XX
@@ -61,4 +61,4 @@ std::string JsonFormatter::format(const LogRecord& record) const
 
     return out;
 }
-} // namespace logging
+}   // namespace logging

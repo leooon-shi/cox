@@ -26,7 +26,7 @@ int openIdleFd()
 {
     return ::open("/dev/null", O_RDONLY | O_CLOEXEC);
 }
-} // namespace
+}   // namespace
 
 Acceptor::Acceptor(reactor::EventLoop* loop, const InetAddress& listen_addr,
                    bool reuse_port)
@@ -36,11 +36,11 @@ Acceptor::Acceptor(reactor::EventLoop* loop, const InetAddress& listen_addr,
       listening_(false),
       idle_fd_(openIdleFd())
 {
-    initNetRuntime();   // Ensure SIGPIPE is ignored before any socket I/O
+    initNetRuntime();  // ensure SIGPIPE is ignored before any socket I/O
     accept_socket_.setReuseAddr(true);
     accept_socket_.setReusePort(reuse_port);
     accept_socket_.bindAddress(listen_addr);
-    accept_channel_.setReadCallback([this]{ handleRead(); });
+    accept_channel_.setReadCallback([this] { handleRead(); });
 }
 
 Acceptor::~Acceptor()
@@ -91,7 +91,7 @@ void Acceptor::handleRead()
         // connfd < 0: inspect errno.
         if (errno == EAGAIN || errno == EWOULDBLOCK)
         {
-            break;          // No more pending connections
+            break;  // no more pending connections
         }
 
         if (errno == EINTR)
@@ -127,4 +127,4 @@ void Acceptor::handleRead()
     }
 }
 
-} // namespace net
+}   // namespace net

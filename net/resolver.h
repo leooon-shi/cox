@@ -16,6 +16,7 @@ class ThreadPool;
 }
 
 namespace net {
+
 // Asynchronous DNS resolver interface. resolve() looks up `host` and invokes
 // the callback (on the owning EventLoop's thread) with the resolved address or
 // an error. Implementations must never block the event loop.
@@ -55,5 +56,5 @@ private:
     uint32_t cache_ttl_s_{60};
 };
 
-} // namespace net
+}   // namespace net
 

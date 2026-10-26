@@ -32,7 +32,7 @@ endif()
 add_library(cow_net STATIC ${NET_SOURCES} ${NET_HEADERS})
 
 target_link_libraries(cow_net PUBLIC cow_reactor cow_buffer cow_logging
-                      cow_utilities cow_flowcontrol cow_concurrent)
+                       cow_utilities cow_flowcontrol cow_concurrent)
 
 if (COX_HAVE_CARES)
     target_compile_definitions(cow_net PUBLIC COX_HAVE_CARES)

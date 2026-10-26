@@ -1,5 +1,5 @@
 // Compile-and-run check for the snippets used in insights/features/http.md,
-// insights/features/dns-resoluton.md, and docs/user-guide.md sections 8-9.
+// insights/features/dns-resolution.md, and docs/user-guide.md sections 8-9.
 // Not a unit test of behavior -- it verifies the documented APIs exist with the
 // documented signatures and that the small claims in the docs hold.
 
@@ -71,7 +71,7 @@ TEST(DocSnippets, PlusIsSpaceInQueryButNotInPath)
     path_req.setPath("/tags/c++");
     http::HttpResponse resp;
     ASSERT_TRUE(router.route(path_req, &resp));
-    EXPECT_EQ(tag, "c++");                      // '+' preserved in a path.
+    EXPECT_EQ(tag, "c++");    // '+' preserved in a path.
 }
 
 // --- docs claim: router returns 404 for no path, 405 for wrong method ---
@@ -79,7 +79,7 @@ TEST(DocSnippets, Router404Vs405)
 {
     http::Router router;
     router.get("/users/{id}", [](const http::HttpRequest&,
-                                 const http::HttpParams& p,
+                                 const http::PathParams& p,
                                  http::HttpResponse* resp) {
         resp->setStatus(200);
         resp->setBody("user " + p.at("id"));
@@ -122,8 +122,8 @@ TEST(DocSnippets, DocumentedConstructionForms)
     router.get("/health", [](const http::HttpRequest&, const http::PathParams&,
                              http::HttpResponse* resp) {
         resp->setStatus(200);
-        resp->setContentType("appliclation/json");
-        resp->setBody(R"({"Status": "ok" })" );
+        resp->setContentType("application/json");
+        resp->setBody(R"({"Status":"ok"})");
     });
 
     server.setHttpHandler([&router](const http::HttpRequest& req,
@@ -143,10 +143,10 @@ TEST(DocSnippets, DocumentedConstructionForms)
     http::ConnectionPool pool(&loop, net::InetAddress("127.0.0.1", 18150));
     pool.setMaxConnections(8);
     pool.setIdleTimeout(60);
-    EXPECT_TRUE(pool.resolved());   // numberic origin: resolved immediately
+    EXPECT_TRUE(pool.resolved());   // numeric origin: resolved immediately
 
     http::ConnectionPool named(&loop, "localhost", 18150, &resolver);
-    EXPECT_FALSE(named.resolved());         // hostname: not resolved until first request.
+    EXPECT_FALSE(named.resolved());   // hostname: not resolved until first request.
 
     http::MultiOriginPool multi(&loop);
     multi.setResolver(&resolver);
@@ -154,7 +154,7 @@ TEST(DocSnippets, DocumentedConstructionForms)
     EXPECT_EQ(multi.originCount(), 0u);
 
     dns_pool.stop();
-    loop.quit();            // ~EventLoop asserts the loop was quit, even if never run.
+    loop.quit();   // ~EventLoop asserts the loop was quit, even if never run.
 }
 
 // --- docs (logging.md): formmaters and structured fields are wired ---
@@ -165,6 +165,7 @@ TEST(DocSnippets, LoggingFormattersAndFields)
     log.info("message");
     log.info("request done",
              {{"method", "GET"}, {"path", "/x"}, {"status", "200"}});
+
     logging::Logger jlog(logging::LogLevel::Info,
                          logging::Formatter::newJsonFormatter());
     jlog.info("request done", {{"status", "200"}});
@@ -173,11 +174,11 @@ TEST(DocSnippets, LoggingFormattersAndFields)
 }
 
 // ---- docs (user-guide 16, logging.md): sinks and async sink ---
-TEST(DocSnippets, LoggingSinkAndAsync)
+TEST(DocSnippets, LoggingSinksAndAsync)
 {
     // JSON formatter + rotating file sink, exactly as documented.
     auto rot = logging::Sink::newRotatingFileSink("/tmp/cox_doc_snip.log",
-                                                  60 << 20, 5);
+                                                 60 << 20, 5);
     loggign::Logger jlog(logging::LogLevel::Info, 
                          logging::Formatter::newJsonFormatter(),
                          std::shared_ptr<logging::Sink>(std::move(rot)));
@@ -213,11 +214,12 @@ TEST(DocSnippets, TlsSniRegistration)
 {
     const std::string cert = "/tmp/cox_doc_sni_cert.pem";
     const std::string key = "/tmp/cox_doc_sni_key.pem";
-    ASSERT_EQ(std::system("openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
-                          key + " -out " + cert +
-                          " -days 1 -subj '/CN=localhost' -addext "
-                          "'subjectAllName=DNS:localhost' >/dev/null 2>&1").c_str(),
-            0);
+    ASSERT_EQ(std::system(("openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
+                           key + " -out " + cert +
+                           " -days 1 -subj '/CN=localhost' -addext "
+                           "'subjectAllName=DNS:localhost' >/dev/null 2>&1")
+                              .c_str()),
+              0);
     auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kServer);
     ctx->useCertificateAndKey(cert, key);
 
@@ -240,27 +242,28 @@ TEST(DocSnippets, TlsSniRegistration)
 TEST(docSnippets, OcspStaplerApi)
 {
     tls::OcspStapler stapler("/tmp/cox_no_cert.pem", "/tmp/cox_no_issuer.pem");
-    stapler.setResponderUrl("http://127.0.0.1:1");          // documented override
+    stapler.setResponderUrl("http://127.0.0.1:1");  // documented override
 
     EXPECT_EQ(stapler.responderUrl(), "http://127.0.0.1:1");
     EXPECT_FALSE(stapler.hasResponse());
     // Documented sentinel: 0 when nothing is cached.
-    EXPECT_EQ(stapler.secondUtilExpiry(), 0);
+    EXPECT_EQ(stapler.secondsUtilExpiry(), 0);
     // Unreachable responder must fail cleanly, not throw.
     EXPECT_FALSE(stapler.refresh());
     EXPECT_FALSE(stapler.loadFromFile("/tmp/cox_no_such_resp.der"));
 
-    // attachTo() on a context must be safe event with nothing cached
+    // attachTo() on a context must be safe even with nothing cached
     // (fail-open: handshakes then simply carry no staple).
     const std::string cert = "/tmp/cox_doc_ocsp_cert.pem";
     const std::string key = "/tmp/cox_doc_ocsp_key.pem";
     ASSERT_EQ(std::system(("openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
-                           key + " -out" + cert +
-                           " -days 1 -subj '/CN=localhost' >/dev/null 2>&1").c_str()),
-             0);
+                           key + " -out " + cert +
+                           " -days 1 -subj '/CN=localhost' >/dev/null 2>&1")
+                              .c_str()),
+              0);
     auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kServer);
-    ctx-useCertificateAndKey(cert, key);
-    stapler.attachTo(*ctx);         // Must not throw
+    ctx->useCertificateAndKey(cert, key);
+    stapler.attachTo(*ctx);   // must not throw
 
     std::remove(cert.c_str());
     std::remove(key.c_str());
@@ -274,13 +277,13 @@ TEST(DocSnippets, OcspRefreshTimerPattern)
     pool.start(1);
 
     tls::OcspStapler stapler("/tmp/cox_no_cert.pem", "/tmp/cox_no_issuer.pem");
-    stapler.setResponderUrl("http://127.0.0.1:1");      // unreachable on purpose
+    stapler.setResponderUrl("http://127.0.0.1:1");  // unreachable on purpose
 
     // Exactly the shape documented in the guide: check expiry on a timer and do
     // the BLOCKING refresh on a worker thread, never on the loop thread.
     bool timer_ran = false;
     loop.runAfter(1, [&] {
-        int64_t left = stapler.secondUntilExpiry();     // -1 = no expiry hint
+        int64_t left = stapler.secondsUntilExpiry();   // -1 = no expiry hint
         if (left >= 0 && left < 7200)
         {
             pool.run([&stapler] { stapler.refresh(); });

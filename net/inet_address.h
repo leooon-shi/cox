@@ -25,8 +25,8 @@ public:
     // Construct from a port. Binds to the wildcard address (0.0.0.0 for IPv4,
     // :: for IPv6) by default, or to loopback (127.0.0.1 / ::1) when
     // loopback only is true. Set ipv6=true to create an IPv6 address.
-    explicit InetAddress(uint16_t port=0, bool loopback_only = false,
-                        bool ipv6 = false);
+    explicit InetAddress(uint16_t port = 0, bool loopback_only = false,
+                         bool ipv6 = false);
     // Construct from a numeric IP string and port (IPv6 when ipv6=true).
     InetAddress(const std::string& ip, uint16_t port, bool ipv6 = false);
 
@@ -53,9 +53,9 @@ public:
     // Numeric IP without port (empty for Unix addresses).
     std::string toIp() const;
     // Human-readable address:
-    //     IPv4  -> "127.0.0.1:8080"
-    //     IPv6  -> "[::1]:8080"
-    //     Unix  -> "unix:/path/to/socket"
+    //   IPv4  -> "127.0.0.1:8080"
+    //   IPv6  -> "[::1]:8080"
+    //   Unix  -> "unix:/path/to/socket"
     std::string toIpPort() const;
     // Host-byte-order port (0 for Unix addresses).
     uint16_t port() const;
@@ -68,16 +68,16 @@ public:
     socklen_t getSockLen() const;
 
     void setSockAddrInet6(const struct sockaddr_in6& addr6) { addr6_ = addr6; }
-    // Copy a raw address of the given length into this object (used by accept / 
+    // Copy a raw address of the given length into this object (used by accept /
     // getpeername / getsockname which fill a sockaddr_storage).
     void setSockAddrStorage(const struct sockaddr_storage& ss, socklen_t len);
 private:
     union {
-        sa_family_t storage_family_;    // aliases the family field of all members
+        sa_family_t storage_family_;   // aliases the family field of all members
         struct sockaddr_in addr_;
         struct sockaddr_in6 addr6_;
         struct sockaddr_un addr_un_;
         struct sockaddr_storage storage_;
     };
 };
-} // namespace net
+}   // namespace net

@@ -19,15 +19,15 @@ class FileWatcher;
 namespace tls
 {
 // CertReloader keeps a TlsContext's certificate material fresh as it rotates on
-// disk (e.g. Kubernetes Secret updates, cert-manageer, SPIFFE). It triggers
+// disk (e.g. Kubernetes Secret updates, cert-manager, SPIFFE). It triggers
 // TlsContext::reload() when the mounted cert files chagne, so new connections
 // pick up the new certificate without a process restart. Existing connections
 // keep their negotiated session.
 //
 // Two trigger modes:
 //   - Watch (inotify): reacts immediately, and correctly handles the k8s
-//     atomic-symblink-swap by watching the mount DIRECTORY.
-//   - Poll (timer): checks file modification times every interval; simper,
+//     atomic-symlink-swap by watching the mount DIRECTORY.
+//   - Poll (timer): checks file modification times every interval; simpler,
 //     no inotify, good when a small reload latency is acceptable.
 //
 // Must be created and used on its EventLoop's thread.
@@ -37,7 +37,7 @@ public:
     // TlsContext::reload(). Optional; useful for logging/metrics.
     using ReloadCallback = std::function<void(bool ok)>;
     
-    // dir_to_watch: the directory containing the cert files (for k8s, the
+    // dir_to_watch: the directory containing the cert files (for K8s, the
     // Secret mount dir). Watching the directory catches the atomic swap.
     CertReloader(reactor::EventLoop* loop, TlsContextPtr ctx);
     ~CertReloader();
@@ -59,7 +59,7 @@ public:
     void reloadNow();
 
 private:
-    bool filesChanged();        // For poll mode: compare mtimes
+    bool filesChanged();  // for poll mode: compare mtimes
 
     reactor::EventLoop* loop_;
     TlsContextPtr ctx_;
@@ -72,4 +72,4 @@ private:
     bool polling_{false};
 };
 
-} // namespace tls
+}   // namespace tls

@@ -7,6 +7,6 @@ set(CONCURRENT_HEADERS
 
 add_library(cow_concurrent STATIC ${CONCURRENT_SOURCES} ${CONCURRENT_HEADERS})
 
-target_link_directories(cow_concurrent PUBLIC pthread)
+target_link_libraries(cow_concurrent PUBLIC pthread)
 
 target_include_directories(cow_concurrent PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

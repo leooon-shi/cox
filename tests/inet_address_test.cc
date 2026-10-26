@@ -19,7 +19,7 @@ TEST(InetAddressTest, Ipv4FromString)
 
 TEST(InetAddressTest, Ipv4Wildcard)
 {
-    InetAddress addr(9000);         // Any address, IPv4
+    InetAddress addr(9000);   // any address, IPv4
     EXPECT_FALSE(addr.isIpv6());
     EXPECT_EQ(addr.toIp(), "0.0.0.0");
     EXPECT_EQ(addr.port(), 9000);
@@ -53,7 +53,7 @@ TEST(InetAddressTest, Ipv6Wildcard)
 
 TEST(InetAddressTest, Ipv6Lookback)
 {
-    InetAddress addr(1234, /*lookback_only=*/true, /*ipv6=*/true);
+    InetAddress addr(1234, /*loopback_only=*/true, /*ipv6=*/true);
     EXPECT_TRUE(addr.isIpv6());
     EXPECT_EQ(addr.toIp(), "::1");
 }
@@ -96,9 +96,9 @@ TEST(InetAddressTest, UnixDomainBasic)
     EXPECT_EQ(addr.toIp(), "");
 }
 
-TEST(InetAddressTest, UnixDomainPathTooLongThrow)
+TEST(InetAddressTest, UnixDomainPathTooLongThrows)
 {
-    std::string long_path(200, 'a');            // Exceeds sun_path (108 on Linux)
+    std::string long_path(200, 'a');  // exceeds sun_path (108 on Linux)
     EXPECT_THROW(InetAddress::unixDomain(long_path), std::invalid_argument);
 }
 

@@ -73,7 +73,7 @@ private:
     Method method_{Method::kInvalid};
     std::string path_;
     std::string query_;
-    std::string version_{ "HTTP/1.1"};
+    std::string version_{"HTTP/1.1"};
     std::map<std::string, std::string> headers_;
     std::string body_;
 
@@ -82,4 +82,4 @@ private:
     mutable QueryParams query_params_;
     mutable bool query_parsed_{false};
 };
-} // namespace http
+}   // namespace http

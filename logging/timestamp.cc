@@ -31,7 +31,7 @@ std::string Timestamp::toString() const {
     ::gmtime_r(&seconds, &tm);
     // Microsecond (us) is one-millionth of a second (10^-6). Cast the fraction
     // explicitly: it is unsigned, so print it with an unsigned specifier.
-    auto micros = 
+    auto micros =
         static_cast<unsigned long>(microseconds_ % MicroSecondsPerSecond);
     snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d %02d:%02d:%02d.%06lu",
              tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
@@ -39,4 +39,5 @@ std::string Timestamp::toString() const {
 
     return std::string(buffer);
 }
+
 } // namespace logging

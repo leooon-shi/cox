@@ -31,7 +31,7 @@ using concurrent::ThreadPool;
 namespace
 {
 // Describe the build/runtime environment so a results table is interpretable on
-// its own -- benchmark numbers are machine-, compiler- and build dependent, and
+// its own -- benchmark numbers are machine-, compiler- and build-dependent, and
 // a table with no prevenance is a table you cannot trust or compare against.
 std::string compilerId(){
 #if defined(__clang__)
@@ -63,11 +63,11 @@ void printEnv()
     std::cout << "compiler:    " << compilerId() << "\n";
     std::cout << "build:       " << buildType() << "\n";
     std::cout << "C++ std:     " << __cplusplus << "\n";
-    std::cout << "hw threads:  " 
+    std::cout << "hw threads:  "
               << (hw ? std::to_string(hw) : std::string("unknown")) << "\n";
     if (buildType().rfind("Debug", 0) == 0)
     {
-        std::cout << "WARNING:       Debug build (-O0) -- numbers are not "
+        std::cout << "WARNING:     Debug build (-O0) -- numbers are not "
                      "representative; use a Release build.\n";
     }
     std::cout << "-------------------\n\n";
@@ -111,13 +111,13 @@ double runOnce(int num_threads, size_t batch_size, int num_tasks,
         producers.emplace_back(producer, per_producer + (p < remainder ? 1 : 0));
     }
     for (auto& t : producers) t.join();
-    pool.stop();  // Drains all queued tasks before joining
+    pool.stop();  // drains all queued tasks before joining
     auto t1 = steady_clock::now();
 
     if (counter.load() != num_tasks)
     {
         std::cerr << "ERROR: ran " << counter.load() << " of " << num_tasks
-                    << " tasks\n";
+                  << " tasks\n";
         std::exit(1);
     }
 
@@ -136,11 +136,11 @@ int main(int argc, char** argv)
     std::cout << "=== Cox thread pool benchmark ===\n";
     printEnv();
     std::cout << "worker threads: " << threads << "\n";
-    std::cout <<"producers:       " << producers << "\n";
-    std::cout <<"tasks:           " << num_tasks
+    std::cout << "producers:       " << producers << "\n";
+    std::cout << "tasks:           " << num_tasks
               << " (each: one relaxed atomic increment)\n\n";
-    std::cout <<"batch    elapsed(s)   tasks/s        speedup\n";
-    std::cout <<"----     ----------   -------        -------\n";
+    std::cout << "batch    elapsed(s)   tasks/s        speedup\n";
+    std::cout << "----     ----------   -------        -------\n";
 
     const std::vector<size_t> batch_sizes = {1, 2, 4, 8, 16, 32, 64, 128};
     double baseline_s = 0.0;  // batch-1 is the one-lock-per-task reference
@@ -150,12 +150,12 @@ int main(int argc, char** argv)
         if (batch == 1) baseline_s = s;
         double tasks_per_s = static_cast<double>(num_tasks) / s;
         double speedup = baseline_s > 0.0 ? baseline_s / s : 1.0;
-        std::printf("%5zu   %10.4f    %12.0f  %6.2fx\n", batch, s, tasks_per_s,
+        std::printf("%5zu   %10.4f   %12.0f  %6.2fx\n", batch, s, tasks_per_s,
                     speedup);
     }
 
     std::cout << "\nNote: batch=1 is one dequeue lock per task (naive pool); "
-                "higher batch sizes\namortize the dequeue lock across many "
-                "tasks. Speedup is relative to batch=1.\n";
+                 "higher batch sizes\namortize the dequeue lock across many "
+                 "tasks. Speedup is relative to batch=1.\n";
     return 0;
 }

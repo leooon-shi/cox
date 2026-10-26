@@ -22,15 +22,15 @@ uint32_t toEpollEvents(int events) {
 }
 
 // Translate epoll event flags back into the library's IOEvent bitmask.
-int toIOEvents(uint32_t events) {
+int toIOEvents(uint32_t ep) {
     int events = IO_NONE;
-    if (ep & (EPOLLERR | EPOLLHUP)) events |= IO_ERROR;
-    if (ep & (EPOLLIN | EPOLLPRI))  events |= IO_READ;
-    if (ep & EPOLLOUT)              events |= IO_WRITE;
+    if (ep & (EPOLLERR | EPOLLHUP))     events |= IO_ERROR;
+    if (ep & (EPOLLIN | EPOLLPRI))      events |= IO_READ;
+    if (ep & EPOLLOUT)                  events |= IO_WRITE;
     return events;
 }
 
-} // namespace
+}   // namespace
 
 EPollPoller::EPollPoller() {
     epollFd_ = ::epoll_create1(EPOLL_CLOEXEC);
@@ -94,6 +94,6 @@ void EPollPoller::removeChannel(Channel* channel) {
     }
 }
 
-} // namespace reactor
+}   // namespace reactor
 
 #endif  // __linux__

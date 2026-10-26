@@ -11,10 +11,10 @@
 
 namespace reactor {
 std::unique_ptr<Poller> PollerFactory::create() {
- #if defined(__linux__)
+#if defined(__linux__)
     return std::make_unique<EPollPoller>();
 #elif defined(__APPLE__) || defined(__FreeBSD__)
     return std::make_unique<KQueuePoller>();
 #endif
 }
-} // namespace reactor
+}   // namespace reactor

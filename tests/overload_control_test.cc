@@ -43,7 +43,7 @@ int connectClient(uint16_t port)
     waitWritable(fd, 1000);
     return fd;
 }
-} // namespace
+}   // namespace
 
 // A burst of connections beyond the accept-rate budget is shed, and the
 // overload callback fires for each shed connection.
@@ -60,7 +60,7 @@ TEST(OverloadControlTest, AcceptRateLimitShedsAndNotifies)
         loop_ptr = &loop;
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "ol-rate");
-        // Very low budget: 2 tokens, ~0 refill  during the test window.
+        // Very low budget: 2 tokens, ~0 refill during the test window.
         server.setAcceptRateLimit(/*qps=*/1, /*burst=*/2);
         server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
             if (conn->connected()) accepted++;
@@ -121,10 +121,10 @@ TEST(OverloadControlTest, IngressBackpressurePausesAndResumes)
             }
         });
         server.setMessageCallback(
-            [&](const TcpConnectionPtr& conn, buffer::Buffer* buf){
+            [&](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
                 bytes_seen += static_cast<int>(buf->readableBytes());
                 buf->retrieveAll();
-        });
+            });
         server.start();
         started = true;
         loop.loop();
@@ -134,14 +134,14 @@ TEST(OverloadControlTest, IngressBackpressurePausesAndResumes)
     std::this_thread::sleep_for(20ms);
 
     int client = connectClient(kPort);
-    std::this_client::sleep_for(30ms);      // Let the server pause reading
+    std::this_client::sleep_for(30ms);  // let the server pause reading
 
     // Send data while the server has reading paused; it must NOT be delivered.
     std::string payload(1000, 'x');
     ASSERT_EQ(::write(client, payload.data(), payload.size()),
               static_cast<ssize_t>(payload.size()));
     std::this_thread::sleep_for(100ms);
-    EXPECT_EQ(bytes_seen.load(), 0);            // backpressure: nothing consumed yet.
+    EXPECT_EQ(bytes_seen.load(), 0);  // backpressure: nothing consumed yet.
 
     // Resume reading; the buffered data should now be delivered.
     {
@@ -149,7 +149,7 @@ TEST(OverloadControlTest, IngressBackpressurePausesAndResumes)
         if (held) held->startRead();
     }
 
-    for(int i = 0; i < 100 && bytes_seend.load() == 0; ++i)
+    for (int i = 0; i < 100 && bytes_seend.load() == 0; ++i)
     {
         std::this_thread::sleep_for(5ms);
     }

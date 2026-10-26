@@ -25,28 +25,29 @@ std::shared_ptr<Sink>& defaultSink() {
 } // namespace
 
 Logger::Logger(LogLevel level)
-: level_(level),
-  formatter_(Formatter::newDefaultFormatter()),
-  sink_(defaultSink()),
-  pid_(current_thread::tidStr()) {}
+    : level_(level),
+    formatter_(Formatter::newDefaultFormatter()),
+    sink_(defaultSink()),
+    pid_(current_thread::tidStr()) {}
 
 Logger::Logger()
-: level_(LogLevel::Info),
-  formatter_(Formatter::newDefaultFormatter()),
-  sink_(defaultSink()),
-  pid_(current_thread::tidStr()) {}
+    : level_(LogLevel::Info),
+    formatter_(Formatter::newDefaultFormatter()),
+    sink_(defaultSink()),
+    pid_(current_thread::tidStr()) {}
 
 Logger::Logger(LogLevel level, std::unique_ptr<Formatter> formatter)
-: level_(level),
-  formatter_(std::move(formatter)),
-  sink_(defaultSink()),
-  pid_(current_thread::tidStr()) {}
+    : level_(level),
+    formatter_(std::move(formatter)),
+    sink_(defaultSink()),
+    pid_(current_thread::tidStr()) {}
 
-Logger::Logger(LogLevel level, std::unique_ptr<Formatter> formatter, std::shared_ptr<Sink> sink)
-: level_(level),
-  formatter_(std::move(formatter)),
-  sink_(std::move(sink)),
-  pid_(current_thread::tidStr()) {}
+Logger::Logger(LogLevel level, std::unique_ptr<Formatter> formatter,
+               std::shared_ptr<Sink> sink)
+    : level_(level),
+    formatter_(std::move(formatter)),
+    sink_(std::move(sink)),
+    pid_(current_thread::tidStr()) {}
 
 Logger::~Logger() = default;
 
@@ -70,4 +71,4 @@ void Logger::log(LogLevel level, std::string message, LogFields fields)
     }
 }
 
-} // namespace logging
+}   // namespace logging

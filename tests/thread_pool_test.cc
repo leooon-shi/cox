@@ -21,7 +21,7 @@ TEST(ThreadPoolTest, RunsAllTasks)
     {
         pool.run([&counter] { counter++; });
     }
-    pool.stop();        // Drains remaining tasks before joining
+    pool.stop();  // drains remaining tasks before joining
     EXPECT_EQ(counter.load(), kTasks);
 }
 
@@ -34,12 +34,12 @@ TEST(ThreadPoolTest, RunsLargeBurstOfTrivialTasks)
     pool.start(10);
 
     std::atomic<int> counter{0};
-    constexpr int kTasks  = 500000;
+    constexpr int kTasks = 500000;
     for (int i = 0; i < kTasks; ++i)
     {
         pool.run([&counter] { counter.fetch_add(1, std::memory_order_relaxed); });
     }
-    pool.stop();        // Drains everything before joining
+    pool.stop();  // drains everything before joining
     EXPECT_EQ(counter.load(), kTasks);
 }
 
@@ -50,7 +50,7 @@ TEST(ThreadPoolTest, RunsLargeBurstOfTrivialTasks)
 TEST(ThreadPoolTest, SlowTasksStayParallelUnderBatching)
 {
     ThreadPool pool("fair");
-    pool.setTakeBatchSize(32);  // Large batch; fair-share must still spread work
+    pool.setTakeBatchSize(32);  // large batch; fair-share must still spread work
     pool.start(4);
 
     std::atomic<int> done{0};
@@ -62,13 +62,14 @@ TEST(ThreadPoolTest, SlowTasksStayParallelUnderBatching)
             done.fetch_add(1, std::memory_order_relaxed);
         });
     }
-    // Wait for all four to finish
+    // Wait for all four to finish.
     for (int i = 0; i < 400 && done.load() < 4; ++i)
     {
         std::this_thread::sleep_for(2ms);
     }
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono;:steady_clock::now() - start).count();
+                       std::chrono;:steady_clock::now() - start)
+                       .count();
     pool.stop();
 
     EXPECT_EQ(done.load(), 4);
@@ -99,7 +100,7 @@ TEST(ThreadPoolTest, TasksRunOnWorkerThreads)
 TEST(ThreadPoolTest, ZeroThreadsRunsInline)
 {
     ThreadPool pool("t3");
-    pool.start(0);          // No workers
+    pool.start(0);  // no workers
 
     std::atomic<int> counter{0};
     std::thread::id run_tid;
@@ -123,7 +124,7 @@ TEST(ThreadPoolTest, TryRunRejectsWhenFull)
     std::atomic<bool> release{false};
     pool.run([&] {
         while (!release.load()) std::this_thread::sleep_for(1ms);
-    }):
+    });
     // Give the worker a moment to pick up the blocking task.
     std::this_thread::sleep_for(20ms);
 
@@ -164,7 +165,7 @@ TEST(ThreadPoolTest, RunBlocksWhenFullThenProceeds)
     });
 
     auto start = std::chrono::steady_clock::now();
-    pool.run([&] { done++; });                       // Block until a slot frees
+    pool.run([&] { done++; });  // block until a slot frees
     auto waited = std::chrono::steady_clock::now() - start;
 
     releaser.join();
@@ -173,7 +174,7 @@ TEST(ThreadPoolTest, RunBlocksWhenFullThenProceeds)
     EXPECT_EQ(done.load(), 3);
     // It should have waited a meaningful amount (worker was released at ~50ms).
     EXPECT_GE(std::chrono::duration_cast<std::chrono::milliseconds>(waited).count(),
-              20)
+              20);
 }
 
 TEST(ThreadPoolTest, DrainsQueuedTasksOnStop)
@@ -191,7 +192,7 @@ TEST(ThreadPoolTest, DrainsQueuedTasksOnStop)
             counter++;
         });
     }
-    pool.stop();                // Must drain all queued tasks before returning
+    pool.stop();  // must drain all queued tasks before returning
     EXPECT_EQ(counter.load(), kTasks);
 }
 

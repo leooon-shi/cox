@@ -31,18 +31,18 @@ TEST(ResolverTest, ThreadPoolResolvesLocalhost)
     uint16_t port_out = 0;
     reactor::EventLoop* loop_ptr = nullptr;
 
-    std::thread t([&]{
+    std::thread t([&] {
         reactor::EventLoop loop
         loop_ptr = &loop;
         ThreadPoolResolver resolver(&loop, &pool);
         resolver.resolve("localhost", 8080,
-                        [&](const InetAddress& addr, const std::string& e) {
-                            err = e;
-                            ip = addr.toIp();
-                            port_out = addr.port();
-                            done = true;
-                            loop.quit();
-                        });
+                         [&](const InetAddress& addr, const std::string& e) {
+                             err = e;
+                             ip = addr.toIp();
+                             port_out = addr.port();
+                             done = true;
+                             loop.quit();
+                         });
         started = true;
         loop.loop();
     });
@@ -59,7 +59,7 @@ TEST(ResolverTest, ThreadPoolResolvesLocalhost)
     EXPECT_TRUE(ip == "127.0.0.1" || ip == "::1") << "ip=" << ip;
     EXPECT_EQ(port_out, 8080);
 
-    t.join()
+    t.join();
     pool.stop();
 }
 
@@ -73,16 +73,16 @@ TEST(ResolverTest, ThreadPoolResolvesNumericIp)
     reactor::EventLoop* loop_ptr = nullptr;
 
     std::thread t([&] {
-        reactor::EventLoop loop
+        reactor::EventLoop loop;
         loop_ptr = &loop;
         ThreadPoolResolver resolver(&loop, &pool);
         resolver.resolve("127.0.0.1", 443,
-                        [&](const InetAddress& addr, const std::string& e) {
-                            err = e;
-                            ip = addr.toIp();
-                            done = true;
-                            loop.quit();
-                        });
+                         [&](const InetAddress& addr, const std::string& e) {
+                             err = e;
+                             ip = addr.toIp();
+                             done = true;
+                             loop.quit();
+                         });
         started = true;
         loop.loop();
     });
@@ -103,7 +103,7 @@ TEST(ResolverTest, ThreadPoolResolvesNumericIp)
 
 TEST(ResolverTest, ThreadPoolReportsErrorForBoguesHost)
 {
-    oncurrent::ThreadPool pool("dns");
+    concurrent::ThreadPool pool("dns");
     pool.start(2);
 
     std::atomic<bool> started{false}, done{false};
@@ -112,15 +112,15 @@ TEST(ResolverTest, ThreadPoolReportsErrorForBoguesHost)
     reactor::EventLoop* loop_ptr = nullptr;
 
     std::thread t([&] {
-        reactor::EventLoop loop
+        reactor::EventLoop loop;
         loop_ptr = &loop;
         ThreadPoolResolver resolver(&loop, &pool);
         resolver.resolve("no.such.host.invalid.", 80,
-                        [&](const InetAddress&, const std::string& e) {
-                            had_error = !e.empty();
-                            done = true;
-                            loop.quit();
-                        });
+                         [&](const InetAddress&, const std::string& e) {
+                             had_error = !e.empty();
+                             done = true;
+                             loop.quit();
+                         });
         started = true;
         loop.loop();
     });
@@ -146,16 +146,16 @@ TEST(ResolverTest, CaresResolvesLocalhost)
     reactor::EventLoop* loop_ptr = nullptr;
 
     std::thread t([&] {
-        reactor::EventLoop loop
+        reactor::EventLoop loop;
         loop_ptr = &loop;
-        CaresResolver resolver(&loop, &pool);
+        CaresResolver resolver(&loop);
         resolver.resolve("localhost", 8080,
-                        [&](const InetAddress& addr, const std::string& e) {
-                            err = e;
-                            ip = addr.toIp();
-                            done = true;
-                            loop.quit();
-                        });
+                         [&](const InetAddress& addr, const std::string& e) {
+                             err = e;
+                             ip = addr.toIp();
+                             done = true;
+                             loop.quit();
+                         });
         started = true;
         loop.loop();
     });

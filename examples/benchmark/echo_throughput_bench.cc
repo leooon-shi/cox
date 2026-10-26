@@ -44,11 +44,11 @@ struct ClientResult
 {
     uint64_t requests = 0;
     uint64_t bytes = 0;
-    std::vector<double> latencies_us;       // Sampled
+    std::vector<double> latencies_us;  // sampled
 };
 
 void runClient(uint16_t port, size_t msg_size, std::atomic<bool>* stop,
-                    ClientResult* out)
+               ClientResult* out)
 {
     int fd = ::socket(AF_INET, SOCK_STREAM, 0);
     sockaddr_in addr{};
@@ -122,8 +122,8 @@ int main(int argc, char* argv[])
         if (server_threads > 1) server.setThreadNum(server_threads);
         server.setMessageCallback(
             [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
-            conn->send(buf->retrieveAllAsString());
-        });
+                conn->send(buf->retrieveAllAsString());
+            });
         server.start();
         srv_started = true;
         loop.loop();
@@ -164,8 +164,8 @@ int main(int argc, char* argv[])
     std::cout << "=== Cox echo benchmark ===\n";
     std::cout << "Connections:    " << connections << "\n";
     std::cout << "server threads: " << server_threads << "\n";
-    std::cout << "msg size:       " << msg_size << "\n";
-    std::cout << "duration:       " << elapsed_s <<" s\n";
+    std::cout << "msg size:       " << msg_size << " bytes\n";
+    std::cout << "duration:       " << elapsed_s << " s\n";
     std::cout << "requests:       " << total_req << "\n";
     std::cout << "QPS:            " << static_cast<uint64_t>(qps) << " req/s\n";
     std::cout << "throughput:     " << mbps << " MB/s (echo, one direction)\n";

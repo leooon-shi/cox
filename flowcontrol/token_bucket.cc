@@ -5,10 +5,10 @@
 namespace flowcontrol
 {
 TokenBucket::TokenBucket(double qps, double burst)
-: qps_(qps > 0 ? qps : 0),
-  burst_(burst >= 1 ? burst : 1),
-  tokens_(burst_),  // start full
-  last_refill_(Clock::now()) {}
+    : qps_(qps > 0 ? qps : 0),
+      burst_(burst >= 1 ? burst : 1),
+      tokens_(burst_),  // start full
+      last_refill_(Clock::now()) {}
 
 void TokenBucket::refillLocked(Clock::time_point now)
 {

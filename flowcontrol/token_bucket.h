@@ -21,7 +21,7 @@ class TokenBucket
 public:
     using Clock = std::chrono::steady_clock;
 
-    // qps: sustained tokens added per second (>0).
+    // qps: sustained tokens added per second (> 0).
     // burst: maximum tokens the bucket can hold (>= 1). The bucket starts full.
     TokenBucket(double qps, double burst);
 
@@ -32,13 +32,13 @@ public:
     // Try to consume n tokens without waiting.
     bool tryAcquireN(double n);
 
-    // Current available tokens (after lazy refill). Primarily for tests/metrics
+    // Current available tokens (after lazy refill). Primarily for tests/metrics.
     double availableTokens();
 
     double qps() const { return qps_; }
     double burst() const { return burst_; }
 private:
-    void refillLocked(Clock::time_point now);       // caller holds mutex_
+    void refillLocked(Clock::time_point now);   // caller holds mutex_
 
     const double qps_;
     const double burst_;

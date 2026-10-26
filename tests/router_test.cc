@@ -17,14 +17,14 @@ HttpRequest makeReq(Method m, const std::string& path)
     r.setPath(path);
     return r;
 }
-}   // namespace
+}  // namespace
 
 TEST(RouterTest, StaticRouteMatch)
 {
     Router router;
     std::string hit;
     router.get("/health", [&](const HttpRequest&, const PathParams&,
-                              HttpResponse* resp) {
+                             HttpResponse* resp) {
         hit = "health";
         resp->setStatus(200);
     });
@@ -56,12 +56,13 @@ TEST(RouterTest, MultipleParams)
     PathParams got;
     router.get("/orgs/{org}/repos/{repo}",
                [&](const HttpRequest&, const PathParams& p, HttpResponse* resp) {
-        got = p;
-        resp->setStatus(200);
-    });
+                   got = p;
+                   resp->setStatus(200);
+               });
 
     HttpResponse resp;
-    EXPECT_TRUE(router.route(makeReq(Method::kGet, "/orgs/acme/repos/cox"), &resp));
+    EXPECT_TRUE(router.route(makeReq(Method::kGet, "/orgs/acme/repos/cox"),
+                             &resp));
     EXPECT_EQ(got.at("org"), "acme");
     EXPECT_EQ(got.at("repo"), "cox");
 }
@@ -79,7 +80,8 @@ TEST(RouterTest, NotFound)
 TEST(RouterTest, MethodNotAllowed)
 {
     Router router;
-    router.get("/res", [](const HttpRequest&, const PathParams&, HttpResponse* resp) { resp->setStatus(200); });
+    router.get("/res", [](const HttpRequest&, const PathParams&,
+                          HttpResponse* resp) { resp->setStatus(200); });
 
     HttpResponse resp;
     // Path exists but not for POST -> 405, not 404.
@@ -92,9 +94,9 @@ TEST(RouterTest, MethodDispatch)
     Router router;
     std::string which;
     router.get("/x", [&](const HttpRequest&, const PathParams&,
-                        HttpResponse* r) { which = "get"; r->setstatus(200); });
-    router.get("/x", [&](const HttpRequest&, const PathParams&,
-                        HttpResponse* r) { which = "post"; r->setStatus(201); });
+                         HttpResponse* r) { which = "get"; r->setstatus(200); });
+    router.post("/x", [&](const HttpRequest&, const PathParams&,
+                          HttpResponse* r) { which = "post"; r->setStatus(201); });
     
     HttpResponse resp;
     router.route(makeReq(Method::kPost, "/x"), &resp);

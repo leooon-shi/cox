@@ -56,4 +56,4 @@ private:
     std::string body_;
     bool keep_alive_;
 };
-} // namespace http
+}   // namespace http

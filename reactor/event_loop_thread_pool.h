@@ -46,8 +46,8 @@ private:
     std::string name_;
     bool started_{false};
     int num_threads_{0};
-    size_t next_{0}; // round-robin cursor
+    size_t next_{0};  // round-robin cursor
     std::vector<std::unique_ptr<EventLoopThread>> threads_;
     std::vector<EventLoop*> loops_;
 };
-} // namespace reactor
+}   // namespace reactor

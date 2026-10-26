@@ -14,7 +14,7 @@ namespace
 const char* findCrlf(const char* begin, const char* end)
 {
     const char* p = begin;
-    while( p + 1 < end)
+    while (p + 1 < end)
     {
         if (p[0] == '\r' && p[1] == '\n') return p;
         ++p;
@@ -28,7 +28,7 @@ std::string toLower(std::string s)
                    [](unsigned char c) { return std::tolower(c); });
     return s;
 }
-} // namespace
+}   // namespace
 
 bool ResponseParser::parseStatusLine(const char* begin, const char* end)
 {
@@ -88,15 +88,17 @@ bool ResponseParser::parse(buffer::Buffer* buf)
             {
                 if (crlf == buf->peek())
                 {
-                    buf->retrieve(2);   // end of headers
+                    buf->retrieve(2);  // end of headers
                     auto te = lower_headers_.find("transfer-encoding");
-                    if (te != lower_headers_.end() && te->second.find("chunked") != std::string::npos)
+                    if (te != lower_headers_.end() &&
+                        te->second.find("chunked") != std::string::npos)
                     {
                         state_ = State::kExpectChunkSize;
                     } 
                     else if (has_content_length_)
                     {
-                        state_ = (content_length_ > 0) ? State::kExpectBody : State::kGotAll;
+                        state_ = (content_length_ > 0) ? State::kExpectBody
+                                                       : State::kGotAll;
                     } else {
                         // No framing header: body ends at EOF (Connection::close).
                         state_ = State::kExpectEofBody;
@@ -106,7 +108,7 @@ bool ResponseParser::parse(buffer::Buffer* buf)
                     const char* colon = std::find(buf->peek(), crlf, ':');
                     if (colon == crlf) { state_ = State::kError; return false; }
                     std::string key(buf->peek(), colon);
-                    const char* vb  = colon + 1;
+                    const char* vb = colon + 1;
                     while (vb < crlf && *vb == ' ') ++vb;
                     std::string value(vb, crlf);
                     response_.addHeader(key, value);
@@ -115,7 +117,8 @@ bool ResponseParser::parse(buffer::Buffer* buf)
                     if (lkey == "content-length")
                     {
                         has_content_length_ = true;
-                        content_length_ = static_cast<size_t>(std::strtoul(value.c_str(), nullptr, 10));
+                        content_length_ = static_cast<size_t>(
+                            std::strtoul(value.c_str(), nullptr, 10));
                     }
                     header_bytes_ += (crlf + 2) - buf->peek();
                     if (header_bytes_ > kMaxHeaderBytes)
@@ -191,6 +194,7 @@ bool ResponseParser::parse(buffer::Buffer* buf)
                 chunk_remaining_ -= take;
                 progress = true;
             }
+            if (chunk_remaining_ == 0) state_ = State::kExpectChunkCrlf;
         }
         else if (state_ == State::kExpectChunkCrlf)
         {
@@ -226,4 +230,4 @@ void ResponseParser::reset()
     has_content_length_ = false;
     body_accum_.clear();
 }
-} // namespace http
+}   // namespace http

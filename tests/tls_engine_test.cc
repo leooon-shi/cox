@@ -22,7 +22,7 @@ namespace
 {
 
 // Generate an ephemeral self-signed cert+key pair for the test, returning the
-// two temp file paths. Uses the Openssl CLI (available in the build env).
+// two temp file paths. Uses the openssl CLI (available in the build env).
 struct TestCert {
     std::string cert_path;
     std::string key_path;
@@ -61,7 +61,7 @@ size_t pump(TlsEngine& from, TlsEngine& to)
     return enc.size();
 }
 
-// Drive both engines' handshake to completion by shuttling bytes until both
+// Drive both engines' handshakes to completion by shuttling bytes until both
 // report done (or a bounded number of rounds elapses).
 bool driveHanshake(TlsEngine& client, TlsEngine& server)
 {
@@ -79,7 +79,7 @@ bool driveHanshake(TlsEngine& client, TlsEngine& server)
     return client.handshakeDone() && server.handshakeDone();
 }
 
-} // namespace
+}   // namespace
 
 TEST(TlsEngineTest, HandshakeCompletes)
 {
@@ -123,7 +123,7 @@ TEST(TlsEngineTest, EncryptedDataRoundTrip)
     const std::string msg = "hello over TLS";
     size_t consumed = 0;
     ASSERT_EQ(client.writePlaintext(msg.data(), msg.size(), &consumed),
-                    TlsEngine::Status::kOk);
+              TlsEngine::Status::kOk);
     EXPECT_EQ(consumed, msg.size());
     pump(client, server);
 
@@ -191,7 +191,7 @@ TEST(TlsEngineTest, VerificationFailsWithoutTrust)
     TlsContext server_ctx(Role::kServer);
     server_ctx.useCertificateAndKey(cert.cert_path, cert.key_path);
     TlsContext client_ctx(Role::kClient);
-    client_ctx.setVerifyPeer(true);     // Verify, but no CA loaded for self-signed
+    client_ctx.setVerifyPeer(true);  // verify, but no CA loaded for self-signed
 
     TlsEngine server(server_ctx, Role::kServer);
     TlsEngine client(client_ctx, Role::kClient);

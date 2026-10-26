@@ -16,4 +16,4 @@ namespace net {
 
 void initNetRuntime();
 
-} // namespace net
+}   // namespace net

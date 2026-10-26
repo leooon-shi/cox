@@ -104,19 +104,29 @@ public:
 
     // Maximum input buffer size (bytes). If the input buffer exceeds this after
     // a read -- e.g. a peer floods data faster than the app consumes it, or an
-    // unframed/oversized mesage -- the connection is force-closed. Bounds
+    // unframed/oversized message -- the connection is force-closed. Bounds
     // read-side memory. 0 (default) means unlimited.
-    void setMaxInputBufferSize(size_t max_bytes) { max_input_buffer_size_ = max_bytes;}
+    void setMaxInputBufferSize(size_t max_bytes) {
+        max_input_buffer_size_ = max_bytes;
+    }
 
     // Maximum connection lifetime (seconds). The connection is force-closed
     // after this age regardless of activity, to recycle long-lived connections
     // (e.g. rebalance after scaling, bound resource leaks). 0 disables. Armed
     // once at connectEstablished.
-    void setMaxConnectionAge(uint32_t max_age_seconds) { max_age_seconds_ = max_age_seconds; }
+    void setMaxConnectionAge(uint32_t max_age_seconds) {
+        max_age_seconds_ = max_age_seconds;
+    }
 
-    void setConnectionCallback(ConnectionCallback cb) { connection_callback_ = std::move(cb); }
-    void setMessageCallback(MessageCallback cb) { message_callback_ = std::move(cb); }
-    void setWriteCompleteCallback(WriteCompleteCallback cb) { write_complete_callback_ = std::move(cb); }
+    void setConnectionCallback(ConnectionCallback cb) {
+        connection_callback_ = std::move(cb);
+    }
+    void setMessageCallback(MessageCallback cb) {
+        message_callback_ = std::move(cb);
+    }
+    void setWriteCompleteCallback(WriteCompleteCallback cb) {
+        write_complete_callback_ = std::move(cb);
+    }
     
     // Set the high-water-mark callback and the threshold (in bytes of queued
     // output) at which it fires. The callback fires on the upward crossing.
@@ -145,12 +155,12 @@ private:
     void handleClose();
     void handleError();
 
-    void resetIdleTimer();      //(re)arm the idle timeout on activity
+    void resetIdleTimer();   //(re)arm the idle timeout on activity
     void cancelIdleTimer();
 
-    void armWriteTimer();      // arm when output backs up
-    void cancelWriteTimer();    // cancel when output drains
-    void armMaxAgeTimer();      // arm once at establishment
+    void armWriteTimer();    // arm when output backs up
+    void cancelWriteTimer(); // cancel when output drains
+    void armMaxAgeTimer();   // arm once at establishment
 
     void sendInLoop(const char* data, size_t len);
     void shutdownInLoop();
@@ -178,7 +188,7 @@ private:
     MessageCallback message_callback_;
     WriteCompleteCallback write_complete_callback_;
     HighWaterMarkCallback high_water_mark_callback_;
-    size_t high_water_mark_{64 * 1024 * 1024};    // 64 MB default
+    size_t high_water_mark_{64 * 1024 * 1024};   // 64 MB default
     CloseCallback close_callback_;
 
     // Idle timeout state (accessed only in the loop thread).
@@ -191,7 +201,7 @@ private:
     reactor::TimerId write_timer_;
     bool write_timer_armed_{false};
 
-    // Max input buffer size (read-side memory bound). 0 - unlimited.
+    // Max input buffer size (read-side memory bound). 0 = unlimited.
     size_t max_input_buffer_size_{0};
 
     // Max connection age (lifetime cap). Armed once at establishment.
@@ -206,4 +216,4 @@ private:
     // Generic per-connection context for higher-level protocols.
     std::shared_ptr<void> context_;
 };
-} // namespace net
+}   // namespace net

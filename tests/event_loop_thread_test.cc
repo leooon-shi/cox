@@ -38,7 +38,7 @@ TEST(EventLoopThreadTest, StartLoopRunsTaskInThread)
     // Destructor quits and joins.
 }
 
-TEST(EventLoopThreadPoolTest, ZeroThreadUsesBaseLoop)
+TEST(EventLoopThreadPoolTest, ZeroThreadsUsesBaseLoop)
 {
     EventLoop base;
     // start() and getNextLoop() must be called on the base loop thread.
@@ -73,12 +73,12 @@ TEST(EventLoopThreadPoolTest, RoundRobinAcrossLoops)
         EventLoop* a = pool.getNextLoop();
         EventLoop* b = pool.getNextLoop();
         EventLoop* c = pool.getNextLoop();
-        EventLoop* d = pool.getNextLoop();          // wraps to first
+        EventLoop* d = pool.getNextLoop();   // wraps to first
 
         std::set<EventLoop*> distinct{a, b, c};
-        EXPECT_EQ(distinct.size(), 3u);         // three distinct loops
-        EXPECT_NE(a, &base);                    // none is the base loop
-        EXPECT_EQ(d, a);                        // wrapped around
+        EXPECT_EQ(distinct.size(), 3u);        // three distinct loops
+        EXPECT_NE(a, &base);                   // none is the base loop
+        EXPECT_EQ(d, a);                       // wrapped around
 
         done = true;
         base.quit();

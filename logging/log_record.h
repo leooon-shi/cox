@@ -32,8 +32,8 @@ using LogFields = std::vector<LogField>;
 struct LogRecord {
     LogLevel level;
     Timestamp timestamp;
-    std::string tid;        // thread id string
+    std::string tid;       // thread id string
     std::string message;
-    LogFields fields;       // structured context (may be empty)
+    LogFields fields;      // structured context (may be empty)
 };
-} // namespace logging
+}   // namespace logging

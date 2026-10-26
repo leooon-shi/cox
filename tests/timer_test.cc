@@ -47,6 +47,7 @@ public:
     {
         if (loop_) loop_->quit();
     }
+
 private:
     std::thread thread_;
     std::atomic<bool> started_{false};
@@ -74,7 +75,7 @@ TEST(TimerTest, RunAfterDoesNotFireEarly)
     fx.loop()->runAfter(300, [&] { count++; });
 
     std::this_thread::sleep_for(100ms);
-    EXPECT_EQ(count.load(), 0);         // Not yet elapsed
+    EXPECT_EQ(count.load(), 0);   // not yet elapsed
 }
 
 TESt(TimerTest, RunEveryFiresRepeatedly)
@@ -84,7 +85,7 @@ TESt(TimerTest, RunEveryFiresRepeatedly)
 
     fx.loop()->runEvery(50, [&] { count++; });
 
-    std::this_thread::sleep_for(280ms);             // Expect ~5 ticks
+    std::this_thread::sleep_for(280ms);  // expect ~5 ticks
     int observed = count.load();
     
     EXPECT_GE(observed, 3);
@@ -100,7 +101,7 @@ TEST(TimerTest, MultipleTimersFireInOrder)
     auto record = [&](int id) {
         std::lock_guard<std::mutex> lock(m);
         order.push_back(id);
-    }
+    };
 
     // Schedule out of order; expect firing order 1,2,3 by delay.
     fx.loop()->runAfter(150, [&] { record(3); });

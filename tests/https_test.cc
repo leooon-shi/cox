@@ -1,4 +1,4 @@
-// End-to-end HTTPS: Cox Httpserver (TLS-terminating) <-> Cox HttpClient (TLS),
+// End-to-end HTTPS: Cox HttpServer (TLS-terminating) <-> Cox HttpClient (TLS),
 // plus DNS resolver tests live separately.
 
 #include "http_client.h"
@@ -33,7 +33,7 @@ struct TestCert {
     std::string key = "/tmp/cox_https_key.pem";
     TestCert() {
         std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
-                          key + " -out" + cert +
+                          key + " -out " + cert +
                           " -days 1 -subj '/CN=localhost' >/dev/null 2>&1";
         // See note in sni_test.cc: the valid() probe below is the real check.
         (void)test_util::runCmd(cmd);
@@ -43,7 +43,7 @@ struct TestCert {
     bool valid() const { std::ifstream c(cert), k(key); return c.good() && k.good(); }
 };
 
-} // namespace
+}   // namespace
 
 TEST(HttpsTest, ServerAndClientEndToEnd)
 {
@@ -84,7 +84,7 @@ TEST(HttpsTest, ServerAndClientEndToEnd)
     std::thread client_thread([&] {
         reactor::EventLoop loop;
         auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kClient);
-        ctx->setVerifyPeer(false);              // self-signed test cert
+        ctx->setVerifyPeer(false);  // self-signed test cert
         auto client = std::make_shared<HttpClient>(
             &loop, net::InetAddress("127.0.0.1", kPort), ctx, "localhost");
         client->get("/data", [&](const HttpResponse& resp,

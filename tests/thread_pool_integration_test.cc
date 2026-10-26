@@ -52,11 +52,11 @@ int connectClient(uint16_t port)
     return fd;
 }
 
-} // namespace
+}   // namespace
 
 // A handler that "blocks" (sleeps) is offloaded to the pool so it does not stall
 // the io loop; the reply is marshaled back with runInLoop. Two clients are
-// served concurrently even through each handler takes ~100ms.
+// served concurrently even though each handler takes ~100ms.
 TEST(ThreadPoolIntegrationTest, OffloadKeepsLoopResponsive)
 {
     const uint16_t kPort = 49001;
@@ -72,11 +72,11 @@ TEST(ThreadPoolIntegrationTest, OffloadKeepsLoopResponsive)
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "offload");
         server.setMessageCallback(
-            [&](const TcpConnectionPtr& conn, buffer::Buffer* buf){
+            [&](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
                 std::string req = buf->retrieveAllAsString();
-                // Offload a "blocking" computation to the pool
+                // Offload a "blocking" computation to the pool.
                 pool.run([conn, req]() {
-                    std::this_thread::sleep_for(100ms);     // simulate blocking work
+                    std::this_thread::sleep_for(100ms);  // simulate blocking work
                     std::string resp = "processed:" + req;
                     // Post the result back to the connection's own loop.
                     conn->getLoop()->runInLoop(
@@ -101,7 +101,7 @@ TEST(ThreadPoolIntegrationTest, OffloadKeepsLoopResponsive)
 
     auto start = std::chrono::steady_clock::now();
     // Check the writes: an unnoticed short/failed write here would make the
-    // timing assertions below meaningless rather than falling outright.
+    // timing assertions below meaningless rather than failing outright.
     ASSERT_EQ(::write(c1, "a", 1), 1);
     ASSERT_EQ(::write(c2, "b", 1), 1);
 
@@ -112,7 +112,8 @@ TEST(ThreadPoolIntegrationTest, OffloadKeepsLoopResponsive)
     ssize_t n1 = ::read(c1, b1, sizeof(b1));
     ssize_t n2 = ::read(c2, b2, sizeof(b2));
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - start).count();
+                       std::chrono::steady_clock::now() - start)
+                       .count();
     
     ASSERT_GT(n1, 0);
     ASSERT_GT(n2, 0);

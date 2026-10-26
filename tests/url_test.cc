@@ -18,27 +18,27 @@ TEST(UrlTest, DecodePercentEscapes)
     EXPECT_EQ(urlDecode("hello%20world"), "hello world");
     EXPECT_EQ(urlDecode("a%2Fb"), "a/b");
     EXPECT_EQ(urlDecode("%7Euser"), "~user");
-    EXPECT_EQ(urlDecode("caf%C3%A9"), "caf\xC3\xA9");   // UTF-8 passthrough
+    EXPECT_EQ(urlDecode("caf%C3%A9"), "caf\xC3\xA9");  // UTF-8 passthrough
 }
 
 TEST(UrlTest, DecodePlusHandling)
 {
-    EXPECT_EQ(urlDecode("a+b"), "a b");             // Form default
-    EXPECT_EQ(urlDecode("a+b", /*plus_as_space=*/false), "a+b");     // path mode
+    EXPECT_EQ(urlDecode("a+b"), "a b");                       // form default
+    EXPECT_EQ(urlDecode("a+b", /*plus_as_space=*/false), "a+b");  // path mode
 }
 
 TEST(UrlTest, DecodeMalformedEscapeIsKeptLiterally)
 {
     EXPECT_EQ(urlDecode("100%"), "100%");
     EXPECT_EQ(urlDecode("%zz"), "%zz");
-    EXPECT_EQ(urlDecode("%A"), "%A");               // Truncated escape at end
+    EXPECT_EQ(urlDecode("%A"), "%A");    // truncated escape at end
 }
 
 TEST(UrlTest, EncodeUnreservedPassThrough)
 {
-    EXPECT_EQ(urlDecode("abcXYZ019-_.~"), "abcXYZ019-_.~");
-    EXPECT_EQ(urlDecode("a b"), "a%20b");
-    EXPECT_EQ(urlDecode("a/b?c=d&e"), "a%2Fb%3Fc%3Dd%26e");
+    EXPECT_EQ(urlEncode("abcXYZ019-_.~"), "abcXYZ019-_.~");
+    EXPECT_EQ(urlEncode("a b"), "a%20b");
+    EXPECT_EQ(urlEncode("a/b?c=d&e"), "a%2Fb%3Fc%3Dd%26e");
 }
 
 TEST(UrlTest, EncodeDecodeRoundTrip)
@@ -102,7 +102,7 @@ TEST(UrlTest, RequestQueryCacheInvalidatedOnSet)
 {
     HttpRequest req;
     req.setQuery("a=1");
-    EXPECT_EQ(req.queryParam("a"), "1");            // Populates the cache
+    EXPECT_EQ(req.queryParam("a"), "1");    // Populates the cache
     req.setQuery("a=2&b=3");
     EXPECT_EQ(req.queryParam("a"), "2");
     EXPECT_EQ(req.queryParam("b"), "3");
@@ -162,14 +162,14 @@ TEST(UrlTest, RouterEncodedSlashStaysInOneSegment)
 
     HttpRequest req;
     req.setMethod(Method::kGet);
-    req.setPath("/files/a%2Fb");            // %2F must not split into two segments
+    req.setPath("/files/a%2Fb");  // %2F must not split into two segments
     HttpResponse resp;
     EXPECT_TRUE(router.route(req, &resp));
     EXPECT_EQ(captured, "a/b");
 
 }
 
-TEST(UrlTest, RouteDoesNotTreatPlusAsSpaceInPath)
+TEST(UrlTest, RouterDoesNotTreatPlusAsSpaceInPath)
 {
     Router router;
     std::string captured;
@@ -178,7 +178,7 @@ TEST(UrlTest, RouteDoesNotTreatPlusAsSpaceInPath)
         captured = p.at("tag");
         resp->setStatus(200);
     });
-    
+
     HttpRequest req;
     req.setMethod(Method::kGet);
     req.setPath("/tags/c++");

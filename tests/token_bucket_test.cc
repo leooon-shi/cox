@@ -23,8 +23,8 @@ TEST(TokenBucketTest, StartsFullupToBurst)
 TEST(TokenBucketTest, RefillsOverTime)
 {
     TokenBucket tb(/*qps=*/100, /*burst=*/1);
-    EXPECT_TRUE(tb.tryAcquire());               // Consume the one token
-    EXPECT_FALSE(tb.tryAcquire());              // Empty
+    EXPECT_TRUE(tb.tryAcquire());   // consume the one token
+    EXPECT_FALSE(tb.tryAcquire());  // empty
 
     // At 100 qps, ~10ms yields ~1 token. Wait a bit more for safety.
     std::this_thread::sleep_for(30ms);
@@ -48,7 +48,7 @@ TEST(TokenBucketTest, AcquireN)
 {
     TokenBucket tb(/*qps=*/10, /*burst=*/10);
     EXPECT_TRUE(tb.tryAcquireN(7));
-    EXPECT_FALSE(tb.tryAcquireN(4));            // Only 3 left
+    EXPECT_FALSE(tb.tryAcquireN(4));  // only 3 left
     EXPECT_TRUE(tb.tryAcquireN(3));
     EXPECT_FALSE(tb.tryAcquireN(1));
 }

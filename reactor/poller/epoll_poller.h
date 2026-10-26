@@ -23,6 +23,7 @@ private:
     int epollFd_;
     std::vector<epoll_event> events_;
 };
+
 } // namespace reactor
 
 #endif // __linux__
