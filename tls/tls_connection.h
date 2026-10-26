@@ -7,7 +7,7 @@
 #include <memory>
 #include <string>
 
-namespace buff
+namespace buffer
 {
 class Buffer;
 }

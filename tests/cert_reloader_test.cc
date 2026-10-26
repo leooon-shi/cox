@@ -35,7 +35,7 @@ std::string makeTempDir(const char* tag)
     return dir;
 }
 // Generate a self-signed cert+key into cert_path/key_path with the given CN.
-bool genCert(const std::string& cer_path, const std::string& key_path,
+bool genCert(const std::string& cert_path, const std::string& key_path,
              const std::string& cn)
 {
     std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
@@ -51,7 +51,7 @@ void writeFile(const std::string& path, const std::string& content)
 }
 }  // namespace
 
-TEST(CertReloaderTest, ReloadOnFileChange)
+TEST(CertReloaderTest, ReloadsOnFileChange)
 {
     const std::string dir = makeTempDir("watch");
     const std::string cert = dir + "/tls.crt";

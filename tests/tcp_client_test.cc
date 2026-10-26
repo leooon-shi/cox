@@ -91,7 +91,7 @@ TEST(TcpClientTest, ConnectAndEcho)
     });
     while (!cli_started.load()) std::this_thread::sleep_for(1ms);
 
-    for (int i = 0; i < 200 & !got_reply.load(); ++i)
+    for (int i = 0; i < 200 && !got_reply.load(); ++i)
     {
         std::this_thread::sleep_for(5ms);
     }

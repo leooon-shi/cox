@@ -24,7 +24,7 @@ TcpConnection::TcpConnection(reactor::EventLoop* loop, std::string name,
                              int sockfd, const InetAddress& local,
                              const InetAddress& peer)
     : loop_(loop),
-    name_(name),
+    name_(std::move(name)),
     state_(State::kConnecting),
     socket_(sockfd),
     channel_(sockfd, loop),
@@ -284,7 +284,7 @@ void TcpConnection::handleError()
     // Treat that as a normal close rather than logging a misleading error.
     if (err != 0)
     {
-        log().error("TcpConnection::handleError [ " + name_ + "] SO_ERROR=" +
+        log().error("TcpConnection::handleError [" + name_ + "] SO_ERROR=" +
                     std::to_string(err) + " " + std::string(std::strerror(err)));
     }
     handleClose();

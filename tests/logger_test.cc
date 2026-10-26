@@ -36,7 +36,7 @@ struct Harness {
 
 Harness makeDefault(LogLevel level = LogLevel::Info)
 {
-    return Harness(level, Formatter::newDefaultFormater());
+    return Harness(level, Formatter::newDefaultFormatter());
 }
 
 Harness makeJson(LogLevel level = LogLevel::Info) {
@@ -79,7 +79,7 @@ TEST(LoggerTest, JsonFormatterEmitsJson)
     EXPECT_NE(out.find("\"ts\":"), std::string::npos);
 }
 
-TEST(LoggerTest, StructuredFieldDefault)
+TEST(LoggerTest, StructuredFieldsDefault)
 {
     auto h = makeDefault();
     h.log->info("request done",
@@ -103,7 +103,7 @@ TEST(JsonFormatterTest, EscapesSpecialCharacters)
 {
     JsonFormatter fmt;
     LogRecord rec{LogLevel::Info, Timestamp::now(), "1",
-                  "quote\" back\\slash\new\nnewline", {}};
+                  "quote\" back\\slash\nnewline", {}};
     std::string out = fmt.format(rec);
     EXPECT_NE(out.find("\\\""), std::string::npos);
     EXPECT_NE(out.find("\\\\"), std::string::npos);
@@ -161,7 +161,7 @@ TEST(SinkTest, FlushLevelIsConfigurable)
     EXPECT_GT(h.sink->flushCount(), before);
 }
 
-TESt(SinkTest, SetSinkRedirectsOutput)
+pthread_testcancel(SinkTest, SetSinkRedirectsOutput)
 {
     auto h = makeDefault();
     h.log->info("to first");
@@ -224,7 +224,7 @@ TEST(SinkTest, RotatingFileSinkRollsAndBoundsFileCount)
         std::FILE* f = std::fopen(p.c_str(), "re");
         if (f) { std::fclose(f); return true; }
         return false;
-    }
+    };
 
     EXPECT_TRUE(exists(path));            // an active file
     EXPECT_TRUE(exists(path + ".1"));     // rolled
@@ -237,7 +237,7 @@ TEST(SinkTest, RotatingFileSinkRollsAndBoundsFileCount)
     }
 }
 
-TEST(SinkTest, MultiSinkFansout)
+TEST(SinkTest, MultiSinkFansOut)
 {
     auto a = std::make_shared<MemorySink>();
     auto b = std::make_shared<MemorySink>();
@@ -305,7 +305,7 @@ TEST(AsyncSinkTest, DropsAndCountsWhenBufferFull)
     }
     // The point: a slow/blocked destination must never block the producer, and
     // the shed lines must be accounted for rather than silently lost.
-    EXPECt_GT(async->droppedCount(), 0u);
+    EXPECT_GT(async->droppedCount(), 0u);
     async->stop();
 }
 
@@ -344,7 +344,7 @@ TEST(AsyncSinkTest, StopDrainsPendingLines)
         void flush() override { to->flush(); }
     };
 
-    auto async = std::make_shared<AsyncSink>(
+    auto async = std::make_unique<AsyncSink>(
         std::make_unique<Forward>(captured), 4096, /*flush_interval_ms=*/10000);
     for (int i = 0; i < 50; ++i) async->append("pending " + std::to_string(i));
     async->stop();   // must not lose anything still queued.

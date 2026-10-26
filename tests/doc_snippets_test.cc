@@ -123,7 +123,7 @@ TEST(DocSnippets, DocumentedConstructionForms)
                              http::HttpResponse* resp) {
         resp->setStatus(200);
         resp->setContentType("application/json");
-        resp->setBody(R"({"Status":"ok"})");
+        resp->setBody(R"({"status":"ok"})");
     });
 
     server.setHttpHandler([&router](const http::HttpRequest& req,
@@ -178,8 +178,8 @@ TEST(DocSnippets, LoggingSinksAndAsync)
 {
     // JSON formatter + rotating file sink, exactly as documented.
     auto rot = logging::Sink::newRotatingFileSink("/tmp/cox_doc_snip.log",
-                                                 60 << 20, 5);
-    loggign::Logger jlog(logging::LogLevel::Info, 
+                                                 64 << 20, 5);
+    loggign::Logger jlog(logging::LogLevel::Info,
                          logging::Formatter::newJsonFormatter(),
                          std::shared_ptr<logging::Sink>(std::move(rot)));
     jlog.info("to rotating file");
@@ -217,7 +217,7 @@ TEST(DocSnippets, TlsSniRegistration)
     ASSERT_EQ(std::system(("openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
                            key + " -out " + cert +
                            " -days 1 -subj '/CN=localhost' -addext "
-                           "'subjectAllName=DNS:localhost' >/dev/null 2>&1")
+                           "'subjectAltName=DNS:localhost' >/dev/null 2>&1")
                               .c_str()),
               0);
     auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kServer);
@@ -239,7 +239,7 @@ TEST(DocSnippets, TlsSniRegistration)
 }
 
 // --- docs (tls.md, user-guide 6): OCSP stapler API + fail-open ---
-TEST(docSnippets, OcspStaplerApi)
+TEST(DocSnippets, OcspStaplerApi)
 {
     tls::OcspStapler stapler("/tmp/cox_no_cert.pem", "/tmp/cox_no_issuer.pem");
     stapler.setResponderUrl("http://127.0.0.1:1");  // documented override
@@ -247,7 +247,7 @@ TEST(docSnippets, OcspStaplerApi)
     EXPECT_EQ(stapler.responderUrl(), "http://127.0.0.1:1");
     EXPECT_FALSE(stapler.hasResponse());
     // Documented sentinel: 0 when nothing is cached.
-    EXPECT_EQ(stapler.secondsUtilExpiry(), 0);
+    EXPECT_EQ(stapler.secondsUntilExpiry(), 0);
     // Unreachable responder must fail cleanly, not throw.
     EXPECT_FALSE(stapler.refresh());
     EXPECT_FALSE(stapler.loadFromFile("/tmp/cox_no_such_resp.der"));

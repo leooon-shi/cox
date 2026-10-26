@@ -137,7 +137,7 @@ private:
                 std::weak_ptr<PooledConn> weak = weak_from_this();
                 tls_conn_ = std::make_shared<tls::TlsConnection>(
                     c, tls_ctx_, tls::Role::kClient, host_);
-                tls_conn_->setHandleshakeDoneCallback(
+                tls_conn_->setHandshakeDoneCallback(
                     [weak](const tls::TlsConnectionPtr&) {
                         auto self = weak.lock();
                         if (!self) return;
@@ -168,7 +168,7 @@ private:
                 {
                     if (cb) cb(parser_.response(), "");
                 } else if (cb) { 
-                    cb(HttpResponse(), "Connection closed before response");
+                    cb(HttpResponse(), "connection closed before response");
                 }
             }
             if (on_closed) on_closed(shared_from_this());
@@ -265,7 +265,7 @@ public:
           dns_port_(port),
           resolver_(resolver) {}
 
-    bool useTls() const { return tls_ctx_ != nullptr; }
+    bool usesTls() const { return tls_ctx_ != nullptr; }
     bool resolved() const { return resolved_; }
 
     struct Pending {
@@ -447,7 +447,7 @@ private:
         }
     }
 
-    void onClosed(const ConnPtr c)
+    void onClosed(const ConnPtr& c)
     {
         loop_->assertInLoopThread();
         removeFrom(idle_, c);
@@ -566,7 +566,7 @@ ConnectionPool::~ConnectionPool() {
     if (impl_) impl_->stopEviction();
 }
 
-void http::ConnectionPool::request(const HttpRequest& req,
+void ConnectionPool::request(const HttpRequest& req,
                                    ResponseCallback cb) {
     impl_->request(req, std::move(cb));
 }
@@ -588,7 +588,7 @@ size_t ConnectionPool::queuedRequests() const {
 }
 
 bool ConnectionPool::usesTls() const {
-    return impl_->useTls();
+    return impl_->usesTls();
 }
 
 bool ConnectionPool::resolved() const {

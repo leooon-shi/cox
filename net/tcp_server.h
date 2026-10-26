@@ -184,9 +184,9 @@ private:
     int next_conn_id_{1};
     uint32_t idle_seconds_{0};
     uint32_t write_seconds_{0};
-    uint32_t max_input_buffer_size_{0};
+    size_t max_input_buffer_size_{0};
     uint32_t max_age_seconds_{0};
-    uint32_t max_connections_{0};   // 0 - unlimited
+    size_t max_connections_{0};  // 0 - unlimited
     ConnectionMap connections_;     // accessed only on base loop
 };
 }   // namespace net

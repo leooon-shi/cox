@@ -63,7 +63,7 @@ size_t pump(TlsEngine& from, TlsEngine& to)
 
 // Drive both engines' handshakes to completion by shuttling bytes until both
 // report done (or a bounded number of rounds elapses).
-bool driveHanshake(TlsEngine& client, TlsEngine& server)
+bool driveHandshake(TlsEngine& client, TlsEngine& server)
 {
     for (int round = 0; round < 20; ++round)
     {

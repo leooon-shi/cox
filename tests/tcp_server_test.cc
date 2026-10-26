@@ -511,7 +511,7 @@ TEST(TcpServerTest, MultiThreadedConnectionsUseDistinctLoops)
     // Enough clients to very likely hit all 3 io loops via round-robin.
     constexpr int kNumClients = 9;
     std::vector<int> clients;
-    for (int i = 0; i < kNumberClients; ++i)
+    for (int i = 0; i < kNumClients; ++i)
     {
         clients.push_back(connectClient(kPort));
     }

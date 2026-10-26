@@ -104,7 +104,7 @@ double runOnce(int num_threads, size_t batch_size, int num_tasks,
     std::vector<std::thread> producers;
     producers.reserve(static_cast<size_t>(num_producers));
     const int per_producer = num_tasks / num_producers;
-    const int remainder = num_tasks / num_producers;
+    const int remainder = num_tasks % num_producers;
 
     for (int p = 0; p < num_producers; ++p)
     {
@@ -136,11 +136,11 @@ int main(int argc, char** argv)
     std::cout << "=== Cox thread pool benchmark ===\n";
     printEnv();
     std::cout << "worker threads: " << threads << "\n";
-    std::cout << "producers:       " << producers << "\n";
-    std::cout << "tasks:           " << num_tasks
+    std::cout << "producers:      " << producers << "\n";
+    std::cout << "tasks:          " << num_tasks
               << " (each: one relaxed atomic increment)\n\n";
-    std::cout << "batch    elapsed(s)   tasks/s        speedup\n";
-    std::cout << "----     ----------   -------        -------\n";
+    std::cout << "batch     elapsed(s)   tasks/s        speedup\n";
+    std::cout << "----      ----------   -------        -------\n";
 
     const std::vector<size_t> batch_sizes = {1, 2, 4, 8, 16, 32, 64, 128};
     double baseline_s = 0.0;  // batch-1 is the one-lock-per-task reference
@@ -150,7 +150,7 @@ int main(int argc, char** argv)
         if (batch == 1) baseline_s = s;
         double tasks_per_s = static_cast<double>(num_tasks) / s;
         double speedup = baseline_s > 0.0 ? baseline_s / s : 1.0;
-        std::printf("%5zu   %10.4f   %12.0f  %6.2fx\n", batch, s, tasks_per_s,
+        std::printf("%5zu   %10.4f   %12.0f %6.2fx\n", batch, s, tasks_per_s,
                     speedup);
     }
 

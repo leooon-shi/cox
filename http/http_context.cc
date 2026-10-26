@@ -95,9 +95,9 @@ bool HttpContext::parseRequest(buffer::Buffer* buf)
                     }
                     else
                     {
-                        std::string c1 = request_.header("content-length");
-                        content_length_ = c1.empty() ? 0
-                            : static_cast<size_t>(std::strtoul(c1.c_str(), nullptr, 10));
+                        std::string cl = request_.header("content-length");
+                        content_length_ = cl.empty() ? 0
+                            : static_cast<size_t>(std::strtoul(cl.c_str(), nullptr, 10));
                         body_received_ = 0;
                         state_ = (content_length_ > 0) ? State::kExpectBody
                                                        : State::kGotAll;

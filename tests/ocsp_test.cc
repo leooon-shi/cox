@@ -118,7 +118,7 @@ struct MiniPki
         conf.close();
 
         if (runCmd("openssl ca -batch -config " + dir + "/ca.cnf -in " +
-                   leaf_csr + " -out" + leaf_cert + " -extfile " + ext) != 0 )
+                   leaf_csr + " -out " + leaf_cert + " -extfile " + ext) != 0 )
         {
             return false;
         }
@@ -139,7 +139,7 @@ struct Responder {
         std::string cmd =
             "openssl ocsp -port " + std::to_string(kResponderPort) +
             " -index " + pki.index + " -CA " + pki.ca_cert + " -rkey " +
-            pki_ca_key + " -rsigner " + pki.ca_cert + nmin_opt +
+            pki.ca_key + " -rsigner " + pki.ca_cert + nmin_opt +
             " -nrequest 5" +
             " >/dev/null 2>&1 & echo $! > " + pid_file;
         // Responder is started in the background; readiness is probed by
@@ -253,7 +253,7 @@ TEST(OcspTest, HandshakeSucceedsWithoutStaple)
 
 // ---- real responder end-to-end ----
 
-TEST(OcspTest, DiscoverResponderUrlFromAia)
+TEST(OcspTest, DiscoversResponderUrlFromAia)
 {
     MiniPki pki;
     if (!pki.ok) GTEST_SKIP() << "openssl CLI could not build the test PKI";

@@ -129,7 +129,7 @@ inline bool operator>(const Timestamp& lhs, const Timestamp& rhs)
 
 inline bool operator>=(const Timestamp& lhs, const Timestamp& rhs)
 {
-    return !(rhs < lhs);
+    return !(lhs < rhs);
 }
 
 // Returns a new Timestamp advanced by the given number of milliseconds.

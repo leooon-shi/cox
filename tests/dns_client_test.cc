@@ -48,7 +48,7 @@ public:
 
     void stop()
     {
-        if (loop_) loop_->runInLoop([this] { loop_->quit(); })
+        if (loop_) loop_->runInLoop([this] { loop_->quit(); });
         if (thread_.joinable()) thread_.join();
     }
 private:

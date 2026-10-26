@@ -34,7 +34,7 @@ TEST(BackoffTest, CapsAtMax)
     EXPECT_EQ(bo.baseDelay(key), 500ms);  // capped
 }
 
-TEST(BackoffTest, ResetClearState)
+TEST(BackoffTest, ResetClearsState)
 {
     Backoff bo(100ms, 10s, 0.0);
     const std::string key = "k";

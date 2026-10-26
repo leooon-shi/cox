@@ -86,7 +86,7 @@ TEST(HttpParserTest, BadVersionErrors)
     EXPECT_TRUE(ctx.hasError());
 }
 
-TEST(HttpParserTest, KeepAliveHttp100ptIn)
+TEST(HttpParserTest, KeepAliveHttp10OptIn)
 {
     HttpContext ctx;
     auto buf = bufOf("GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n");

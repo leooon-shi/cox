@@ -51,7 +51,7 @@ void KQueuePoller::updateChannel(Channel* ch) {
         struct kevent e_read;
 
         if (ev & IO_READ) {
-            // logger_->info("register EVFILT_READ with options EV_ADD | EV_ENABLE to kpoller.");
+            // logger_->info("register EVFILT_READ with options EV_ADD|EV_ENABLE to kpoller.");
             EV_SET(&e_read, fd, EVFILT_READ, EV_ADD | EV_ENABLE | EV_CLEAR, 0, 0, ch);
 
             if (::kevent(kqueueFd_, &e_read, 1, nullptr, 0, nullptr) == -1) {
@@ -76,7 +76,7 @@ void KQueuePoller::updateChannel(Channel* ch) {
     {
         struct kevent e_write;
         if (ev & IO_WRITE) {
-            logger_->info("register EVFILT_READ with options EV_ADD | EV_ENABLE to kpoller");
+            logger_->info("register EVFILT_READ with options EV_ADD|EV_ENABLE to kpoller");
             EV_SET(&e_write, fd, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_CLEAR, 0, 0, ch);
 
             if (::kevent(kqueueFd_, &e_write, 1, nullptr, 0, nullptr) == -1) {
@@ -125,7 +125,7 @@ void KQueuePoller::poll(int timeout_ms, std::vector<Channel*>& activeChannels) {
     ts.tv_sec = timeout_ms / 1000;
     ts.tv_nsec = (timeout_ms % 1000) * 1000000;
 
-    int n = ::kevent(kqueueFd_, nullptr, 0, events_.data(), static_cast<int>(events_.size()), &ts);
+    int n = ::kevent(kqueueFd_, nullptr, 0, events_.data(), events_.size(), &ts);
     if (n < 0) {
         // logger_->error("kevent error.");
         //TODO Handle error properly, maybe throw an exception or log the error

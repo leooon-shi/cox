@@ -171,7 +171,7 @@ TEST(TlsIntegrationTest, HandshakeAndEncryptedEcho)
         std::lock_guard<std::mutex> lock(cli_mutex);
         if (client_tls)
         {
-            EXPECT_TURE(client_tls->handshakeDone());
+            EXPECT_TRUE(client_tls->handshakeDone());
             EXPECT_FALSE(client_tls->protocolVersion().empty());
         }
     }

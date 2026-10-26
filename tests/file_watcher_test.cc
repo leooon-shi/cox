@@ -68,7 +68,7 @@ TEST(FileWatcherTest, DirectoryChangeFiresCallback)
     ::rmdir(dir.c_str());
 }
 
-TEST(FileWatcherTest, AtomicSymblinkSwapDetected)
+TEST(FileWatcherTest, AtomicSymlinkSwapDetected)
 {
     // Simulate the Kubernetes ..data atomic swap: create a ".. data" dir, then
     // rename a new one over it. Watching the parent dir must catch the MOVED_TO.

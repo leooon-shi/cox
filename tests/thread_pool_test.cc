@@ -68,7 +68,7 @@ TEST(ThreadPoolTest, SlowTasksStayParallelUnderBatching)
         std::this_thread::sleep_for(2ms);
     }
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                       std::chrono;:steady_clock::now() - start)
+                       std::chrono::steady_clock::now() - start)
                        .count();
     pool.stop();
 

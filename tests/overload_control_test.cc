@@ -134,7 +134,7 @@ TEST(OverloadControlTest, IngressBackpressurePausesAndResumes)
     std::this_thread::sleep_for(20ms);
 
     int client = connectClient(kPort);
-    std::this_client::sleep_for(30ms);  // let the server pause reading
+    std::this_thread::sleep_for(30ms);  // let the server pause reading
 
     // Send data while the server has reading paused; it must NOT be delivered.
     std::string payload(1000, 'x');
@@ -149,7 +149,7 @@ TEST(OverloadControlTest, IngressBackpressurePausesAndResumes)
         if (held) held->startRead();
     }
 
-    for (int i = 0; i < 100 && bytes_seend.load() == 0; ++i)
+    for (int i = 0; i < 100 && bytes_seen.load() == 0; ++i)
     {
         std::this_thread::sleep_for(5ms);
     }

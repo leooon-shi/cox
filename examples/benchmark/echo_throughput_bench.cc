@@ -162,19 +162,19 @@ int main(int argc, char* argv[])
     double mbps = (total_bytes / (1024.0 * 1024.0)) / elapsed_s;
 
     std::cout << "=== Cox echo benchmark ===\n";
-    std::cout << "Connections:    " << connections << "\n";
-    std::cout << "server threads: " << server_threads << "\n";
-    std::cout << "msg size:       " << msg_size << " bytes\n";
-    std::cout << "duration:       " << elapsed_s << " s\n";
-    std::cout << "requests:       " << total_req << "\n";
-    std::cout << "QPS:            " << static_cast<uint64_t>(qps) << " req/s\n";
-    std::cout << "throughput:     " << mbps << " MB/s (echo, one direction)\n";
+    std::cout << "connections:   " << connections << "\n";
+    std::cout << "server threads:" << server_threads << "\n";
+    std::cout << "msg size:      " << msg_size << " bytes\n";
+    std::cout << "duration:      " << elapsed_s << " s\n";
+    std::cout << "requests:      " << total_req << "\n";
+    std::cout << "QPS:           " << static_cast<uint64_t>(qps) << " req/s\n";
+    std::cout << "throughput:    " << mbps << " MB/s (echo, one direction)\n";
     if (!all_lat.empty())
     {
-        std::cout <<"latency p50:      " << percentile(all_lat, 0.50) << " us\n";
-        std::cout <<"latency p90:      " << percentile(all_lat, 0.90) << " us\n";
-        std::cout <<"latency p99:      " << percentile(all_lat, 0.99) << " us\n";
-        std::cout <<"latency max:      " << percentile(all_lat, 1.0) << " us\n";
+        std::cout <<"latency p50:   " << percentile(all_lat, 0.50) << " us\n";
+        std::cout <<"latency p90:   " << percentile(all_lat, 0.90) << " us\n";
+        std::cout <<"latency p99:   " << percentile(all_lat, 0.99) << " us\n";
+        std::cout <<"latency max:   " << percentile(all_lat, 1.0) << " us\n";
     }
 
     stop = true;

@@ -42,7 +42,7 @@ Examples:
 Equivalent raw commands (CI uses these directly):
     cmake --preset clang-debug
     cmake --build --preset clang-debug --parallel
-    cmake --preset clang-debug
+    ctest --preset clang-debug
 EOF
     exit "${1:-1}"
 }
@@ -59,7 +59,7 @@ while [[ $# -gt 0 ]]; do
         --build-examples)     BUILD_EXAMPLES="ON"; shift ;;
         --test)               RUN_TESTS="ON"; shift ;;
         --clean)              CLEAN="ON"; shift ;;
-        -h|--help)            print usage 0 ;;
+        -h|--help)            print_usage 0 ;;
         *)                    echo "Unknown option: $1"; print_usage ;;
     esac
 done

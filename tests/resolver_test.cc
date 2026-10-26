@@ -32,7 +32,7 @@ TEST(ResolverTest, ThreadPoolResolvesLocalhost)
     reactor::EventLoop* loop_ptr = nullptr;
 
     std::thread t([&] {
-        reactor::EventLoop loop
+        reactor::EventLoop loop;
         loop_ptr = &loop;
         ThreadPoolResolver resolver(&loop, &pool);
         resolver.resolve("localhost", 8080,
@@ -101,7 +101,7 @@ TEST(ResolverTest, ThreadPoolResolvesNumericIp)
     pool.stop();
 }
 
-TEST(ResolverTest, ThreadPoolReportsErrorForBoguesHost)
+TEST(ResolverTest, ThreadPoolReportsErrorForBogusHost)
 {
     concurrent::ThreadPool pool("dns");
     pool.start(2);

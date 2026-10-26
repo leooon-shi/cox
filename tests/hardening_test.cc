@@ -31,7 +31,7 @@ namespace
 bool waitReadable(int fd, int ms)
 {
     struct pollfd pfd{fd, POLLIN, 0};
-    return ::poll(&pfd, 1, ms) > 0 && (pdf.revents & POLLIN);
+    return ::poll(&pfd, 1, ms) > 0 && (pfd.revents & POLLIN);
 }
 
 bool waitWritable(int fd, int ms)
@@ -52,7 +52,7 @@ int connectClient(uint16_t port)
 
 // A connection is force-closed once it reaches the configured max age, even if
 // it is actively exchanging data.
-TEST(HardeningTest, MaxConnectingAgeRecyclesConnection)
+TEST(HardeningTest, MaxConnectionAgeRecyclesConnection)
 {
     const uint16_t kPort = 51001;
     std::atomic<bool> started{false};

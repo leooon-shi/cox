@@ -31,13 +31,13 @@ struct NamedCert
 
     explicit NamedCert(const std::string& common_name, const std::string& tag)
         : cn(common_name) {
-          cert_path = "/tmp/cox_sni" + tag + "_cert.pem";
+          cert_path = "/tmp/cox_sni_" + tag + "_cert.pem";
           key_path = "/tmp/cox_sni_" + tag + "_key.pem";
           // subjectAllName is required for modern hostname verification; CN alone
           // is no longer honored by OpenSSL's X509_check_host.
           std::string cmd=
               "openssl req -x509 -newkey rsa:2048 -nodes -keyout " + key_path +
-              " -out" + cert_path + " -days 1 -subj '/CN=" + common_name +
+              " -out " + cert_path + " -days 1 -subj '/CN=" + common_name +
               "' -addext 'subjectAltName=DNS:" + common_name + "'"
               " >/dev/null 2>&1";
           // Status intentionally unchecked here: valid() below verifies the
@@ -102,7 +102,7 @@ TEST(SniTest, ExactHostnameLookup)
     EXPECT_EQ(def->findSniContext("other.example.com"), nullptr);
 }
 
-TEST(SniTest, LoopupIsCaseInsensitive)
+TEST(SniTest, LookupIsCaseInsensitive)
 {
     NamedCert base("default.test", "base2"), a("a.example.com", "a2");
     ASSERT_TRUE(base.valid() && a.valid());

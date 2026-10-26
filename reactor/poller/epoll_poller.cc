@@ -62,7 +62,7 @@ void EPollPoller::poll(int timeoutMs, std::vector<Channel*>& activeChannels) {
     }
 
     if (num == static_cast<int>(events_.size()) ) {
-        events_.resize(events.size() * 2); // grow for next round
+        events_.resize(events_.size() * 2); // grow for next round
     }
 }
 

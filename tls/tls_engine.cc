@@ -22,7 +22,7 @@ std::string opensslError(const std::string& what)
 // an IPv4 literal is all digits and dots; an IPv6 literal contains ':'.
 bool looksLikeIpLiteral(const std::string& host)
 {
-    if (host.find(":") != std::string::npos) return true;  // IPv6
+    if (host.find(':') != std::string::npos) return true;  // IPv6
 
     bool all_digits_dots = true;
     for (char c : host)
@@ -63,7 +63,7 @@ void TlsEngine::init(const TlsContext& ctx, Role role,
     // and out ourselves so the event loop owns all actual I/O.
     rbio_ = BIO_new(BIO_s_mem());
     wbio_ = BIO_new(BIO_s_mem());
-    if (!rbio_ || !wbio )
+    if (!rbio_ || !wbio_ )
     {
         if (rbio_)
         {

@@ -94,7 +94,7 @@ TEST(RouterTest, MethodDispatch)
     Router router;
     std::string which;
     router.get("/x", [&](const HttpRequest&, const PathParams&,
-                         HttpResponse* r) { which = "get"; r->setstatus(200); });
+                         HttpResponse* r) { which = "get"; r->setStatus(200); });
     router.post("/x", [&](const HttpRequest&, const PathParams&,
                           HttpResponse* r) { which = "post"; r->setStatus(201); });
     

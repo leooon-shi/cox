@@ -70,7 +70,7 @@ cox_add_test(thread_pool_integration_test  LIBS cow_net cow_concurrent)
 cox_add_test(token_bucket_test        LIBS cow_flowcontrol)
 cox_add_test(backoff_test             LIBS cow_flowcontrol)
 cox_add_test(concurrency_limiter_test LIBS cow_flowcontrol)
-cox_add_test(overload_control_test    LIBS cow_flowcontrol)
+cox_add_test(overload_control_test    LIBS cow_net)
 
 # ---- net / TCP ----
 cox_add_test(inet_address_test        LIBS cow_net)

@@ -184,7 +184,7 @@ void TimerQueue::handleRead()
     for (const auto& entry : expired)
     {
         // Skip timers cancelled during this batch of callbacks.
-        if (cancelling_.find(entry.second->sequece()) == cancelling_.end())
+        if (cancelling_.find(entry.second->sequence()) == cancelling_.end())
         {
             entry.second->run();
         }

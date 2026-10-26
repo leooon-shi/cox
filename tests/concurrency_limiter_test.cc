@@ -26,7 +26,7 @@ TEST(ConcurrencyLimiterTest, AdmitsUpToMax)
     EXPECT_TRUE(limiter.isOverloaded());
 }
 
-TEST(ConcurrencyLimiterTest, ReleaseFreeSlot)
+TEST(ConcurrencyLimiterTest, ReleaseFreesSlot)
 {
     ConcurrencyLimiter limiter(1);
     {
@@ -66,7 +66,7 @@ TEST(ConcurrencyLimiterTest, UnlimitedAlwaysAdmits)
 {
     ConcurrencyLimiter limiter(0);   // 0 = unlimited
     std::vector<ConcurrencyLimiter::Permit> permits;
-    for (int i = 0; i < 1000, ++i)
+    for (int i = 0; i < 1000; ++i)
     {
         auto p = limiter.tryAcquire();
         EXPECT_TRUE(p);

@@ -9,7 +9,7 @@
 namespace buffer
 {
 class Buffer;
-};
+}
 
 namespace http
 {

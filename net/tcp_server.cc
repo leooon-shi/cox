@@ -145,7 +145,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peer)
     {
         conn->setMaxInputBufferSize(max_input_buffer_size_);
     }
-    if (max_age_seconds_)
+    if (max_age_seconds_ > 0)
     {
         conn->setMaxConnectionAge(max_age_seconds_);
     }

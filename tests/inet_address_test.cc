@@ -51,7 +51,7 @@ TEST(InetAddressTest, Ipv6Wildcard)
     EXPECT_EQ(addr.port(), 9000);
 }
 
-TEST(InetAddressTest, Ipv6Lookback)
+TEST(InetAddressTest, Ipv6Loopback)
 {
     InetAddress addr(1234, /*loopback_only=*/true, /*ipv6=*/true);
     EXPECT_TRUE(addr.isIpv6());
@@ -102,7 +102,7 @@ TEST(InetAddressTest, UnixDomainPathTooLongThrows)
     EXPECT_THROW(InetAddress::unixDomain(long_path), std::invalid_argument);
 }
 
-TEST(InetAddressTest, unixDomainSockLen)
+TEST(InetAddressTest, UnixDomainSockLen)
 {
     InetAddress addr = InetAddress::unixDomain("/tmp/x.sock");
     // Length covers the family field + used path + NUL.

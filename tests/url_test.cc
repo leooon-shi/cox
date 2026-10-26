@@ -84,7 +84,7 @@ TEST(UrlTest, ParseQueryEdgeCases)
     EXPECT_EQ(d["k"], "2");
 }
 
-TEST(UrlTest, ReqeustQueryParams)
+TEST(UrlTest, RequestQueryParams)
 {
     HttpRequest req;
     req.setQuery("page=2&per_page=50&q=hello+world");
@@ -111,7 +111,7 @@ TEST(UrlTest, RequestQueryCacheInvalidatedOnSet)
     EXPECT_TRUE(req.queryParams().empty());
 }
 
-TEST(UrlTest, RequestFromParams)
+TEST(UrlTest, RequestFormParams)
 {
     HttpRequest req;
     req.setMethod(Method::kPost);

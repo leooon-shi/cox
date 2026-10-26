@@ -45,7 +45,7 @@ bool waitReadable(int fd, int timeout_ms)
 }
 }   // namespace
 
-TEST(SocketTest, CreatedBindListenIpv4)
+TEST(SocketTest, CreateBindListenIpv4)
 {
     InetAddress bound;
     Socket listener = makeListener(/*ipv6=*/false, &bound);
@@ -54,7 +54,7 @@ TEST(SocketTest, CreatedBindListenIpv4)
     EXPECT_GT(bound.port(), 0);
 }
 
-TEST(SocketTest, CreatedBindListenIpv6)
+TEST(SocketTest, CreateBindListenIpv6)
 {
     InetAddress bound;
     Socket listener = makeListener(/*ipv6=*/true, &bound);
@@ -136,7 +136,7 @@ TEST(SocketTest, MoveSemantics)
     int fd = a.fd();
     Socket b(std::move(a));
     EXPECT_EQ(b.fd(), fd);
-    EXPECT_EQ(a.fd(), -1)   // moved-from is emptied
+    EXPECT_EQ(a.fd(), -1);   // moved-from is emptied
 }
 
 TEST(SocketTest, Release)

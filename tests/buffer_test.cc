@@ -43,7 +43,7 @@ TEST(BufferTest, GrowsWhenNeeded)
     EXPECT_EQ(buf.retrieveAllAsString(), big);
 }
 
-TEST(BufferTest, CompactInsteadOfGrowing)
+TEST(BufferTest, CompactsInsteadOfGrowing)
 {
     Buffer buf;
     // Fill, consume part, then append again; should compact rather than grow.
@@ -58,7 +58,7 @@ TEST(BufferTest, CompactInsteadOfGrowing)
     EXPECT_EQ(result.substr(100), std::string(200, 'b'));
 }
 
-TEST(BufferTest, MultipleAppendAccumutable)
+TEST(BufferTest, MultipleAppendsAccumulate)
 {
     Buffer buf;
     buf.append(std::string("abc"));

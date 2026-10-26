@@ -310,7 +310,7 @@ void EventLoop::doPendingTasks()
     {
         try
         {
-            task.front()();
+            tasks.front()();
         }
         catch(const std::exception& e)
         {

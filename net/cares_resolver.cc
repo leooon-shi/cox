@@ -198,7 +198,7 @@ private:
 };
 
 CaresResolver::CaresResolver(reactor::EventLoop* loop)
-    : impl_(std::make_unique<Impl>(loop)) {}
+    : impl_(std::make_shared<Impl>(loop)) {}
 
 CaresResolver::~CaresResolver() = default;
 

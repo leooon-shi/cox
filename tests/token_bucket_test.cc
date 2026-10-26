@@ -8,7 +8,7 @@
 using namespace std::chrono_literals;
 using flowcontrol::TokenBucket;
 
-TEST(TokenBucketTest, StartsFullupToBurst)
+TEST(TokenBucketTest, StartsFullUpToBurst)
 {
     TokenBucket tb(/*qps=*/10, /*burst=*/5);
     // Should admit exactly `burst` events immediately.

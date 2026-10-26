@@ -96,7 +96,7 @@ std::string OcspStapler::responderUrl() const
     return aiaOcspUrl(cert.get());
 }
 
-bool OcspStapler::setResponserDer(const std::string& der)
+bool OcspStapler::setResponseDer(const std::string& der)
 {
     if (der.empty()) return false;
 

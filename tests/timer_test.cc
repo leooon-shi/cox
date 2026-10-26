@@ -78,7 +78,7 @@ TEST(TimerTest, RunAfterDoesNotFireEarly)
     EXPECT_EQ(count.load(), 0);   // not yet elapsed
 }
 
-TESt(TimerTest, RunEveryFiresRepeatedly)
+TEST(TimerTest, RunEveryFiresRepeatedly)
 {
     LoopFixture fx;
     std::atomic<int> count{0};

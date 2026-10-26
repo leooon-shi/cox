@@ -30,9 +30,9 @@ int main()
     double s = duration_cast<duration<double>>(t1 - t0).count();
 
     std::cout << "=== Cox buffer benchmark ===\n";
-    std::cout << "iterations:  " << kIters << " (2x2568 append + retrieveAll)\n";
+    std::cout << "iterations:  " << kIters << " (2x256B append + retrieveAll)\n";
     std::cout << "elapsed:     " << s << " s\n";
-    std::cout << "opt/s:       " << static_cast<uint16_t>(kIters / s) << "\n";
+    std::cout << "opt/s:       " << static_cast<uint64_t>(kIters / s) << "\n";
     std::cout << "throughput:  " 
               << (static_cast<double>(total) / (1024.0 * 1024.0)) / s 
               << " MB/s\n";
