@@ -1,4 +1,4 @@
-// URL decoding / encoding, query-string parsing, and the HttpRequest + 
+// URL decoding / encoding, query-string parsing, and the HttpRequest +
 // Router integration that exposes them.
 
 #include "url.h"
@@ -24,7 +24,7 @@ TEST(UrlTest, DecodePercentEscapes)
 TEST(UrlTest, DecodePlusHandling)
 {
     EXPECT_EQ(urlDecode("a+b"), "a b");             // Form default
-    EXPECT_EQ(urlDecode("a+b", /*plus_as_space*/false), "a+b");     // path mode
+    EXPECT_EQ(urlDecode("a+b", /*plus_as_space=*/false), "a+b");     // path mode
 }
 
 TEST(UrlTest, DecodeMalformedEscapeIsKeptLiterally)
@@ -69,13 +69,13 @@ TEST(UrlTest, ParseQueryEdgeCases)
     EXPECT_TRUE(p.count("flag"));
     EXPECT_EQ(p["flag"], "");
     EXPECT_TRUE(p.count("empty"));
-    EXEPCT_EQ(p["empty"], "");
+    EXPECT_EQ(p["empty"], "");
     EXPECT_EQ(p["x"], "1");
 
     EXPECT_TRUE(parseQuery("").empty());
     EXPECT_TRUE(parseQuery("&&").empty());
 
-    // Value containing '-' keeps everything after the first one.
+    // Value containing '=' keeps everything after the first one.
     auto q = parseQuery("token=a=b=c");
     EXPECT_EQ(q["token"], "a=b=c");
 
@@ -84,14 +84,14 @@ TEST(UrlTest, ParseQueryEdgeCases)
     EXPECT_EQ(d["k"], "2");
 }
 
-TEST(UrlTest, RequstQueryParams)
+TEST(UrlTest, ReqeustQueryParams)
 {
     HttpRequest req;
     req.setQuery("page=2&per_page=50&q=hello+world");
 
     EXPECT_EQ(req.queryParam("page"), "2");
     EXPECT_EQ(req.queryParam("per_page"), "50");
-    EXPECT_EQ(req.queryParam("q", "hello world"));
+    EXPECT_EQ(req.queryParam("q"), "hello world");
     EXPECT_TRUE(req.hasQueryParam("page"));
     EXPECT_FALSE(req.hasQueryParam("missing"));
     EXPECT_EQ(req.queryParam("missing"), "");
@@ -105,10 +105,10 @@ TEST(UrlTest, RequestQueryCacheInvalidatedOnSet)
     EXPECT_EQ(req.queryParam("a"), "1");            // Populates the cache
     req.setQuery("a=2&b=3");
     EXPECT_EQ(req.queryParam("a"), "2");
-    EXPECT_EQ(req.queryParam("b"), "2");
+    EXPECT_EQ(req.queryParam("b"), "3");
 
     req.reset();
-    EXPECT_TURE(req.queryParams().empty());
+    EXPECT_TRUE(req.queryParams().empty());
 }
 
 TEST(UrlTest, RequestFromParams)
@@ -118,7 +118,7 @@ TEST(UrlTest, RequestFromParams)
     req.addHeader("Content-Type", "application/x-www-form-urlencoded");
     req.setBody("user=ada&msg=hi+there");
 
-    auto form = req.fromParams();
+    auto form = req.formParams();
     EXPECT_EQ(form["user"], "ada");
     EXPECT_EQ(form["msg"], "hi there");
 }
@@ -136,7 +136,7 @@ TEST(UrlTest, RouterDecodesPathParams)
 {
     Router router;
     std::string captured;
-    router.get("/files/{name}", [&](const HttpRequest&, const PathParam& p,
+    router.get("/files/{name}", [&](const HttpRequest&, const PathParams& p,
                                     HttpResponse* resp) {
         captured = p.at("name");
         resp->setStatus(200);
@@ -154,7 +154,7 @@ TEST(UrlTest, RouterEncodedSlashStaysInOneSegment)
 {
     Router router;
     std::string captured;
-    router.get("/files/{name}", [&](const HttpRequest&, const PathParams&p,
+    router.get("/files/{name}", [&](const HttpRequest&, const PathParams& p,
                                     HttpResponse* resp) {
         captured = p.at("name");
         resp->setStatus(200);
@@ -173,8 +173,8 @@ TEST(UrlTest, RouteDoesNotTreatPlusAsSpaceInPath)
 {
     Router router;
     std::string captured;
-    router.get("/tags/{tag}", [&](const HttpRequest&, const PathParams&p,
-                                    HttpResponse* resp) {
+    router.get("/tags/{tag}", [&](const HttpRequest&, const PathParams& p,
+                                  HttpResponse* resp) {
         captured = p.at("tag");
         resp->setStatus(200);
     });

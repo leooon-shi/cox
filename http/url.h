@@ -11,7 +11,7 @@ using QueryParams = std::map<std::string, std::string>;
 // Percent-decode a URL-encoded string: "%XX" -> byte, '+' -> space when
 // plus_as_space is true (the application/x-www-form-urlencoded convention).
 // Invalid escapes are left as-is rather than rejected, so a malformed query
-// degrades instead of falling the request.
+// degrades instead of failing the request.
 std::string urlDecode(const std::string& in, bool plus_as_space = true);
 
 // Percent-encode a string so it is safe as a query key/value. Unreserved
@@ -20,6 +20,6 @@ std::string urlDecode(const std::string& in, bool plus_as_space = true);
 std::string urlEncode(const std::string& in);
 
 // Parse a query string ("a=1&b=2&flag") into decoded key/value pairs. A key
-// Without '=' maps to an empty value. Later duplicates overwrite earlier ones.
+// without '=' maps to an empty value. Later duplicates overwrite earlier ones.
 QueryParams parseQuery(const std::string& query);
 } // namespace http

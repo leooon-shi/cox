@@ -12,14 +12,14 @@ namespace buffer
 // A growable byte buffer for non-blocking I/O, modeled after muduo::net::Buffer.
 //
 // Layout:
-//   +-------------------+-------------------+-------------------+
-//   | prependable bytes |  readable bytes   |   writable bytes  |
-//   |                   |      (CONTENT)    |                   |
-//   +-------------------+-------------------+-------------------+
-//   0      <=      readerIndex     <=    writerIndex    <=    size
+//   +-------------------+-------------------+---------------------+
+//   | prependable bytes |  readable bytes   |   writable bytes    |
+//   |                   |      (CONTENT)    |                     |
+//   +-------------------+-------------------+---------------------+
+//   0      <=      readerIndex     <=    writerIndex     <=     size
 //
 // The prependable region allows cheap prepending of, e.g., a length header
-// without shifting the payload. When the writable region is exhaused, the
+// without shifting the payload. When the writable region is exhausted, the
 // buffer either compacts (reclaiming consumed prependable space) or grows.
 class Buffer {
 public:
@@ -110,7 +110,7 @@ public:
 
     // Read available data from an fd into this buffer using a scatter read that
     // avoids repeated small reads. Returns the number of bytes read, or -1 on
-    // error (errno set), following ::read sematics.
+    // error (errno set), following ::read semantics.
     ssize_t readFd(int fd, int* saved_errno);
 
 private:
@@ -128,7 +128,7 @@ private:
             size_t readable = readableBytes();
             std::memmove(begin() + kCheapPrepend, begin() + reader_index_, readable);
             reader_index_ = kCheapPrepend;
-            writer_index_ = kCheapPrepend;
+            writer_index_ = reader_index_ +  readable;
         }
     }
 
@@ -136,4 +136,4 @@ private:
     size_t reader_index_;
     size_t writer_index_;
 };
-} // namespace buffer
+}   // namespace buffer

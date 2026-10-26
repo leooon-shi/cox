@@ -44,19 +44,19 @@ public:
     void start(int num_threads);
 
     // Stop the pool: wake all workers, let them finish draining, and join.
-    // Idempotent
+    // Idempotent.
     void stop();
 
     // Enqueue a task. Blocks if the queue is full (bounded mode). If the pool
     // has zero threads, runs the task inline.
     void run(Task task);
 
-    // Try to enqueue without blockin. Returns false if the queue is full
+    // Try to enqueue without blocking. Returns false if the queue is full
     // (the task is NOT run). With zero threads, runs inline and returns true.
     bool tryRun(Task task);
 
     // Maximum number of tasks a worker drains per mutex acquisition. Larger
-    // values amorize lock/wakeup overhead across many tasks (important for
+    // values amortize lock/wakeup overhead across many tasks (important for
     // huge, fast-to-run workloads) at the cost of coarser load balancing.
     // Must be >= 1 and set before start(). Default 32.
     void setTakeBatchSize(size_t size) { take_batch_size_ = size; }
@@ -80,9 +80,9 @@ private:
     std::condition_variable not_full_;
     std::deque<Task> queue_;
     std::vector<std::thread> threads_;
-    size_t max_queue_size_ {0};
-    size_t take_batch_size_ {32};
-    std::atomic<bool> running_ {false};
+    size_t max_queue_size_{0};
+    size_t take_batch_size_{32};
+    std::atomic<bool> running_{false};
 };
 
 }

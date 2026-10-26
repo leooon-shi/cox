@@ -7,7 +7,7 @@
 
 namespace http
 {
-const char* methodToString( Method m)
+const char* methodToString(Method m)
 {
     switch(m)
     {
@@ -18,7 +18,7 @@ const char* methodToString( Method m)
         case Method::kHead: return "HEAD";
         case Method::kOptions: return "OPTIONS";
         case Method::kPatch: return "PATCH";
-        case Method::kInvalid: return "INVALID";
+        case Method::kInvalid: default: return "INVALID";
     }
 }
 
@@ -39,7 +39,7 @@ namespace
 std::string toLower(std::string s)
 {
     std::transform(s.begin(), s.end(), s.begin(),
-                [](unsigned char c){ return std::tolower(c); });
+                   [](unsigned char c){ return std::tolower(c); });
     return s;
 }
 } // namespace
@@ -47,6 +47,10 @@ std::string toLower(std::string s)
 void HttpRequest::addHeader(std::string key, std::string value)
 {
     headers_[toLower(std::move(key))] = std::move(value);
+}
+std::string HttpRequest::header(const std::string& key) const {
+    auto it = headers_.find(toLower(key));
+    return it == headers_.end() ? std::string() : it->second;
 }
 
 bool HttpRequest::hasHeader(const std::string& key) const {
@@ -87,8 +91,8 @@ bool HttpRequest::keepAlive() const
 {
     std::string conn = header("connection");
     std::transform(conn.begin(), conn.end(), conn.begin(),
-                    [](unsigned char c) { return std::tolower(c); });
-    
+                   [](unsigned char c) { return std::tolower(c); });
+
     if (version_ == "HTTP/1.1")
     {
         return conn != "close";         // keep-alive default in 1.1
@@ -137,7 +141,7 @@ void HttpRequest::appendTo(buffer::Buffer* buf, const std::string& host) const
         head += "\r\n";
     }
     head += "Content-Length: ";
-    head +=  std::to_string(body_.size());
+    head += std::to_string(body_.size());
     head += "\r\n\r\n";
 
     buf->append(head);

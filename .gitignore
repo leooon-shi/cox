@@ -28,9 +28,3 @@ coverage/
 *.a
 *.so
 *.log
-
-# Saved AI-assistant conversation transcripts (e.g. cox_ev_leftovers.json --
-# a ~6MB dump that is not project data). Ignored rather than deleted; remove it
-# mannually if unwanted.
-cox_ev_leftovers.json
-*_leftovers.json

@@ -12,7 +12,7 @@ AsyncSink::AsyncSink(std::unique_ptr<Sink> downstream, size_t max_buffered_lines
  flush_interval_ms_(flush_interval_ms)
 {
     running_ = true;
-    thread_ = std::thread([this]{ writerThread(); });
+    thread_ = std::thread([this] { writerThread(); });
 }
 
 AsyncSink::~AsyncSink() { stop(); }
@@ -22,7 +22,7 @@ void AsyncSink::append(const std::string& line)
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!running_) return;
-        //Bounded: shed rather than block a (possibly event-loop) producer.
+        // Bounded: shed rather than block a (possibly event-loop) producer.
         if (current_.size() + writing_.size() >= max_lines_)
         {
             dropped_.fetch_add(1);
@@ -43,9 +43,9 @@ void AsyncSink::flush()
         return;
     }
 
-    //Wake the writer and wait until both buffers are empty.
+    // Wake the writer and wait until both buffers are empty.
     not_empty_.notify_one();
-    drained_.wait(lock, [this]{
+    drained_.wait(lock, [this] {
         return (current_.empty() && writing_.empty()) || !running_;
     });
 
@@ -73,13 +73,13 @@ void AsyncSink::stop()
         current_.clear();
     }
 
-    for (auto& line : leftover) downstream_->append(line);
+    for (const auto& line : leftover) downstream_->append(line);
     downstream_->flush();
 }
 
 void AsyncSink::writerThread()
 {
-    while(true)
+    while (true)
     {
         std::vector<std::string> batch;
         uint64_t drops_to_report = 0;
@@ -89,10 +89,9 @@ void AsyncSink::writerThread()
             {
                 // Wait for work, but wake periodically so a low-traffic
                 // service still sees its lines promptly.
-                not_empty_.wait_for(lock, std::chrono::milliseconds(flush_interval_ms_),
-                [this]{
-                    return !current_.empty() || !running_;
-                });
+                not_empty_.wait_for(
+                    lock, std::chrono::milliseconds(flush_interval_ms_),
+                    [this] { return !current_.empty() || !running_; });
             }
 
             if (!running_ && current_.empty())
@@ -101,7 +100,7 @@ void AsyncSink::writerThread()
                 return;
             }
 
-            // The SWAP: take the producers' buffer and give them an empty one.
+            // THE SWAP: take the producers' buffer and give them an empty one.
             // All I/O below happens with the lock released.
             current_.swap(writing_);
             batch.swap(writing_);
@@ -115,15 +114,16 @@ void AsyncSink::writerThread()
         }
 
         for (const auto& line : batch) downstream_->append(line);
-        //Make shedding visible in the log itself, not just via the counter.
+        // Make shedding visible in the log itself, not just via the counter.
         if (drops_to_report > 0)
         {
-            downstream_.append(
+            downstream_->append(
                 "AsyncSink: dropped " + std::to_string(drops_to_report) +
                 " log line(s) -- buffer full");
         }
 
         if (!batch.empty()) downstream_->flush();
+
         {
             std::lock_guard<std::mutex> lock(mutex_);
             if (current_.empty() && writing_.empty()) drained_.notify_all();

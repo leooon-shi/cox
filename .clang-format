@@ -1,10 +1,11 @@
 # Cox formatting rules.
 #
 # The README states the project follows the Google C++ Style Guide, and this
-# file makes that claim mechanically checkable (`clang-format --dry-run --Werror`) instead of merely aspirational.
+# file makes that claim mechanically checkable (`clang-format --dry-run 
+# --Werror`) instead of merely aspirational.
 #
 # ONE DELIBERATE DEVIATION: IndentWidth is 4, not Google's 2. That matches the
-# existing code (measured across net/ http/ tls/ and logging/), and changing
+# existing code (measured across net/, http/, tls/ and logging/), and changing
 # it would reformat essentially every file, burying real history in noise.
 # Everything else follows Google.
 ---
@@ -16,8 +17,8 @@ ContinuationIndentWidth: 4
 AccessModifierOffset: -4
 ColumnLimit: 80
 
-# Keep the existing "public:" -frst layout readable.
-IndenAccessModifiers: false
+# Keep the existing "public:"-first layout readable.
+IndentAccessModifiers: false
 
 # Includes: Cox headers are found via target_include_directories rather than
 # paths relative to the source, so "buffer.h" style quoted includes are project
@@ -25,7 +26,7 @@ IndenAccessModifiers: false
 SortIncludes: CaseSensitive
 IncludeBlocks: Preserve
 
-# Pointer/reference binding: `int* p`, `const T&r` -- as used throughout.
+# Pointer/reference binding: `int* p`, `const T& r` -- as used throughout.
 DerivePointerAlignment: false
 PointerAlignment: Left
 

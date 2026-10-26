@@ -2,15 +2,16 @@
 //
 // Spins up a real TcpServer echo endpoint (optionally multi-threaded), then
 // drives it with N concurrent client connections each issuing a request and
-// waiting for the cho (closed-loop). Reports QPS, throughput, and latency
+// waiting for the echo (closed-loop). Reports QPS, throughput, and latency
 // percentiles (p50/p90/p99/max).
 //
 // Usage:
-//    echo_throughput_bench [connections] [duration_s] [msg_size] [server_threads]
+//   echo_throughput_bench [connections] [duration_s] [msg_size] [server_threads]
 // Defaults: 100 connections, 5s, 128-byte messages, 1 server thread.
 
 #include "buffer.h"
 #include "event_loop.h"
+#include "inet_address.h"
 #include "socket.h"
 #include "tcp_connection.h"
 #include "tcp_server.h"
@@ -52,7 +53,7 @@ void runClient(uint16_t port, size_t msg_size, std::atomic<bool>* stop,
     int fd = ::socket(AF_INET, SOCK_STREAM, 0);
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
-    addr.sin_port = htos(port);
+    addr.sin_port = htons(port);
     ::inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
     if (::connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0 )
     {
@@ -76,7 +77,7 @@ void runClient(uint16_t port, size_t msg_size, std::atomic<bool>* stop,
         while (got < msg_size)
         {
             ssize_t n = ::read(fd, buf.data() + got, msg_size - got);
-            if (n <= 0)  { got = 0; break; }
+            if (n <= 0) { got = 0; break; }
             got += static_cast<size_t>(n);
         }
         if (got != msg_size) break;
@@ -85,7 +86,7 @@ void runClient(uint16_t port, size_t msg_size, std::atomic<bool>* stop,
         out->requests++;
         out->bytes += msg_size;
         // Sample latency (keep memory bounded).
-        if ((out->requests & 0x3) == 0) {   // 1 in 4
+        if ((out->requests & 0x3) == 0) {  // 1 in 4
             out->latencies_us.push_back(
                 duration_cast<nanoseconds>(t1 - t0).count() / 1000.0);
         }
@@ -96,7 +97,7 @@ void runClient(uint16_t port, size_t msg_size, std::atomic<bool>* stop,
 double percentile(std::vector<double>& v, double p)
 {
     if (v.empty()) return 0;
-    size_t idx = static_cast<size_t>(p * (v.size() - 1 ));
+    size_t idx = static_cast<size_t>(p * (v.size() - 1));
     std::nth_element(v.begin(), v.begin() + idx, v.end());
     return v[idx];
 }
@@ -111,7 +112,7 @@ int main(int argc, char* argv[])
     const uint16_t port = 54321;
 
     // ---- Server ----
-    std::atomic<bool> srv_started {false};
+    std::atomic<bool> srv_started{false};
     reactor::EventLoop* srv_loop = nullptr;
     std::thread server_thread([&] {
         reactor::EventLoop loop;
@@ -119,7 +120,8 @@ int main(int argc, char* argv[])
         InetAddress addr("127.0.0.1", port);
         TcpServer server(&loop, addr, "bench-echo");
         if (server_threads > 1) server.setThreadNum(server_threads);
-        server.setMessageCallback([](const TcpConnectionPtr& conn, buffer::Buffer* buf {
+        server.setMessageCallback(
+            [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
             conn->send(buf->retrieveAllAsString());
         });
         server.start();
@@ -142,14 +144,14 @@ int main(int argc, char* argv[])
 
     std::this_thread::sleep_for(seconds(duration_s));
     stop = true;
-    for (auto & c : clients) c.join();
+    for (auto& c : clients) c.join();
     auto bench_end = Clock::now();
 
     // ---- Aggregate ----
     double elapsed_s = duration_cast<duration<double>>(bench_end - bench_start).count();
     uint64_t total_req = 0, total_bytes = 0;
     std::vector<double> all_lat;
-    for ( auto& r : results)
+    for (auto& r : results)
     {
         total_req += r.requests;
         total_bytes += r.bytes;
@@ -159,7 +161,7 @@ int main(int argc, char* argv[])
     double qps = total_req / elapsed_s;
     double mbps = (total_bytes / (1024.0 * 1024.0)) / elapsed_s;
 
-    std::cout << " === Cox echo benchmark ===\n";
+    std::cout << "=== Cox echo benchmark ===\n";
     std::cout << "Connections:    " << connections << "\n";
     std::cout << "server threads: " << server_threads << "\n";
     std::cout << "msg size:       " << msg_size << "\n";

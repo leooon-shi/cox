@@ -24,7 +24,7 @@ public:
     EventLoopThreadPool(const EventLoopThreadPool&) = delete;
     EventLoopThreadPool& operator=(const EventLoopThreadPool&) = delete;
 
-    // Number of io threads to spawn. 0 (default) -> everything runs on the
+    // Number of io threads to spawn. 0 (default) => everything runs on the
     // base loop. Must be set before start().
     void setThreadNum(int num_threads) { num_threads_ = num_threads; }
 
@@ -44,10 +44,10 @@ public:
 private:
     EventLoop* base_loop_;
     std::string name_;
-    bool started_ {false};
-    int num_threads_ {0};
+    bool started_{false};
+    int num_threads_{0};
     size_t next_{0}; // round-robin cursor
     std::vector<std::unique_ptr<EventLoopThread>> threads_;
     std::vector<EventLoop*> loops_;
 };
-}
+} // namespace reactor

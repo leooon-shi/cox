@@ -1,11 +1,11 @@
-// Integration test: offload blocking work from a TcpServer messsage callback to
+// Integration test: offload blocking work from a TcpServer message callback to
 // a worker ThreadPool, then post the result back to the connection's loop via
 // runInLoop. Verifies the io loop stays responsive while a "slow" handler runs.
 
 #include "thread_pool.h"
 
 #include "buffer.h"
-#include "event_loop."
+#include "event_loop.h"
 #include "inet_address.h"
 #include "socket.h"
 #include "tcp_connection.h"
@@ -32,18 +32,17 @@ namespace sockets = net::sockets;
 namespace
 {
 // Blocking helpers for the client side of the tests.
-bool waitReadable(int fd, int timeout_ms)
+bool waitReadable(int fd, int ms)
 {
     struct pollfd pfd{fd, POLLIN, 0};
-    return ::poll(&pfd, 1, timeout_ms) > 0 && (pfd.revents & POLLIN);
+    return ::poll(&pfd, 1, ms) > 0 && (pfd.revents & POLLIN);
 }
-bool waitWritable(int fd, int timeout_ms)
+bool waitWritable(int fd, int ms)
 {
     struct pollfd pfd{fd, POLLOUT, 0};
-    return ::poll(&pfd, 1, timeout_ms) > 0 && (pfd.revents & POLLOUT);
+    return ::poll(&pfd, 1, ms) > 0 && (pfd.revents & POLLOUT);
 }
 
-// Connect a blocking client socket to a loopback port.
 int connectClient(uint16_t port)
 {
     int fd = sockets::createNonBlockingOrDie(AF_INET);
@@ -57,7 +56,7 @@ int connectClient(uint16_t port)
 
 // A handler that "blocks" (sleeps) is offloaded to the pool so it does not stall
 // the io loop; the reply is marshaled back with runInLoop. Two clients are
-// served concurrenctly even through each handler takes ~100ms.
+// served concurrently even through each handler takes ~100ms.
 TEST(ThreadPoolIntegrationTest, OffloadKeepsLoopResponsive)
 {
     const uint16_t kPort = 49001;
@@ -67,23 +66,25 @@ TEST(ThreadPoolIntegrationTest, OffloadKeepsLoopResponsive)
     ThreadPool pool("io-offload");
     pool.start(4);
 
-    std::thread server_thread( [&]{
+    std::thread server_thread([&] {
         reactor::EventLoop loop;
         loop_ptr = &loop;
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "offload");
-        server.setMessageCallback([&](const TcpConnectionPtr& conn, buffer::Buffer* buf){
-            std::string req = buf->retrieveAllAsString();
-            // Offload a "blocking" computation to the pool
-            pool.run([conn, req](){
-                std::this_thread::sleep_for(100ms);     // simulate blocking work
-                std::string resp = "processed: " + req;
-                conn->getLoop()->runInLoop(
-                    [conn, resp](){
-                        conn->send(resp);
-                    });
+        server.setMessageCallback(
+            [&](const TcpConnectionPtr& conn, buffer::Buffer* buf){
+                std::string req = buf->retrieveAllAsString();
+                // Offload a "blocking" computation to the pool
+                pool.run([conn, req]() {
+                    std::this_thread::sleep_for(100ms);     // simulate blocking work
+                    std::string resp = "processed:" + req;
+                    // Post the result back to the connection's own loop.
+                    conn->getLoop()->runInLoop(
+                        [conn, resp]() {
+                            conn->send(resp);
+                        });
+                });
             });
-        });
         server.start();
         started = true;
         loop.loop();
@@ -100,18 +101,18 @@ TEST(ThreadPoolIntegrationTest, OffloadKeepsLoopResponsive)
 
     auto start = std::chrono::steady_clock::now();
     // Check the writes: an unnoticed short/failed write here would make the
-    // timing assertion below meaningless rather than falling outright.
+    // timing assertions below meaningless rather than falling outright.
     ASSERT_EQ(::write(c1, "a", 1), 1);
     ASSERT_EQ(::write(c2, "b", 1), 1);
 
-    ASSERT_TRUR(waitReadable(c1, 2000));
-    ASSERT_TRUR(waitReadable(c2, 2000));
+    ASSERT_TRUE(waitReadable(c1, 2000));
+    ASSERT_TRUE(waitReadable(c2, 2000));
 
     char b1[64] = {}, b2[64] = {};
     ssize_t n1 = ::read(c1, b1, sizeof(b1));
     ssize_t n2 = ::read(c2, b2, sizeof(b2));
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_lock::now - start).count();
+                        std::chrono::steady_clock::now() - start).count();
     
     ASSERT_GT(n1, 0);
     ASSERT_GT(n2, 0);

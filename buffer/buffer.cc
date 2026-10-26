@@ -1,6 +1,6 @@
 #include "buffer.h"
 
-#include <sys/uio.h>    // readv
+#include <sys/uio.h>   // readv
 #include <unistd.h>
 
 #include <cerrno>
@@ -41,4 +41,4 @@ ssize_t Buffer::readFd(int fd, int* saved_errno)
     return n;
 }
 
-} // namespace buffer
+}  // namespace buffer

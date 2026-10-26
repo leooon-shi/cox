@@ -8,7 +8,7 @@ namespace http
 {
 const char* HttpResponse::defaultReason(int code)
 {
-    switch(code)
+    switch (code)
     {
         case 200: return "OK";
         case 201: return "Created";
@@ -27,7 +27,7 @@ const char* HttpResponse::defaultReason(int code)
         case 500: return "Internal Server Error";
         case 501: return "Not Implemented";
         case 503: return "Service Unavailable";
-        default: return "OK";
+        default:  return "OK";
     }
 }
 
@@ -35,7 +35,7 @@ void HttpResponse::appendTo(buffer::Buffer* buf) const {
     std::string head;
     head.reserve(128 + headers_.size() * 32);
 
-    head += "HTTP/1.1";
+    head += "HTTP/1.1 ";
     head += std::to_string(status_code_);
     head += " ";
     head += status_reason_;

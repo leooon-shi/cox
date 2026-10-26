@@ -29,8 +29,8 @@ public:
 private:
     void threadFunc();
 
-    EventLoop* loop_ {nullptr};  // guarded by mutex_ until initialized
-    bool exiting_ {false};
+    EventLoop* loop_{nullptr};  // guarded by mutex_ until initialized
+    bool exiting_{false};
     std::thread thread_;
     std::mutex mutex_;
     std::condition_variable cond_;

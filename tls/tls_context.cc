@@ -25,10 +25,10 @@ std::string opensslError(const std::string& what)
 void ensureOpenSslInit()
 {
     static std::once_flag once;
-    std::call_once(once, []{
+    std::call_once(once, [] {
         SSL_library_init();
         SSL_load_error_strings();
-        OpenSSL_add_all_algoritms();
+        OpenSSL_add_all_algorithms();
     });
 }
 } // namespace
@@ -37,7 +37,7 @@ TlsContext::TlsContext(Role role): role_(role), ctx_(nullptr)
 {
     ensureOpenSslInit();
 
-    const SSL_METHOD* method = 
+    const SSL_METHOD* method =
         (role == Role::kServer) ? TLS_server_method() : TLS_client_method();
     ctx_ = SSL_CTX_new(method);
     if (ctx_ == nullptr)
@@ -53,8 +53,8 @@ TlsContext::TlsContext(Role role): role_(role), ctx_(nullptr)
     SSL_CTX_set_options(ctx_, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
                                   SSL_OP_NO_COMPRESSION);
     SSL_CTX_set_mode(ctx_, SSL_MODE_AUTO_RETRY | 
-                           SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | 
-                           SSL_MODE_ENABLE_PARTIAL_WRITE);
+                               SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | 
+                               SSL_MODE_ENABLE_PARTIAL_WRITE);
     
     // Client verifies the server by default; server does not request a client
     // cert unless setVerifyPeer(true) is called.
@@ -77,12 +77,13 @@ TlsContext::~TlsContext()
     }
 }
 
-void TlsContext::userCertificateAndKey(const std::string& cert_pem_path,
-                                       const std::string& key_pem_path)
+void TlsContext::useCertificateAndKey(const std::string& cert_pem_path,
+                                      const std::string& key_pem_path)
 {
     if (SSL_CTX_use_certificate_chain_file(ctx_, cert_pem_path.c_str()) != 1)
     {
-        throw std::runtime_error(opensslError("load certificate " + cert_pem_path));
+        throw std::runtime_error(
+            opensslError("load certificate " + cert_pem_path));
     }
     if (SSL_CTX_use_PrivateKey_file(ctx_, key_pem_path.c_str(),
                                     SSL_FILETYPE_PEM) != 1)
@@ -91,7 +92,8 @@ void TlsContext::userCertificateAndKey(const std::string& cert_pem_path,
     }
     if (SSL_CTX_check_private_key(ctx_) != 1)
     {
-        throw std::runtime_error(opensslError("private key does not match certificate"));
+        throw std::runtime_error(
+            opensslError("private key does not match certificate"));
     }
 
     cert_path_ = cert_pem_path;
@@ -117,7 +119,7 @@ bool TlsContext::reload()
     // current certificate/key on success; on failure the previous ones remain,
     // so a mid-rotation partially-written file cannot break the running server.
     // (Both files are validated together via check_private_key before we
-    // consider the read successfull.)
+    // consider the reload successfull.)
     if (SSL_CTX_use_certificate_chain_file(ctx_, cert_path_.c_str()) != 1)
     {
         opensslError("reload certificate");     // Clear the error queue
@@ -134,7 +136,7 @@ bool TlsContext::reload()
         opensslError("reloaded key/cert mismatch");
         return false;
     }
-    if (ca_path_.empty())
+    if (!ca_path_.empty())
     {
         if (SSL_CTX_load_verify_locations(ctx_, ca_path_.c_str(), nullptr) != 1)
         {
@@ -176,7 +178,7 @@ std::string toLowerAscii(std::string s)
 } // namespace
 
 void TlsContext::addSniContext(const std::string& hostname,
-                                TlsContextPtr ctx)
+                               TlsContextPtr ctx)
 {
     if (role_ != Role::kServer)
     {
@@ -195,7 +197,7 @@ void TlsContext::addSniContext(const std::string& hostname,
 
     // Install the callback lazily, on the first registration, so a server that
     // never uses SNI pays nothing.
-    // The OpenSSL macro expands to a C-style function pointer cast internally,
+    // The OpenSSL macro expands to a C-style function-pointer cast internally,
     // which trips -Wold-style-cast under GCC; suppress it at this call site
     // rather than weakening the flag for our own code.
 #pragma GCC diagnostic push
@@ -206,13 +208,13 @@ void TlsContext::addSniContext(const std::string& hostname,
 }
 
 TlsContext* TlsContext::findSniContext(const std::string& hostname) const{
-    const std::string& host = toLowerAscii(hostname);
+    const std::string host = toLowerAscii(hostname);
 
     // Exact match wins over any wildcard.
     auto it = sni_contexts_.find(host);
     if (it != sni_contexts_.end()) return it->second.get();
 
-    // Single-level wildcard "*.example.com" matches "a.example.com" but NOT
+    // Single-level wildcard: "*.example.com" matches "a.example.com" but NOT
     // "example.com" nor "a.b.example.com" (RFC 6125 semantics).
     size_t dot = host.find('.');
     if (dot != std::string::npos && dot + 1 < host.size())
@@ -254,16 +256,16 @@ int TlsContext::sniCallback(struct ssl_st* ssl, int* /*alert*/, void* arg)
     }
 
     // Swap this connection onto the matched context, so the certificate,
-    // key, and verfication settings all come from it.
+    // key, and verification settings all come from it.
     if (SSL_set_SSL_CTX(ssl, selected->nativeHandle()) == nullptr)
     {
         return SSL_TLSEXT_ERR_OK;           // Keep the default on failure
     }
     // SSL_set_SSL_CTX does NOT copy these, so re-apply them from the chosen
     // context; otherwise a per-hsot verification setting would be ignored.
-    SSL_set_option(ssl, SSL_CTX_get_options(selected->nativeHandle()));
+    SSL_set_options(ssl, SSL_CTX_get_options(selected->nativeHandle()));
     SSL_set_verify(ssl, SSL_CTX_get_verify_mode(selected->nativeHandle()),
-                        SSL_CTX_get_verify_callback(selected->nativeHandle()));
+                   SSL_CTX_get_verify_callback(selected->nativeHandle()));
     
     return SSL_TLSEXT_ERR_OK;
 }

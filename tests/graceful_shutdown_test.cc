@@ -41,7 +41,7 @@ bool waitWritable(int fd, int timeout_ms)
     return ::poll(&pfd, 1, timeout_ms) > 0 && (pfd.revents & POLLOUT);
 }
 
-int connectionClient(uint16_t port)
+int connectClient(uint16_t port)
 {
     int fd = sockets::createNonBlockingOrDie(AF_INET);
     InetAddress server("127.0.0.1", port);
@@ -59,21 +59,21 @@ TEST(GracefulShutdownTest, DrainCompleteWhenClientsClose)
     std::atomic<bool> drain_done{false};
     reactor::EventLoop* loop_ptr = nullptr;
 
-    std::thread server_thread([&]{
+    std::thread server_thread([&] {
         reactor::EventLoop loop;
         loop_ptr = &loop;
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "drain");
         server.setMessageCallback(
-            [](const TcpConnectionPtr& conn, buffer::Buffer* buf){
+            [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
                 conn->send(buf->retrieveAllAsString());
             });
         server.start();
         started = true;
 
         // Trigger shutdown from a timer once clients are expected to be up.
-        loop.runAfter(200, [&server, &loop, &drain_done](){
-            server.shutdown(10, [&loop, &drain_done](){
+        loop.runAfter(200, [&server, &loop, &drain_done]() {
+            server.shutdown(10, [&loop, &drain_done]() {
                 drain_done = true;
                 loop.quit();        // stop the loop once fully drained
             });
@@ -98,37 +98,37 @@ TEST(GracefulShutdownTest, DrainCompleteWhenClientsClose)
     std::this_thread::sleep_for(250ms);
     ::close(client);
 
-    for(int i = 0; i < 200 && !drain_done.load(); ++i)
+    for (int i = 0; i < 200 && !drain_done.load(); ++i)
     {
         std::this_thread::sleep_for(5ms);
     }
 
-    EXPECT_TRUE(drain_one.load());
+    EXPECT_TRUE(drain_done.load());
 
     server_thread.join();
 }
 
 // New connections are refused once draining has started.
-TEST(GracefulShutdownTest, RejectNewConnectionsWhileDraining)
+TEST(GracefulShutdownTest, RejectsNewConnectionsWhileDraining)
 {
     const uint16_t kPort = 48002;
     std::atomic<bool> started{false};
     std::atomic<int> accepted{0};
     reactor::EventLoop* loop_ptr = nullptr;
 
-    std::thread sever_thread([&]{
+    std::thread sever_thread([&] {
         reactor::EventLoop loop;
         loop_ptr = &loop;
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "drain-reject");
-        server.setConnectionCallback([&](const TcpConnectionPtr& conn){
+        server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
             if (conn->connected()) accepted++;
         });
         server.start();
         started = true;
 
         // Begin draining almost immediately (no live connections yet).
-        loop.runAfter(30, [&server](){ server.shutdown(5); });
+        loop.runAfter(30, [&server]() { server.shutdown(5); });
         loop.loop();
     });
 
@@ -152,7 +152,7 @@ TEST(GracefulShutdownTest, ForceCloseAtDeadline)
 {
     const uint16_t kPort = 48003;
     std::atomic<bool> started{false};
-    std::atomic<bool> drain_done {false};
+    std::atomic<bool> drain_done{false};
     reactor::EventLoop* loop_ptr = nullptr;
 
     std::thread server_thread([&] {
@@ -161,14 +161,14 @@ TEST(GracefulShutdownTest, ForceCloseAtDeadline)
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "drain-force");
         server.setMessageCallback(
-            [](const TcpConnectionPtr& conn, buffer::Buffer* buf){
+            [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
                 conn->send(buf->retrieveAllAsString());
             });
         server.start();
         started = true;
 
         // Short 1s force-close deadline so the test is quick.
-        loop.runAfter(150, [&server, &loop, &drain_done](){
+        loop.runAfter(150, [&server, &loop, &drain_done]() {
             server.shutdown(1, [&loop, &drain_done](){
                 drain_done = true;
                 loop.quit();

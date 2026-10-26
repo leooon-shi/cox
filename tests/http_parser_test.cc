@@ -48,7 +48,7 @@ TEST(HttpParserTest, PostWithContentLength)
 TEST(HttpParserTest, PartialThenComplete)
 {
     HttpContext ctx;
-    // Feed the request in two pieces to exercise incremental parsing
+    // Feed the request in two pieces to exercise incremental parsing.
     auto buf = bufOf("GET / HTTP/1.1\r\nHo");
     ASSERT_TRUE(ctx.parseRequest(&buf));
     EXPECT_FALSE(ctx.gotAll());     // header line incomplete
@@ -74,7 +74,7 @@ TEST(HttpParserTest, MalformedMethodErrors)
 {
     HttpContext ctx;
     auto buf = bufOf("FROBNICATE / HTTP/1.1\r\n\r\n");
-    EXPECT_FALSE(ctx.parserRequest(&buf));
+    EXPECT_FALSE(ctx.parseRequest(&buf));
     EXPECT_TRUE(ctx.hasError());
 }
 
@@ -96,13 +96,13 @@ TEST(HttpParserTest, KeepAliveHttp100ptIn)
 
     HttpContext ctx2;
     auto buf2 = bufOf("GET / HTTP/1.0\r\n\r\n");
-    ASSERT_TRUE(ctx.parseRequest(&buf2));
+    ASSERT_TRUE(ctx2.parseRequest(&buf2));
     EXPECT_FALSE(ctx2.request().keepAlive());           // 1.0 defaults to close
 }
 
 TEST(HttpResponseTest, SerializesStatusHeaderBody)
 {
-    HttpResponse resp(/*keep_alive*/true);
+    HttpResponse resp(/*keep_alive=*/true);
     resp.setStatus(200);
     resp.setContentType("text/plain");
     resp.setBody("hi");

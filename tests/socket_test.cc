@@ -24,7 +24,7 @@ Socket makeListener(bool ipv6, InetAddress* bound_out)
     sa_family_t fam = ipv6 ? AF_INET6 : AF_INET;
     Socket listener(sockets::createNonBlockingOrDie(fam));
     listener.setReuseAddr(true);
-    InetAddress any(0, /*loopback_only*/true, ipv6);
+    InetAddress any(0, /*loopback_only=*/true, ipv6);
     listener.bindAddress(any);
     listener.listen();
     *bound_out = sockets::getLocalAddr(listener.fd());
@@ -34,7 +34,7 @@ Socket makeListener(bool ipv6, InetAddress* bound_out)
 // Wait until fd is writable (connect completed) or timeout.
 bool waitWritable(int fd, int timeout_ms)
 {
-    struct pollfd pfd{ fd, POLLOUT, 0};
+    struct pollfd pfd{fd, POLLOUT, 0};
     return ::poll(&pfd, 1, timeout_ms) > 0 && (pfd.revents & POLLOUT);
 }
 
@@ -48,7 +48,7 @@ bool waitReadable(int fd, int timeout_ms)
 TEST(SocketTest, CreatedbindListenIpv4)
 {
     InetAddress bound;
-    Socket listener = makeListener(/*ipv6*/false, &bound);
+    Socket listener = makeListener(/*ipv6=*/false, &bound);
     EXPECT_GT(listener.fd(), 0);
     EXPECT_EQ(bound.toIp(), "127.0.0.1");
     EXPECT_GT(bound.port(), 0);
@@ -57,19 +57,19 @@ TEST(SocketTest, CreatedbindListenIpv4)
 TEST(SocketTest, CreatedbindListenIpv6)
 {
     InetAddress bound;
-    Socket listener = makeListener(/*ipv6*/true, &bound);
+    Socket listener = makeListener(/*ipv6=*/true, &bound);
     EXPECT_GT(listener.fd(), 0);
-    EXPECT_EQ(bound.isIpv6());
+    EXPECT_TRUE(bound.isIpv6());
     EXPECT_GT(bound.port(), 0);
 }
 
 TEST(SocketTest, ConnectAcceptRoundTripIpv4)
 {
     InetAddress bound;
-    Socket listener = makeListener(/*ipv6*/false, &bound);
+    Socket listener = makeListener(/*ipv6=*/false, &bound);
 
     // Client initiates a non-blocking connect.
-    Socket client(sockets::createNonBlockingOrDie(AF_NET));
+    Socket client(sockets::createNonBlockingOrDie(AF_INET));
     int rc = sockets::connect(client.fd(), bound);
     // Non-blocking connect typically returns -1 with EINPROGRESS.
     if (rc < 0)
@@ -84,7 +84,7 @@ TEST(SocketTest, ConnectAcceptRoundTripIpv4)
     ASSERT_GT(connfd, 0);
     Socket conn(connfd);
 
-    // Client connect complete.
+    // Client connect completes.
     ASSERT_TRUE(waitwritable(client.fd(), 1000));
     EXPECT_EQ(sockets::getSocketError(client.fd()), 0);
 
@@ -96,9 +96,9 @@ TEST(SocketTest, ConnectAcceptRoundTripIpv4)
 TEST(SocketTest, DataTransfer)
 {
     InetAddress bound;
-    Socket listener = makeListener(/*ipv6*/false, &bound);
+    Socket listener = makeListener(/*ipv6=*/false, &bound);
 
-    Socket client(sockets::createNonBlockingOrDie(AF_NET));
+    Socket client(sockets::createNonBlockingOrDie(AF_INET));
     sockets::connect(client.fd(), bound);
 
     ASSERT_TRUE(waitReadable(listener.fd(), 1000));
@@ -121,7 +121,7 @@ TEST(SocketTest, DataTransfer)
 
 TEST(SocketTest, Options)
 {
-    Socket s(socket::createNonBlockingOrDie(AF_INET));
+    Socket s(sockets::createNonBlockingOrDie(AF_INET));
     // These should not crash or error on a fresh socket.
     s.setReuseAddr(true);
     s.setReusePort(true);

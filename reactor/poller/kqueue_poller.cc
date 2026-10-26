@@ -11,7 +11,7 @@ namespace reactor
 {
 namespace {
     void setCLOEXEC(int fd) {
-        ::fcntl(fd)
+        ::fcntl(fd, F_SETFD, FD_CLOEXEC);
     }
 }
 
@@ -22,11 +22,10 @@ KQueuePoller::KQueuePoller()
     : kqueueFd_(::kqueuex(KQUEUE_CLOEXEC)),
 #endif
     events_(64),
-    logger_(std::make_unique<logging::Logger>("KQueuePoller"))
+    logger_(std::make_unique<logging::Logger>())
 {
-    //FIXME check condition might be < 0 instead of == -1
     if (kqueueFd_ == -1) {
-        throw std::runtime_error("Failed to create kqueue fd");
+        throw std::runtime_error("Failed to create kqueue");
     }
 #if defined(__APPLE__) && defined(__MACH__)
     setCLOEXEC(kqueueFd_);
@@ -38,7 +37,7 @@ KQueuePoller::~KQueuePoller() {
 }
 
 void KQueuePoller::updateChannel(Channel* ch) {
-    if (channels_.contains)(ch->fd())) {
+    if (channels_.contains(ch->fd())) {
         logger_->info("update Channel.");
     } else {
         logger_->info("add Channel.");
@@ -47,8 +46,7 @@ void KQueuePoller::updateChannel(Channel* ch) {
     // std::vector<struct kevent> kev;
     const int fd = ch->fd();
     const int ev = ch->events();
-    const int reg_ev = registeredEvents_[fd];
-
+    const int reg_ev = registeredEvents[fd];
     {
         struct kevent e_read;
 
@@ -70,7 +68,7 @@ void KQueuePoller::updateChannel(Channel* ch) {
             }
         }
 
-        //kev.push_back(e_read);
+        // kev.push_back(e_read);
 
         // logger_->info("finished register read");
     }
@@ -78,7 +76,7 @@ void KQueuePoller::updateChannel(Channel* ch) {
     {
         struct kevent e_write;
         if (ev & IO_WRITE) {
-            logger_->info("register EVFILT_WRITE with options EV_ADD | EV_ENABLE to kpoller.");
+            logger_->info("register EVFILT_READ with options EV_ADD | EV_ENABLE to kpoller");
             EV_SET(&e_write, fd, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_CLEAR, 0, 0, ch);
 
             if (::kevent(kqueueFd_, &e_write, 1, nullptr, 0, nullptr) == -1) {
@@ -94,13 +92,13 @@ void KQueuePoller::updateChannel(Channel* ch) {
             }
         }
 
-        //kev.push_back(e_write);
+        // kev.push_back(e);
 
         // logger_->info("finished register write");
     }
 
     channels_[fd] = ch;
-    registeredEvents_[fd] = ev;
+    registeredEvents[fd] = ev;
 }
 
 void KQueuePoller::removeChannel(Channel* ch) {
@@ -116,47 +114,45 @@ void KQueuePoller::removeChannel(Channel* ch) {
     EV_SET(&e2, fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
     kev.push_back(e2);
 
-    if (::kevent(kqueueFd_, kev.data(), kev.size(), nullptr, 0, nullptr) == -1) {
-        logger_->warn("remove kqueue got error.");
-    }
+    ::kevent(kqueueFd_, kev.data(), kev.size(), nullptr, 0, nullptr);
 
     channels_.erase(fd);
-    registeredEvents_.erase(fd);
+    registeredEvents.erase(fd);
 }
 
-void KQueuePoller::poll(int timeoutMs, std::vector<Channel*>& activeChannels) {
+void KQueuePoller::poll(int timeout_ms, std::vector<Channel*>& activeChannels) {
     struct timespec ts;
-    ts.tv_sec = timeoutMs / 1000;
-    ts.tv_nsec = (timeoutMs % 1000) * 1000000;
+    ts.tv_sec = timeout_ms / 1000;
+    ts.tv_nsec = (timeout_ms % 1000) * 1000000;
 
     int n = ::kevent(kqueueFd_, nullptr, 0, events_.data(), static_cast<int>(events_.size()), &ts);
     if (n < 0) {
-        logger_->error("kevent error.");
+        // logger_->error("kevent error.");
         //TODO Handle error properly, maybe throw an exception or log the error
     }
 
     for (int i = 0; i < n; ++i) {
-        auto & e = events_[i];
+        auto& e = events_[i];
         Channel* ch = static_cast<Channel*>(e.udata);
 
         if (!ch) {
             continue;
         }
 
-        IOEvent re = IO_NONE;
+        IOEvent rev = IO_NONE;
 
-        if (events_[i].filter == EVFILT_READ) {
-            re |= IO_READ;
+        if (e.filter == EVFILT_READ) {
+            rev = IO_READ;
         }
-        if (events_[i].filter == EVFILT_WRITE) {
-            re |= IO_WRITE;
+        if (e.filter == EVFILT_WRITE) {
+            rev = IO_WRITE;
         }
 
         if (e.flags & EV_ERROR) {
-            re |= IO_ERROR;
+            rev = rev | IO_ERROR;
         }
 
-        ch->setRevents(re);
+        ch->setRevents(rev);
         activeChannels.push_back(ch);
     }
 }

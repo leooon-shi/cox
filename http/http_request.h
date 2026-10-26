@@ -1,3 +1,5 @@
+#pragma once
+
 #include "url.h"
 
 #include <map>
@@ -23,7 +25,7 @@ public:
     void setMethod(Method m) { method_ = m; }
     Method method() const { return method_; }
 
-    void setPath(std::string p)  { path_ = std::move(p); }
+    void setPath(std::string p) { path_ = std::move(p); }
     const std::string& path() const { return path_; }
 
     void setQuery(std::string q)
@@ -37,7 +39,7 @@ public:
     // Parsed + percent-decoded query string ("?a=1&b=2"). Parsed lazily on
     // first access and cached; setQuery() invalidates the cache.
     const QueryParams& queryParams() const;
-    //Single query parameter, or empty string if absent.
+    // Single query parameter, or empty string if absent.
     std::string queryParam(const std::string& key) const;
     bool hasQueryParam(const std::string& key) const;
 
@@ -53,7 +55,7 @@ public:
     // Returns the header value or empty string if absent
     std::string header(const std::string& key) const;
     bool hasHeader(const std::string& key) const;
-    const std::map<std::string, std::string> & headers() const { return headers_; }
+    const std::map<std::string, std::string>& headers() const { return headers_; }
 
     void setBody(std::string b) { body_ = std::move(b); }
     void appendBody(const char* data, size_t len) { body_.append(data, len); }
@@ -71,13 +73,13 @@ private:
     Method method_{Method::kInvalid};
     std::string path_;
     std::string query_;
-    std::string version_ { "HTTP/1.1"};
+    std::string version_{ "HTTP/1.1"};
     std::map<std::string, std::string> headers_;
     std::string body_;
 
     // Lazily-parsed query parameters (mutable: parsing is a const-observable
     // cache, not a change in logical state).
     mutable QueryParams query_params_;
-    mutable bool query_parsed_ {false};
+    mutable bool query_parsed_{false};
 };
 } // namespace http

@@ -6,7 +6,7 @@
 #include <functional>
 
 namespace reactor {
-    class EventLoop;
+class EventLoop;
 }
 
 namespace net
@@ -22,13 +22,13 @@ namespace net
 class Acceptor
 {
 public:
-    // Called with (confd, peer_address) for each accepted connection. The
+    // Called with (connfd, peer_address) for each accepted connection. The
     // callback takes ownership of connfd.
     using NewConnectionCallback = 
         std::function<void(int sockfd, const InetAddress& peer)>;
 
     Acceptor(reactor::EventLoop* loop, const InetAddress& listen_addr,
-            bool reuse_port);
+             bool reuse_port);
     ~Acceptor();
 
     Acceptor(const Acceptor&) = delete;
@@ -41,7 +41,7 @@ public:
 
     bool listening() const { return listening_; }
     void listen();
-    // Stop accepting new connections ( disable the listen socket's read events).
+    // Stop accepting new connections (disable the listen socket's read events).
     // The listening socket stays open but idle; used during graceful drain.
     void stopListening();
 
@@ -53,7 +53,7 @@ private:
     reactor::Channel accept_channel_;
     NewConnectionCallback new_connection_callback_;
     bool listening_;
-    // A spare fd held open so we can gracefully accept + close a pending
+    // A spare fd held open so we can gracefully accept+close a pending
     // connection when the process hits EMFILE, avoiding a busy-loop.
     int idle_fd_;
 };

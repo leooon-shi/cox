@@ -23,7 +23,6 @@ public:
       repeat_(interval_ms > 0),
       sequence_(++s_num_created_)
     {
-
     }
     
     void run() const
@@ -36,7 +35,7 @@ public:
     uint64_t sequence() const { return sequence_; }
 
     // Advance the expiration by one interval from `now`. Only valid for
-    // repeating timers; one-shot timers become invalid (never re-armed)
+    // repeating timers; one-shot timers become invalid (never re-armed).
     void restart(logging::Timestamp now)
     {
         if (repeat_)
@@ -49,15 +48,16 @@ public:
         }
     }
 
-    static uint64_t numCreated() { return s_num_created.load(); }
-private:
-    static std::atomic<uint64_t> s_num_created_;
+    static uint64_t numCreated() { return s_num_created_.load(); }
 
+private:
     const TimerCallback callback_;
     logging::Timestamp expiration_;
     const uint64_t interval_ms_;
     const bool repeat_;
     const uint64_t sequence_;
+
+    static std::atomic<uint64_t> s_num_created_;
 };
 
 // Opaque handle used to cancel a previously scheduled timer.
@@ -71,5 +71,6 @@ public:
 private:
     Timer* timer_;
     uint64_t sequence_;
-}
+};
 } // namespace reactor
+

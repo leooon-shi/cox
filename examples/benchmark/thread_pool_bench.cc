@@ -1,7 +1,7 @@
 // Micro-benchmark for concurrent::ThreadPool task throughput.
 //
 // The dominant cost of a worker pool on a huge, fast-to-run workload is mutex
-// contention: a naive pool locks the queue once per task, so N tasks const N
+// contention: a naive pool locks the queue once per task, so N tasks cost N
 // lock/unlock cycles across the workers. ThreadPool amortizes this by draining
 // a *batch* of tasks per lock acquisition (setTakeBatchSize). This benchmark
 // sweeps the batch size so the effect is visible as numbers rather than
@@ -31,11 +31,11 @@ using concurrent::ThreadPool;
 namespace
 {
 // Describe the build/runtime environment so a results table is interpretable on
-// its own -- benchmark numbers are machine, compiler and build dependent, and
+// its own -- benchmark numbers are machine-, compiler- and build dependent, and
 // a table with no prevenance is a table you cannot trust or compare against.
 std::string compilerId(){
 #if defined(__clang__)
-    return "clang++" __clang_version__;
+    return "clang++ " __clang_version__;
 #elif defined(__GNUC__)
     return "g++ " __VERSION__;
 #else
@@ -56,7 +56,7 @@ void printEnv()
     const unsigned hw = std::thread::hardware_concurrency();
     std::time_t now = std::time(nullptr);
     char ts[32] = {};
-    std::strftime(ts, sizeof(ts), "%Y-%m-%d %H-%M-%SZ", std::gmtime(&now));
+    std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%SZ", std::gmtime(&now));
 
     std::cout << "--- environment ---\n";
     std::cout << "date:        " << ts << "\n";
@@ -67,35 +67,36 @@ void printEnv()
               << (hw ? std::to_string(hw) : std::string("unknown")) << "\n";
     if (buildType().rfind("Debug", 0) == 0)
     {
-        std::cout <<"WARNING:       Debug build (-O0) -- numbers are not "
-                    "representative; use a Release build.\n";
+        std::cout << "WARNING:       Debug build (-O0) -- numbers are not "
+                     "representative; use a Release build.\n";
     }
-    std::cout <<"-------------------\n\n";
+    std::cout << "-------------------\n\n";
 }
 
 // Run `num_tasks` trivial tasks through a pool with `num_threads` workers and
 // the given batch size, enqueuing from `num_producers` threads in parallel.
 //
-// Multiple producers matter: with a single producer the enqueue side (on lock
+// Multiple producers matter: with a single producer the enqueue side (one lock
 // per task) is the bottleneck and the queue stays near-empty, so workers rarely
 // have a batch to drain and batch size barely moves the number. Several
-// producers keep the queue backed up, which is the regtime where dequeue
-// batching actually pays off -- and the regtime a real "burst of 100M tasks"
+// producers keep the queue backed up, which is the regime where dequeue
+// batching actually pays off -- and the regime a real "burst of 100M tasks"
 // workload is in.
 double runOnce(int num_threads, size_t batch_size, int num_tasks,
-                int num_producers)
+               int num_producers)
 {
-    std::atomic<int64_t> counter {0};
+    std::atomic<int64_t> counter{0};
 
     ThreadPool pool("bench");
     pool.setTakeBatchSize(batch_size);
-    // Unbounded queue: we are meansuring dequeue/lock cost, not backpressure.
+    // Unbounded queue: we are measuring dequeue/lock cost, not backpressure.
     pool.start(num_threads);
 
     auto producer = [&](int tasks) {
         for (int i = 0; i < tasks; ++i)
         {
-            pool.run([&counter] { counter.fetch_add(1, std::memory_order_relaxed); });
+            pool.run(
+                [&counter] { counter.fetch_add(1, std::memory_order_relaxed); });
         }
     };
 
@@ -110,12 +111,12 @@ double runOnce(int num_threads, size_t batch_size, int num_tasks,
         producers.emplace_back(producer, per_producer + (p < remainder ? 1 : 0));
     }
     for (auto& t : producers) t.join();
-    pool.stop();        // Drains all queued tasks before joining
+    pool.stop();  // Drains all queued tasks before joining
     auto t1 = steady_clock::now();
 
     if (counter.load() != num_tasks)
     {
-        std::cerr <<"ERROR: ran " << counter.load() << " of " << num_tasks
+        std::cerr << "ERROR: ran " << counter.load() << " of " << num_tasks
                     << " tasks\n";
         std::exit(1);
     }
@@ -138,11 +139,11 @@ int main(int argc, char** argv)
     std::cout <<"producers:       " << producers << "\n";
     std::cout <<"tasks:           " << num_tasks
               << " (each: one relaxed atomic increment)\n\n";
-    std::cout <<"batch.   elapsed(s)   tasks/s        speedup\n";
+    std::cout <<"batch    elapsed(s)   tasks/s        speedup\n";
     std::cout <<"----     ----------   -------        -------\n";
 
     const std::vector<size_t> batch_sizes = {1, 2, 4, 8, 16, 32, 64, 128};
-    double baseline_s = 0.0;        // batch-1 is the one-lock-per-task reference
+    double baseline_s = 0.0;  // batch-1 is the one-lock-per-task reference
     for (size_t batch : batch_sizes)
     {
         double s = runOnce(threads, batch, num_tasks, producers);
@@ -153,7 +154,7 @@ int main(int argc, char** argv)
                     speedup);
     }
 
-    std::cout <<"\nNote: batch=1 is one dequeue lock per task (naive pool); "
+    std::cout << "\nNote: batch=1 is one dequeue lock per task (naive pool); "
                 "higher batch sizes\namortize the dequeue lock across many "
                 "tasks. Speedup is relative to batch=1.\n";
     return 0;

@@ -24,7 +24,7 @@ class TimerQueue {
     using TimerCallback = std::function<void()>;
 
     explicit TimerQueue(EventLoop* loop);
-    ~EventLoop();
+    ~TimerQueue();
 
     TimerQueue(const TimerQueue&) = delete;
     TimerQueue& operator=(const TimerQueue&) = delete;
@@ -35,13 +35,13 @@ class TimerQueue {
     TimerId addTimer(TimerCallback cb, logging::Timestamp when, uint64_t interval_ms);
 
     // Cancel a previously scheduled timer. Must be called in the loop thread.
-    void cancel(Timerfd id);
+    void cancel(TimerId id);
 
 private:
     using Entry = std::pair<logging::Timestamp, Timer*>;
     using TimerSet = std::set<Entry>;
 
-    // Called when the timerfd become readable.
+    // Called when the timerfd becomes readable.
     void handleRead();
 
     // Return all timers that have expired by `now`, removing them from the set.
@@ -60,11 +60,11 @@ private:
 
     // Timers ordered by expiration time.
     TimerSet timers_;
-    // Sequence numbers of timers currectly active ( for O(log n) cancel).
+    // Sequence numbers of timers currectly active (for O(log n) cancel).
     std::set<uint64_t> active_sequences_;
     // Sequence numbers cancelled while callbacks are running (self-cancel).
     std::set<uint64_t> cancelling_;
-    bool calling_expired_callbacks_ {false};
+    bool calling_expired_callbacks_{false};
 };
 
 } // namespace reactor

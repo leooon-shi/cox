@@ -4,8 +4,8 @@
 namespace reactor {
 
 enum IOEvent {
-    IO_NONE = 0,
-    IO_READ = 1 << 0,
+    IO_NONE  = 0,
+    IO_READ  = 1 << 0,
     IO_WRITE = 1 << 1,
     IO_ERROR = 1 << 2
 };

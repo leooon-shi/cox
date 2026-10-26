@@ -25,7 +25,7 @@ const char* findCrlf(const char* begin, const char* end)
 std::string toLower(std::string s)
 {
     std::transform(s.begin(), s.end(), s.begin(),
-                    [](unsigned char c) { return std::tolower(c); });
+                   [](unsigned char c) { return std::tolower(c); });
     return s;
 }
 } // namespace
@@ -44,7 +44,7 @@ bool ResponseParser::parseStatusLine(const char* begin, const char* end)
         return false;
     }
 
-    const char* code_begin = sp1 +1;
+    const char* code_begin = sp1 + 1;
     const char* sp2 = std::find(code_begin, end, ' ');
     std::string code_str(code_begin, sp2 == end ? end : sp2);
     int code = std::atoi(code_str.c_str());
@@ -106,7 +106,7 @@ bool ResponseParser::parse(buffer::Buffer* buf)
                     const char* colon = std::find(buf->peek(), crlf, ':');
                     if (colon == crlf) { state_ = State::kError; return false; }
                     std::string key(buf->peek(), colon);
-                    const char* vb  = colon +1;
+                    const char* vb  = colon + 1;
                     while (vb < crlf && *vb == ' ') ++vb;
                     std::string value(vb, crlf);
                     response_.addHeader(key, value);
@@ -130,7 +130,8 @@ bool ResponseParser::parse(buffer::Buffer* buf)
         }
         else if (state_ == State::kExpectBody)
         {
-            size_t take = std::min(buf->readableBytes(), content_length_ - body_received_);
+            size_t take = std::min(buf->readableBytes(),
+                                   content_length_ - body_received_);
 
             if (take > 0)
             {
@@ -159,13 +160,15 @@ bool ResponseParser::parse(buffer::Buffer* buf)
         }
         else if (state_ == State::kExpectChunkSize)
         {
-            const char* crlf = findCrlf(buf->peek(), buf->peek() + buf->readableBytes());
+            const char* crlf = findCrlf(buf->peek(),
+                                        buf->peek() + buf->readableBytes());
 
             if (crlf)
             {
                 std::string line(buf->peek(), crlf);
-                chunk_remaining_ = static_cast<size_t>(std::strtoul(line.c_str(), nullptr, 16));
-                buf->retrieve((crlf+2) - buf->peek());
+                chunk_remaining_ = static_cast<size_t>(
+                    std::strtoul(line.c_str(), nullptr, 16));
+                buf->retrieve((crlf + 2) - buf->peek());
                 if (chunk_remaining_ == 0)
                 {
                     response_.setBody(std::move(body_accum_));

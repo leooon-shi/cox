@@ -21,7 +21,7 @@ logging::Logger& log()
 }
 } // namespace
 
-Connector::Connector( reactor::EventLoop* loop, const InetAddress& server_addr)
+Connector::Connector(reactor::EventLoop* loop, const InetAddress& server_addr)
 : loop_(loop),
   server_addr_(server_addr),
   state_(State::kDisconnected),
@@ -40,7 +40,7 @@ Connector::~Connector()
 void Connector::start()
 {
     connect_ = true;
-    loop_->runInLoop([self = shared_from_this()](){ self->startInLoop(); });
+    loop_->runInLoop([self = shared_from_this()]() { self->startInLoop(); });
 }
 
 void Connector::startInLoop()
@@ -55,7 +55,7 @@ void Connector::startInLoop()
 void Connector::stop()
 {
     connect_ = false;
-    loop_->runInLoop([self = shared_from_this()](){ self->stopInLoop(); });
+    loop_->runInLoop([self = shared_from_this()]() { self->stopInLoop(); });
 }
 
 void Connector::stopInLoop()
@@ -89,7 +89,7 @@ void Connector::connect()
     int sockfd = sockets::createNonBlockingOrDie(server_addr_.family());
     int ret = sockets::connect(sockfd, server_addr_);
     int saved_errno = (ret == 0) ? 0 : errno;
-    switch(saved_errno)
+    switch (saved_errno)
     {
         case 0:
         case EINPROGRESS:
@@ -120,10 +120,10 @@ void Connector::connect()
 
 void Connector::connecting(int sockfd)
 {
-    setState(State::kConected);
+    setState(State::kConnecting);
     channel_ = std::make_unique<reactor::Channel>(sockfd, loop_);
-    channel_->setWriteCallback([this]{ handleWrite(); });
-    channel_->setErrorCallback([this]{ handleError(); });
+    channel_->setWriteCallback([this] { handleWrite(); });
+    channel_->setErrorCallback([this] { handleError(); });
     channel_->enableWrite();
 }
 
@@ -136,10 +136,10 @@ int Connector::removeAndResetChannel()
     // its own callback, so freeing it now would leave Channel::handleEvents
     // touching freed memory when the callback returns.
     // NOTE: this must be queueInLoop, not runInLoop -- runInLoop runs the task
-    // INLINE when already on the loop thread, which is exactly the case here.
+    // INLINE when already on the loop thread, which is exactly the case here,
     // so it did not defer anything at all. ThreadSanitizer caught the resulting
     // heap-use-after-free.
-    loop_->queueInLoop([self = shared_from_this()](){ self->resetChannel(); });
+    loop_->queueInLoop([self = shared_from_this()]() { self->resetChannel(); });
 
     return sockfd;
 }
@@ -161,12 +161,17 @@ void Connector::handleWrite()
     if (err != 0)
     {
         log().warning("Connector::handleWrite SO_ERROR=" + std::to_string(err) +
-                        " " + std::string(std::strerror(err)));
+                      " " + std::string(std::strerror(err)));
+        retry(sockfd);
+    }
+    else if (sockets::isSelfConnect(sockfd))
+    {
+        log().warning("Connector::handleWrite self-connect detected; retrying");
         retry(sockfd);
     }
     else
     {
-        setState(State::kConected);
+        setState(State::kConnected);
         if (connect_)
         {
             if (new_connection_callback_)
@@ -210,7 +215,14 @@ void Connector::retry(int sockfd)
     // long before the next attempt, jitter decorrelates mass reconnects.
     auto delay = backoff_.nextDelay(server_addr_.toIpPort());
     log().info("Connector::retry to " + server_addr_.toIpPort() + " in " + 
-                std::to_string(delay.count()) + "ms");
+               std::to_string(delay.count()) + " ms");
+    retry_timer_ = loop_->runAfter(static_cast<uint64_t>(delay.count()), 
+                                   [self = shared_from_this()]() {
+                                       self->retry_timer_armed_ = false;
+                                       if (self->connect_) {
+                                           self->connect();
+                                       }
+                                   });
     retry_timer_armed_ = true;
 }
 

@@ -3,6 +3,7 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#include <algorithm> // for std::copy
 #include <iomanip> // for std::setw and std::setfill
 #include <sstream> // for std::ostringstream
 

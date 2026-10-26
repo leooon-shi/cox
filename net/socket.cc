@@ -26,7 +26,8 @@ namespace sockets
 int createNonBlockingOrDie(sa_family_t family) {
     // Unix-domain sockets use protocol 0; IP stream sockets use TCP.
     int protocol = (family == AF_UNIX) ? 0 : IPPROTO_TCP;
-    int sockfd = ::socket(family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, protocol);
+    int sockfd = ::socket(family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC,
+                          protocol);
 
     if (sockfd < 0 ) {
         log().fatal("sockets::createNonBlockingOrDie failed: " +
@@ -43,9 +44,9 @@ void bindOrDie(int sockfd, const InetAddress& addr) {
         ::unlink(addr.unixPath().c_str());
     }
 
-    if (::bind(sockfd, addr.getSockAddr(), addr.getSockLen()) < 0 )
+    if (::bind(sockfd, addr.getSockAddr(), addr.getSockLen()) < 0)
     {
-        log().fatal("sockets::bindOrDie " + addr.toIpPort() + " failed: " + 
+        log().fatal("sockets::bindOrDie " + addr.toIpPort() + " failed: " +
                     std::string(std::strerror(errno)));
         std::abort();
     }
@@ -65,8 +66,9 @@ int accept(int sockfd, InetAddress* peer_addr)
     struct sockaddr_storage ss;
     std::memset(&ss, 0, sizeof(ss));
     socklen_t len = sizeof(ss);
-    int connfd = ::accept4(sockfd, reinterpret_cast<struct sockaddr*>(&ss), &len, SOCK_NONBLOCK | SOCK_CLOEXEC);
-    if (connfd > 0 && peer_addr != nullptr)
+    int connfd = ::accept4(sockfd, reinterpret_cast<struct sockaddr*>(&ss),
+                           &len, SOCK_NONBLOCK | SOCK_CLOEXEC);
+    if (connfd >= 0 && peer_addr != nullptr)
     {
         peer_addr->setSockAddrStorage(ss, len);
     }
@@ -81,10 +83,19 @@ void close(int sockfd)
 {
     if (::close(sockfd) < 0 )
     {
-        log().error("sockets::close failed: " + std::string(std::strerror(errno)));
+        log().error("sockets::close failed: " +
+                    std::string(std::strerror(errno)));
     }
 }
 
+void shutdownWrite(int sockfd)
+{
+    if (::shutdown(sockfd, SHUT_WR) < 0)
+    {
+        log().error("sockets::shutdownWrite failed: " +
+                    std::string(std::strerror(errno)));
+    }
+}
 namespace {
 void setOption(int sockfd, int level, int optname, bool on, const char* what)
 {
@@ -92,7 +103,7 @@ void setOption(int sockfd, int level, int optname, bool on, const char* what)
     if (::setsockopt(sockfd, level, optname, &optval, sizeof(optval)) < 0)
     {
         log().error(std::string("sockets::setOption ") + what + " failed: " +
-                                std::string(std::strerror(errno)));
+                    std::string(std::strerror(errno)));
     }
 }
 } // namespace
@@ -126,7 +137,7 @@ void setKeepAlive(int sockfd, bool on)
 int getSocketError(int sockfd) {
     int optval;
     socklen_t optlen = sizeof(optval);
-    if(::getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0 ) {
+    if (::getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0 ) {
         return errno;
     }
     return optval;
@@ -140,7 +151,7 @@ InetAddress getLocalAddr(int sockfd)
     socklen_t len = sizeof(ss);
     if (::getsockname(sockfd, reinterpret_cast<struct sockaddr*>(&ss), &len) < 0) {
         log().error("sockets::getLocalAddr failed: " +
-                        std::string(std::strerror(errno)));
+                    std::string(std::strerror(errno)));
     }
     InetAddress addr;
     addr.setSockAddrStorage(ss, len);
@@ -154,7 +165,7 @@ InetAddress getPeerAddr(int sockfd)
     socklen_t len = sizeof(ss);
     if (::getpeername(sockfd, reinterpret_cast<struct sockaddr*>(&ss), &len) < 0 )
     {
-        log().error("sockets:getPeerAddr failed: " + 
+        log().error("sockets::getPeerAddr failed: " + 
                     std::string(std::strerror(errno)));
     }
     InetAddress addr;
@@ -179,7 +190,7 @@ bool isSelfConnect(int sockfd) {
 
 } // namespace sockets
 
-Socket::~Socket()  { reset(); }
+Socket::~Socket() { reset(); }
 
 void Socket::reset()
 {

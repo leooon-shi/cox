@@ -29,7 +29,7 @@ namespace
 std::string uniquePath(const char* tag)
 {
     return std::string("/tmp/cox_uds_") + tag + "_" +
-            std::to_string(::getpid()) + ".sock";
+           std::to_string(::getpid()) + ".sock";
 }
 } // namespace
 
@@ -46,9 +46,10 @@ TEST(UnixSocketTest, EchoOverUnixDomain)
         srv_loop = &loop;
         InetAddress addr = InetAddress::unixDomain(path);
         TcpServer server(&loop, addr, "uds-echo");
-        server.setMessageCallback([](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
-            conn->send(buf->retrieveAllAsString());
-        });
+        server.setMessageCallback(
+            [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
+                conn->send(buf->retrieveAllAsString());
+            });
         server.start();
         srv_started = true;
         loop.loop();
@@ -57,8 +58,8 @@ TEST(UnixSocketTest, EchoOverUnixDomain)
     while (!srv_started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(20ms);
 
-    std::atomic<bool> cli_started {false};
-    std::atomic<bool> connected {false};
+    std::atomic<bool> cli_started{false};
+    std::atomic<bool> connected{false};
     std::atomic<bool> got_reply{false};
     std::string received;
     reactor::EventLoop* cli_loop = nullptr;
@@ -75,10 +76,11 @@ TEST(UnixSocketTest, EchoOverUnixDomain)
                 conn->send("hello over unix socket");
             }
         });
-        client.setMessageCallback([&](const TcpConnectionPtr& conn, buffer::Buffer* buf){
-            received = buf->retrieveAllAsString();
-            got_reply = true;
-        });
+        client.setMessageCallback(
+            [&](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
+                received = buf->retrieveAllAsString();
+                got_reply = true;
+            });
 
         client.connect();
         cli_started = true;
@@ -108,7 +110,7 @@ TEST(UnixSocketTest, RetryUntilServerAvailable)
     ::unlink(path.c_str());         // Ensure the path does not exist yet.
 
     // Start the client first, pointing at a socket path with no server. The
-    // initial connect fails with ENOENT; with rery enabled the Connector must
+    // initial connect fails with ENOENT; with retry enabled the Connector must
     // back off and try again rather than give up.
     std::atomic<bool> cli_started{false};
     std::atomic<bool> connected{false};
@@ -138,14 +140,14 @@ TEST(UnixSocketTest, RetryUntilServerAvailable)
         loop.loop();
     });
 
-    while( !cli_started.load()) std::this_thread::sleep_for(1ms);
+    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
 
     // Let the client fail at least once and enter backoff.
     std::this_thread::sleep_for(200ms);
     EXPECT_FALSE(connected.load());
 
     // Now bring the Unix-domain echo server up on the same path.
-    std::atomic<bool> srv_started {false};
+    std::atomic<bool> srv_started{false};
     reactor::EventLoop* srv_loop = nullptr;
 
     std::thread server_thread([&] {
@@ -156,7 +158,7 @@ TEST(UnixSocketTest, RetryUntilServerAvailable)
         server.setMessageCallback(
             [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
                 conn->send(buf->retrieveAllAsstring());
-        });
+            });
         server.start();
         srv_started = true;
         loop.loop();
@@ -179,13 +181,13 @@ TEST(UnixSocketTest, RetryUntilServerAvailable)
     ::unlink(path.c_str());
 }
 
-TEST(UnixSocketTest, MultipleClientOverUnixDomain)
+TEST(UnixSocketTest, MultipleClientsOverUnixDomain)
 {
     const std::string path = uniquePath("multi");
     ::unlink(path.c_str());
 
     std::atomic<bool> srv_started{false};
-    std::atomic<int> accepted {0};
+    std::atomic<int> accepted{0};
     reactor::EventLoop* srv_loop = nullptr;
 
     std::thread server_thread([&] {
@@ -196,9 +198,10 @@ TEST(UnixSocketTest, MultipleClientOverUnixDomain)
         server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
             if (conn->connected()) accepted++;
         });
-        server.setMessageCallback([](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
-            conn->send(buf->retrieveAllAsString());
-        });
+        server.setMessageCallback(
+            [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
+                conn->send(buf->retrieveAllAsString());
+            });
 
         server.start();
         srv_started = true;
@@ -211,7 +214,7 @@ TEST(UnixSocketTest, MultipleClientOverUnixDomain)
     constexpr int kNumClients = 3;
     std::vector<std::thread> client_threads;
     std::vector<reactor::EventLoop*> client_loops(kNumClients, nullptr);
-    std::atomic<int> replies {0};
+    std::atomic<int> replies{0};
 
     for (int i = 0; i < kNumClients; ++i)
     {
@@ -223,16 +226,17 @@ TEST(UnixSocketTest, MultipleClientOverUnixDomain)
             client.setConnectionCallback([&](const TcpConnectionPtr& conn) {
                 if (conn->connected()) conn->send("hi");
             });
-            client.setMessageCallback([&](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
-                buf->retrieveAll();
-                replies++;
-            });
+            client.setMessageCallback(
+                [&](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
+                    buf->retrieveAll();
+                    replies++;
+                });
             client.connect();
             loop.loop();
         });
     }
 
-    for( int i = 0; i < 200 && replies.load() < kNumClients; ++i)
+    for (int i = 0; i < 200 && replies.load() < kNumClients; ++i)
     {
         std::this_thread::sleep_for(5ms);
     }

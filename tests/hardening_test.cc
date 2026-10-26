@@ -1,3 +1,4 @@
+// Deferred-hardening tests: connection max-age, max input buffer, write timeout
 #include "tcp_server.h"
 
 #include "buffer.h"
@@ -19,7 +20,7 @@
 #include <string>
 #include <thread>
 
-using namespace std::chrono_literials;
+using namespace std::chrono_literals;
 using net::InetAddress;
 using net::TcpConnectionPtr;
 using net::TcpServer;
@@ -35,7 +36,7 @@ bool waitReadable(int fd, int ms)
 
 bool waitWritable(int fd, int ms)
 {
-    struct pollfd pfd { fd, POLLOUT, 0};
+    struct pollfd pfd{fd, POLLOUT, 0};
     return ::poll(&pfd, 1, ms) > 0 && (pfd.revents & POLLOUT);
 }
 
@@ -64,12 +65,13 @@ TEST(HardeningTest, MaxConnectingAgeRecyclesConnection)
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "maxage");
         server.setMaxConnectionAge(1);  // 1 second lifetime
-        server.setConnectionCallback([&](const TcpConnectionPtr& conn){
+        server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
             if (!conn->connected()) disconnects++;
         });
-        server.setMessageCallback([](const TcpConnectionPtr& conn, buffer::Buffer* buf){
-            conn->send(buf->retrieveAllAsString());
-        });
+        server.setMessageCallback(
+            [](const TcpConnectionPtr& conn, buffer::Buffer* buf){
+                conn->send(buf->retrieveAllAsString());
+            });
 
         server.start();
         started = true;
@@ -84,7 +86,7 @@ TEST(HardeningTest, MaxConnectingAgeRecyclesConnection)
     // The window is generous (max-age is 1s): under `ctest -j8` this machine is
     // loaded and timer dispatch slips, which made a 1.5s bound flaky while it
     // passed in isolation.
-    auto start = std::chrono::steady_lock::now();
+    auto start = std::chrono::steady_clock::now();
     while (std::chrono::steady_clock::now() - start < 8000ms && disconnects.load() == 0 )
     {
         ASSERT_TRUE(test_util::sendAll(client, "x", 1));
@@ -105,29 +107,31 @@ TEST(HardeningTest, MaxConnectingAgeRecyclesConnection)
 TEST(HardeningTest, MaxInputBufferClosesFlood)
 {
     const uint16_t kPort = 51002;
-    std::atomic<bool> started {false};
+    std::atomic<bool> started{false};
     std::atomic<int> disconnects{0};
     reactor::EventLoop* loop_ptr = nullptr;
 
     std::thread server_thread([&] {
         reactor::EventLoop loop;
+        loop_ptr = &loop;
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "maxinput");
         server.setMaxInputBufferSize(4096);     // small cap.
-        server.setConnectionCallback([&](const TcpConnectionPtr& conn){
+        server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
             if (!conn->connected()) disconnects++;
         });
         // Message callback that does NOT consume the buffer -> it grows.
-        server.setMessageCallback([](const TcpConnectionPtr& conn, buffer::Buffer* buf){
-            // Intentionally leave data in the input buffer
-        });
+        server.setMessageCallback(
+            [](const TcpConnectionPtr&, buffer::Buffer*){
+                // Intentionally leave data in the input buffer
+            });
 
         server.start();
         started = true;
         loop.loop();
     });
 
-    while(!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(20ms);
 
     int client = connectClient(kPort);
@@ -147,24 +151,21 @@ TEST(HardeningTest, MaxInputBufferClosesFlood)
 }
 
 // A slow consumer (client that never reads) whose output cannot drain is
-// force-close at the write-timeout deadline.
+// force-closed at the write-timeout deadline.
 TEST(HardeningTest, WriteTimeoutClosesSlowConsumer)
 {
     const uint16_t kPort = 51003;
-    std::atomic<bool> started {false};
+    std::atomic<bool> started{false};
     std::atomic<int> disconnects{0};
     reactor::EventLoop* loop_ptr = nullptr;
 
     std::thread server_thread([&] {
         reactor::EventLoop loop;
+        loop_ptr = &loop;
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "writeto");
         server.setWriteTimeout(1);     // 1 second to drain output
-        server.setConnectionCallback([&](const TcpConnectionPtr& conn){
-            if (!conn->connected()) disconnects++;
-        });
-        // Message callback that does NOT consume the buffer -> it grows.
-        server.setMessageCallback([](const TcpConnectionPtr& conn, buffer::Buffer* buf){
+        server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
             if (conn->connected())
             {
                 // Push a large payload to a client that will not read it,

@@ -11,7 +11,7 @@ std::vector<std::string> Router::splitPath(const std::string& path)
 {
     std::vector<std::string> segs;
     size_t i = 0;
-    while ( i < path.size())
+    while (i < path.size())
     {
         if (path[i] == '/')
         {
@@ -19,14 +19,14 @@ std::vector<std::string> Router::splitPath(const std::string& path)
         }
         size_t j = path.find('/', i);
         if (j == std::string::npos) j = path.size();
-        segs.push_back(path.substr(i, j-1));
+        segs.push_back(path.substr(i, j - 1));
         i = j;
     }
     return segs;
 }
 
 void Router::addRoute(Method method, const std::string& pattern,
-                        Handler handler)
+                      Handler handler)
 {
     Route r;
     r.method = method;
@@ -55,20 +55,23 @@ bool Router::matchRoute(const Route& r,
     {
         if (r.is_param[i])
         {
-            // Decode the captured segment (e.g., "%20" -> " "). Decoding after
+            // Decode the captured segment (e.g. "%20" -> " "). Decoding after
             // splitting means an encoded '/' (%2F) stays inside one segment
             // and cannot smuggle an extra path level.
-            captured[r.segments[i]] = urlDecode(path_segs[i], /*plus_as_space*/false);
+            captured[r.segments[i]] = urlDecode(path_segs[i],
+                                                /*plus_as_space*/false);
         } else if (r.segments[i] != path_segs[i])
         {
             return false;
         }
     }
+    *params = std::move(captured);
+    return true;
 }
 
 bool Router::route(const HttpRequest& req, HttpResponse* resp) const {
     auto path_segs = splitPath(req.path());
-    bool path_matched = false;      // for 405 vs 404 distinction
+    bool path_matched = false;      // For 405 vs 404 distinction
 
     for (const auto& r : routes_)
     {

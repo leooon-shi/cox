@@ -38,19 +38,19 @@ HttpRequest getReq(const std::string& path)
 TEST(ConnectionPoolTest, ConcurrentRequestsRespectCap)
 {
     const uint16_t kPort = 55701;
-    std::atomic<bool> srv_started { false};
+    std::atomic<bool> srv_started{false};
     std::atomic<int> server_counts{0};
     reactor::EventLoop* srv_loop = nullptr;
 
-    std::thread server_thread([&]{
+    std::thread server_thread([&] {
         reactor::EventLoop loop;
         srv_loop = &loop;
 
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "srv");
-        server.setConnectionObserver([&](const net::TcpConnectionPtr& c){
+        server.setConnectionObserver([&](const net::TcpConnectionPtr& c) {
             if (c->connected()) server_conns++;
         });
-        server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp){
+        server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp) {
             resp->setStatus(200);
             resp->setBody("r:" + req.path());
         });
@@ -65,7 +65,7 @@ TEST(ConnectionPoolTest, ConcurrentRequestsRespectCap)
     constexpr int kNumRequests = 12;
     const size_t kMaxConns = 3;
     std::atomic<int> completed{0};
-    std::atomic<bool> cli_started {false};
+    std::atomic<bool> cli_started{false};
 
     std::thread client_thread([&]{
         reactor::EventLoop loop;
@@ -114,7 +114,7 @@ TEST(ConnectionPoolTest, ConcurrentRequestsRespectCap)
 TEST(ConnectionPoolTest, SequentialReuseSingleConnection)
 {
     const uint16_t kPort = 55702;
-    std::atomic<bool> srv_started {false};
+    std::atomic<bool> srv_started{false};
     std::atomic<int> server_couns{0};
     reactor::EventLoop* srv_loop = nullptr;
 
@@ -123,10 +123,10 @@ TEST(ConnectionPoolTest, SequentialReuseSingleConnection)
         srv_loop = &loop;
 
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "srv");
-        server.setConnectionObserver([&] (const net::TcpConnectionPtr& c){
+        server.setConnectionObserver([&](const net::TcpConnectionPtr& c) {
             if (c->connected()) server_conns++;
         });
-        server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp){
+        server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp) {
             resp->setStatus(200);
             resp->setBody("r:" + req.path());
         });
@@ -139,11 +139,12 @@ TEST(ConnectionPoolTest, SequentialReuseSingleConnection)
     std::this_thread::sleep_for(30ms);
 
     std::atomic<int> completed{0};
-    std::atomic<bool> cli_started {false};
+    std::atomic<bool> cli_started{false};
 
-    std::thread client_thread([&]{
+    std::thread client_thread([&] {
         reactor::EventLoop loop;
-        auto pool = std::make_unique<ConnectionPool>(&loop, net::InetAddress("127.0.0.1", kPort), "localhost");
+        auto pool = std::make_unique<ConnectionPool>(
+            &loop, net::InetAddress("127.0.0.1", kPort), "localhost");
         pool->setMaxConnections(4);
 
         // Chain 3 sequential requests (each issued from the prior's callback).
@@ -163,7 +164,7 @@ TEST(ConnectionPoolTest, SequentialReuseSingleConnection)
     });
 
     while (!cli_started.load()) std::this_thread::sleep_for(1ms);
-    for(int i = 0; i < 400 && completed.load() < 3; ++i)
+    for (int i = 0; i < 400 && completed.load() < 3; ++i)
     {
         std::this_thread::sleep_for(5ms);
     }

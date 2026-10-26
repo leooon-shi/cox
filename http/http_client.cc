@@ -9,7 +9,7 @@
 namespace http
 {
 // HttpClient is a thin facade over a single-connection ConnectionPool. This
-// reuse the pool's keep-alive + TLS + parsing machinery instead of
+// reuses the pool's keep-alive + TLS + parsing machinery instead of
 // duplicating it, and keeps one code path for the subtle reuse/TLS logic.
 
 HttpClient::HttpClient(reactor::EventLoop* loop, const net::InetAddress& server,
@@ -24,7 +24,7 @@ HttpClient::HttpClient(reactor::EventLoop* loop, const net::InetAddress& server,
     : pool_(std::make_shared<ConnectionPool>(loop, server, std::move(tls_ctx),
                                             std::move(host_header)))
 {
-    pool_->setMaxConnections(1);            // Single connection, resued (keep-alive)
+    pool_->setMaxConnections(1);
 }
 
 HttpClient::HttpClient(reactor::EventLoop* loop, const std::string& host,

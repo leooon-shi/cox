@@ -46,8 +46,8 @@ int resolveBlocking(const std::string& host, uint16_t port, InetAddress* out,
     } else if (res->ai_family == AF_INET6)
     {
         auto* sin6 = reinterpret_cast<struct sockaddr_in6*>(res->ai_addr);
-        sin6->sin_port = htons(port);
-        *out = InetAddress(*sin);
+        sin6->sin6_port = htons(port);
+        *out = InetAddress(*sin6);
     } else {
         *err = "unsupported address family";
         ::freeaddrinfo(res);
@@ -59,19 +59,20 @@ int resolveBlocking(const std::string& host, uint16_t port, InetAddress* out,
 }
 } // namespace
 
-class ThreadPoolResolver::Impl : public std::enable_shared_from_this<Impl>
+class ThreadPoolResolver::Impl 
+    : public std::enable_shared_from_this<Impl>
 {
 public:
     Impl(reactor::EventLoop* loop, concurrent::ThreadPool* pool)
-    : loop_(loop),
-       pool_(pool) {}
+    : loop_(loop), pool_(pool) {}
 
     struct CacheEntry {
         InetAddress addr;
         logging::Timestamp when;
     };
 
-    void resolve(const std::string& host, uint16_t port, Callback cb, uint32_t ttl_s) {
+    void resolve(const std::string& host, uint16_t port, Callback cb,
+                 uint32_t ttl_s) {
         // Cache hit? (positive cache, TTL-bounded)
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -79,7 +80,8 @@ public:
             if (it != cache_.end())
             {
                 uint64_t age_s =
-                    (logging::Timestamp::now().microSecondsSinceEpoch() - it->second.when.microSecondsSinceEpoch()) / 1000000;
+                    (logging::Timestamp::now().microSecondsSinceEpoch() -
+                    it->second.when.microSecondsSinceEpoch()) / 1000000;
                 
                 if (age_s <= ttl_s)
                 {
@@ -87,7 +89,7 @@ public:
                     // Re-stamp the requested port (cache keyed by host only).
                     // Rebuild with the port.
                     InetAddress result = withPort(a, port);
-                    loop_->runInloop([cb, result](){cb(result, ""); });
+                    loop_->runInLoop([cb, result]() { cb(result, ""); });
                     return;
                 }
             }
@@ -99,7 +101,7 @@ public:
         auto self = shared_from_this();
 
         std::string h = host;
-        pool_->run([self, h, port, cb]{
+        pool_->run([self, h, port, cb]() {
             InetAddress addr;
             std::string err;
             int rc = resolveBlocking(h, port, &addr, &err);
@@ -109,13 +111,14 @@ public:
                     std::lock_guard<std::mutex> lock(self->mutex_);
                     self->cache_[h] = CacheEntry{addr, logging::Timestamp::now()};
                 }
-                self->loop_->runInLoop([cb, addr]{cb(addr, ""); });
+                self->loop_->runInLoop([cb, addr] { cb(addr, ""); });
             } else {
                 // Log the failure here: the callback only receives the message
                 // string, so without this a resolution failure leaves no trace
                 // on the server side.
                 log().debug("DNS resolution failed for " + h + ": " + err);
-                self->loop_->runInLoop([cb, err]() {cb(InetAddress(), err); });
+                self->loop_->runInLoop(
+                    [cb, err]() { cb(InetAddress(), err); });
             }
         });
     }
@@ -123,9 +126,9 @@ private:
     static InetAddress withPort(const InetAddress& a, uint16_t port)
     {
         // Reconstruct with the desired port from the cached IP string.
-        if (a.isIPv6())
+        if (a.isIpv6())
         {
-            return InetAddress(a.toIp(), port, /*ipv6=*/true)
+            return InetAddress(a.toIp(), port, /*ipv6=*/true);
         }
         return InetAddress(a.toIp(), port);
     }
@@ -136,12 +139,13 @@ private:
 };
 
 ThreadPoolResolver::ThreadPoolResolver(reactor::EventLoop* loop,
-                                        concurrent::ThreadPool* pool);
+                                       concurrent::ThreadPool* pool)
     : impl_(std::make_shared<Impl>(loop, pool)) {}
 
 ThreadPoolResolver::~ThreadPoolResolver() = default;
 
-void ThreadPoolResolver::resolve(const std::string& host, uint16_t port, Callback cb)
+void ThreadPoolResolver::resolve(const std::string& host, uint16_t port,
+                                 Callback cb)
 {
     impl_->resolve(host, port, std::move(cb), cache_ttl_s_);
 }

@@ -6,7 +6,7 @@
 
 namespace logging {
 
-Timestamp::Timestamp() : microseconds_ (0) {}
+Timestamp::Timestamp() : microseconds_(0) {}
 
 Timestamp Timestamp::now()
 {
@@ -29,13 +29,13 @@ std::string Timestamp::toString() const {
     memset(&tm, 0, sizeof(tm));
     time_t seconds = static_cast<time_t>(microseconds_ / MicroSecondsPerSecond);
     ::gmtime_r(&seconds, &tm);
-    // Microsecond (us) is one-millionth of a second (10^6). Cast the fraction
+    // Microsecond (us) is one-millionth of a second (10^-6). Cast the fraction
     // explicitly: it is unsigned, so print it with an unsigned specifier.
     auto micros = 
-        static_cast<unsigned long>(microseconds_  % MicroSecondsPerSecond);
+        static_cast<unsigned long>(microseconds_ % MicroSecondsPerSecond);
     snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d %02d:%02d:%02d.%06lu",
-            tm.tm_year + 1900, tm.tm_mon+1, tm.tm_mday,
-            tm.tm_hour, tm.tm_min, tm.tm_sec, micros);
+             tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+             tm.tm_hour, tm.tm_min, tm.tm_sec, micros);
 
     return std::string(buffer);
 }

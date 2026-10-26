@@ -19,28 +19,26 @@ if (USE_JEMALLOC)
 endif()
 
 # Global warning flags. These are APPLIED (see add_compile_options below) --
-# they were previously declared here but never used, which silently disable the
+# they were previously declared here but never used, which silently disabled the
 # project's own warning policy.
 #
-# Deliberately warning-only: -march-native (breaks portable binaries),
+# Deliberately warnings-only: -march-native (breaks portable binaries),
 # -rdynamic (link-time, for backtraces) and -stdlib=libc++ (ABI choice) are NOT
 # included here; add them per-target or via a toolchain file if wanted.
-
 set(COX_WARNING_FLAGS
     -Wall
     -Wextra
-    -Werror
     -Wold-style-cast
     -Woverloaded-virtual
     -Wpointer-arith
     -Wshadow
-    -Wno-unused-parameter           # Callback signatures often ignore arguments
+    -Wno-unused-parameter   # Callback signatures often ignore arguments
     -Wwrite-strings
     )
 
 # Treat warnings as errors by default so the policy cannot silently rot again.
-# Disable for a one-off build with -DCOX_WHERE=OFF.
-option(COX_WHERE "Treat compiler warning as errors" ON)
+# Disable for a one-off build with -DCOX_WERROR=OFF.
+option(COX_WERROR "Treat compiler warnings as errors" ON)
 if (COX_WERROR)
     list(APPEND COX_WARNING_FLAGS -Werror)
 endif()
@@ -52,17 +50,17 @@ add_compile_options(${COX_WARNING_FLAGS})
 # COX_SANITIZE=address|thread|undefined|leak|OFF
 #
 # Sanitizers are the highest-value testing tool for this codebase: connection
-# lifetimes are shared_ptr-manged, work is marshalled across threads with
+# lifetimes are shared_ptr-managed, work is marshalled across threads with
 # runInLoop, AsyncSink hands buffers to a writer thread, and raw sockaddr casts
 # are everywhere. A passing test proves behavior, NOT the absence of a data race
 # or a use-after-free -- only these tools do.
 #
-# Matually exclusive by design: ASan and TSan cannot be combined (their runtimes
-# conflict), so this is a single-values option rather than a set of booleans
+# Mutually exclusive by design: ASan and TSan cannot be combined (their runtimes
+# conflict), so this is a single-valued option rather than a set of booleans
 # Requires -O1 and no omitted frame pointers for usable stack traces, and
 # -fno-optimize-sibling-calls so tail calls do not eat frames.
 set(COX_SANITIZE "OFF" CACHE STRING
-        "Enable a sanitizer: OFF, address, thread, undefined, leak")
+    "Enable a sanitizer: OFF, address, thread, undefined, leak")
 
 set_property(CACHE COX_SANITIZE PROPERTY STRINGS
     OFF address thread undefined leak)
@@ -74,23 +72,23 @@ if (NOT COX_SANITIZE STREQUAL "OFF")
         -fno-optimize-sibling-calls
         -g
     )
-    if (COX_SANITIZE_STREQUAL "address")
+    if (COX_SANITIZE STREQUAL "address")
         # Catch use-after-scope too; cheap and finds real bugs.
-        list(APPEND COX_SAN_FLAGS -fsantize-address-use-after-scope)
-    elseif (COX_SANITIZE_STREQUAL "undefined")
+        list(APPEND COX_SAN_FLAGS -fsanitize-address-use-after-scope)
+    elseif (COX_SANITIZE STREQUAL "undefined")
         # Make UBSan failures fatal; by default it only warns, which is easy to
         # miss in CI output
-        list(APPEND COX_SAN_FLAGS -fno-santize-recorver=all)
+        list(APPEND COX_SAN_FLAGS -fno-sanitize-recover=all)
     endif()
 
     add_compile_options(${COX_SAN_FLAGS})
     add_link_options(-fsanitize=${COX_SANITIZE})
+    message(STATUS "sanitizer enabled: ${COX_SANITIZE}")
 endif()
 
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "using gcc")
-    #GCC-Specific flags
     add_compile_options(-Wpedantic)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "using clang")
@@ -117,7 +115,7 @@ find_path(CARES_INCLUDE_DIR ares.h)
 find_library(CARES_LIB cares)
 
 if (CARES_INCLUDE_DIR AND CARES_LIB)
-    set(COX_HAVE_ARES on)
+    set(COX_HAVE_CARES on)
     message(STATUS "c-ares found: async DNS resolver enabled")
 else()
     set(COX_HAVE_CARES OFF)

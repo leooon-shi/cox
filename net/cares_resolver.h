@@ -7,9 +7,9 @@
 #include <string>
 
 // Compiled only when c-ares is available (COX_HAVE_CARES). Provides fully
-// asynchronous DNS resoluton driven by the event loop -- c-ares' sockets are
-// registered as Channels, so no worker threads are 'used ("make everythin an
-// fd"). Falls back is unneccessary: callers pick this or ThreadPoolResolver.
+// asynchronous DNS resolution driven by the event loop -- c-ares' sockets are
+// registered as Channels, so no worker threads are used ("make everythin an
+// fd"). Falls back is unnecessary: callers pick this or ThreadPoolResolver.
 
 struct ares_channeldata;        // opaque
 
@@ -30,4 +30,4 @@ private:
     class Impl;
     std::shared_ptr<Impl> impl_;
 };
-}
+} // namespace net

@@ -13,12 +13,14 @@ std::string DefaultFormatter::format(const LogRecord& record) const {
     out.reserve(64 + record.message.size());
     out += "[";
     out += record.tid;
-    out += "]";
+    out += "] ";
     out += record.timestamp.toString();
     out += " ";
+    out += toString(record.level);
+    out += " ";
     out += record.message;
-    // Append structured fields as space-separated key=value pairs
-    for (const auto & [ key, value] : record.fields)
+    // Append structured fields as space-separated key=value pairs.
+    for (const auto& [ key, value] : record.fields)
     {
         out += " ";
         out += key;

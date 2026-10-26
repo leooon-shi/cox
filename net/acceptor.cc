@@ -29,7 +29,7 @@ int openIdleFd()
 } // namespace
 
 Acceptor::Acceptor(reactor::EventLoop* loop, const InetAddress& listen_addr,
-                    bool reuse_port)
+                   bool reuse_port)
     : loop_(loop),
       accept_socket_(sockets::createNonBlockingOrDie(listen_addr.family())),
       accept_channel_(accept_socket_.fd(), loop),
@@ -73,7 +73,7 @@ void Acceptor::handleRead()
     loop_->assertInLoopThread();
     // Drain all pending connections in one go: efficient under load and correct
     // for edge-triggered pollers.
-    for(;;)
+    for (;;)
     {
         InetAddress peer;
         int connfd = accept_socket_.accept(&peer);
@@ -88,10 +88,10 @@ void Acceptor::handleRead()
             continue;
         }
 
-        // connfd < 0: inspect errno
+        // connfd < 0: inspect errno.
         if (errno == EAGAIN || errno == EWOULDBLOCK)
         {
-            break;
+            break;          // No more pending connections
         }
 
         if (errno == EINTR)
@@ -105,7 +105,8 @@ void Acceptor::handleRead()
             // pending connection so it doesn't wedge the readable event, close
             // it immediately, then reopen the idle fd. This prevents a busy
             // loop while signaling the peer with an immediate close.
-            log().error("Acceptor::handleRead out of fds (" + std::string(std::strerror(errno)) + ")");
+            log().error("Acceptor::handleRead out of fds (" +
+                        std::string(std::strerror(errno)) + ")");
 
             if (idle_fd_ >= 0)
             {

@@ -32,7 +32,7 @@ class CaresResolver::Impl : public std::enable_shared_from_this<Impl> {
 public:
     explicit Impl(reactor::EventLoop* loop) : loop_(loop)
     {
-        [[possible_unused]] static bool inited = [] {
+        static bool inited = [] {
             ares_library_init(ARES_LIB_INIT_ALL);
             return true;
         }();
@@ -56,26 +56,27 @@ public:
     struct Query {
         uint16_t port;
         Callback cb;
-        std::shared_ptr<Impl> sefl;     // Keep Impl alive until callback
+        std::shared_ptr<Impl> self;     // Keep Impl alive until callback
     };
 
     void resolve(const std::string& host, uint16_t port, Callback cb)
     {
         if (!channel_)
         {
-            loop_->runInLoop([cb](){
-                cb(InetAddress(), "resolver not initialized");
-            });
+            loop_->runInLoop(
+                [cb]() { cb(InetAddress(), "resolver not initialized"); });
+            return;
         }
 
-        auto* p = new Query{port, std::move(cb), shared_from_this()};
+        auto* q = new Query{port, std::move(cb), shared_from_this()};
         // Resolve A/AAAA; use ares_getaddrinfo for family-agnostic lookup.
         struct ares_addrinfo_hints hints;
         std::memset(&hints, 0, sizeof(hints));
         hints.ai_family = AF_UNSPEC;
         hints.ai_socktype = SOCK_STREAM;
         
-        ares_getaddrinfo(channel_, host.c_str(), nullptr, &hints, &CaresResolver::Impl::onResult, q);
+        ares_getaddrinfo(channel_, host.c_str(), nullptr, &hints,
+                         &CaresResolver::Impl::onResult, q);
 
         updateSockets();
 
@@ -84,7 +85,7 @@ public:
 
 private:
     static void onResult(void* arg, int status, int /*timeouts*/,
-                        struct ares_addrinfo* result)
+                         struct ares_addrinfo* result)
     {
         auto* q = static_cast<Query*>(arg);
         std::shared_ptr<Impl> self = q->self;
@@ -113,20 +114,21 @@ private:
                 auto* s6 = reinterpret_cast<struct sockaddr_in6*>(node->ai_addr);
                 s6->sin6_port = htons(port);
                 addr = InetAddress(*s6);
-                ok = true
+                ok = true;
                 break;
-            } else {
-                log().error("CaresResolver::onResult Unknown node->ai_family.");
+            // } else {
+            //     log().error("CaresResolver::onResult Unknown node->ai_family.");
             }
             
         }
 
         ares_freeaddrinfo(result);
-        if(ok)
+        if (ok)
         {
             self->loop_->runInLoop([cb, addr]() { cb(addr, ""); });
         } else {
-            self->loop_->runInLoop([cb]() { cb(InetAddress(), "no usable address"); });
+            self->loop_->runInLoop(
+                [cb]() { cb(InetAddress(), "no usable address"); });
         }
     }
 
@@ -150,19 +152,19 @@ private:
             } else {
                 ch = std::make_unique<reactor::Channel>(fd, loop_);
                 auto self = shared_from_this();
-                ch->setReadCallback([self, fd](){
+                ch->setReadCallback([self, fd]() {
                     ares_process_fd(self->channel_, fd, ARES_SOCKET_BAD);
                     self->updateSockets();
                 });
-                ch->setWriteCallback([self, fd](){
+                ch->setWriteCallback([self, fd]() {
                     ares_process_fd(self->channel_, ARES_SOCKET_BAD, fd);
                     self->updateSockets();
                 });
 
             }
 
-            // Set interest
-            if (readable) ch->eanbleRead();  else ch->disableRead();
+            // Set interest.
+            if (readable) ch->eanbleRead(); else ch->disableRead();
             if (writable) ch->enableWrite(); else ch->disableWrite();
 
             next[fd] = std::move(ch);
@@ -185,7 +187,7 @@ private:
         if (ms == 0) ms = 1;
 
         auto self = shared_from_this();
-        loop_->runAfter(ms, [self](){
+        loop_->runAfter(ms, [self]() {
             ares_process_fd(self->channel_, ARES_SOCKET_BAD, ARES_SOCKET_BAD);
             self->updateSockets();
             self->armTimer();
@@ -193,7 +195,7 @@ private:
     }
 
     reactor::EventLoop* loop_;
-    ares_channel channel_ { nullptr };
+    ares_channel channel_{ nullptr };
     std::map<int, std::unique_ptr<reactor::Channel>> channels_;
 };
 

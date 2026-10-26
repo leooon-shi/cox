@@ -17,11 +17,11 @@ namespace
 {
 int createTimerfd()
 {
-    int fd = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC );
+    int fd = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     if (fd < 0)
     {
         throw std::runtime_error("timerfd_create failed: " +
-                                std::string(std::strerror(errno)));
+                                 std::string(std::strerror(errno)));
     }
     return fd;
 }
@@ -70,7 +70,7 @@ TimerQueue::TimerQueue(EventLoop* loop)
   timerfd_(createTimerfd()),
   timerfd_channel_(std::make_unique<Channel>(timerfd_, loop))
   {
-    timerfd_channel_->setReadCallback([this](handleRead()));
+    timerfd_channel_->setReadCallback([this] { handleRead(); });
     timerfd_channel_->enableRead();
   }
 
@@ -79,18 +79,18 @@ TimerQueue::~TimerQueue()
     timerfd_channel_->disableAll();
     loop_->removeChannel(timerfd_channel_.get());
     ::close(timerfd_);
-    for (const auto & entry : timers)
+    for (const auto & entry : timers_)
     {
         delete entry.second;
     }
 }
 
 TimerId TimerQueue::addTimer(TimerCallback cb, logging::Timestamp when,
-                            uint64_t interval_ms)
+                             uint64_t interval_ms)
 {
     Timer* timer = new Timer(std::move(cb), when, interval_ms);
     const bool earliest_changed = insert(timer);
-    active_sequences_.insert(timer->expiration());
+    active_sequences_.insert(timer->sequence());
     if (earliest_changed)
     {
         resetTimerfd(timerfd_, timer->expiration());
@@ -136,7 +136,7 @@ bool TimerQueue::insert(Timer* timer)
 std::vector<TimerQueue::Entry> TimerQueue::getExpired(logging::Timestamp now)
 {
     std::vector<Entry> expired;
-    //Sentinel that is strictly greater than any real Entry with time `now`.
+    // Sentinel that is strictly greater than any real Entry with time `now`.
     Entry sentinel(now, reinterpret_cast<Timer*>(UINTPTR_MAX));
     auto end = timers_.upper_bound(sentinel);
     for (auto it = timers_.begin(); it != end; ++it)

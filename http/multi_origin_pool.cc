@@ -18,8 +18,8 @@ void MultiOriginPool::setTlsContext(const std::string& host, uint16_t port,
 }
 
 void MultiOriginPool::request(const std::string& host, uint16_t port,
-                                const HttpRequest& req, ResponseCallback cb,
-                                const std::string& host_header)
+                              const HttpRequest& req, ResponseCallback cb,
+                              const std::string& host_header)
 {
     loop_->assertInLoopThread();
 

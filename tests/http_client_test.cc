@@ -1,5 +1,5 @@
-// HttpClient tests: response-parser unit tests unit tests + end-to-end HttpClient <->
-// HttpServer (both using_cox).
+// HttpClient tests: response-parser unit tests + end-to-end HttpClient <->
+// HttpServer (both using_Cox).
 
 #include "http_client.h"
 #include "http_request.h"
@@ -33,7 +33,7 @@ buffer::Buffer bufOf(const std::string& s)
 }
 } // namespace
 
-// ---- Response parser unit tests ---
+// ---- Response parser unit tests ----
 
 TEST(ResponseParserTest, ContentLengthBody)
 {
@@ -63,7 +63,7 @@ TEST(ResponseParserTest, ChunkedBody)
 TEST(ResponseParserTest, EofDelimitedBody)
 {
     ResponseParser p;
-    // No Content-Length, no chunked -> bod until EOF.
+    // No Content-Length, no chunked -> body until EOF.
     auto buf = bufOf("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\nsome data");
     ASSERT_TRUE(p.parse(&buf));
     EXPECT_FALSE(p.gotAll());       // Not complete until EOF
@@ -82,21 +82,21 @@ TEST(ResponseParserTest, StatusCodeParsed)
     EXPECT_EQ(p.response().statusReason(), "Not Found");
 }
 
-// ---- End-to-end client <--> server ----
+// ---- End-to-end client <-> server ----
 TEST(HttpClientTest, GetAgainstCoxServer)
 {
     const uint16_t kPort = 55601;
     std::atomic<bool> srv_started{false};
-    reactor::EventLoop* srv_loop{false};
+    reactor::EventLoop* srv_loop = nullptr;
 
-    std::thread server_thread([&]{
+    std::thread server_thread([&] {
         reactor::EventLoop loop;
         srv_loop = &loop;
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "srv");
-        server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp){
+        server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp) {
             resp->setStatus(200);
             resp->setContentType("text/plain");
-            resp->setBody("hello" + req.path());
+            resp->setBody("hello " + req.path());
         });
 
         server.start();
@@ -104,7 +104,7 @@ TEST(HttpClientTest, GetAgainstCoxServer)
         loop.loop();
     });
 
-    while(!srv_started.load()) std::this_thread::sleep_for(1ms);
+    while (!srv_started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(30ms);
 
     std::atomic<bool> cli_started{false};
@@ -113,12 +113,12 @@ TEST(HttpClientTest, GetAgainstCoxServer)
     std::string body;
     reactor::EventLoop* cli_loop = nullptr;
 
-    std::thread client_thread([&]{
+    std::thread client_thread([&] {
         reactor::EventLoop loop;
         cli_loop = &loop;
         auto client = std::make_unique<HttpClient>(
             &loop, net::InetAddress("127.0.0.1", kPort), "localhost");
-        client->get("/world", [&](const HttpResponse& resp, const std::string& err){
+        client->get("/world", [&](const HttpResponse& resp, const std::string& err) {
             if (err.empty())
             {
                 status = resp.statusCode();
@@ -131,14 +131,14 @@ TEST(HttpClientTest, GetAgainstCoxServer)
         loop.loop();
     });
 
-    while( !cli_started.load()) std::this_thread::sleep_for(1ms);
-    for(int i = 0; i < 200 && !got.load(); ++i) std::this_thread::sleep_for(5ms);
+    while ( !cli_started.load()) std::this_thread::sleep_for(1ms);
+    for (int i = 0; i < 200 && !got.load(); ++i) std::this_thread::sleep_for(5ms);
 
     EXPECT_TRUE(got.load());
     EXPECT_EQ(status, 200);
     EXPECT_EQ(body, "hello /world");
 
-    // The client callback already called loop.quit(); just joini. (Calling
+    // The client callback already called loop.quit(); just join. (Calling
     // cli_loop->quit() from here would touch a loop whose thread has exited.)
     client_thread.join();
     srv_loop->quit();
@@ -155,7 +155,7 @@ TEST(HttpClientTest, PostAgainstCoxServer)
         reactor::EventLoop loop;
         srv_loop = &loop;
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "srv");
-        server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp){
+        server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp) {
             resp->setStatus(200);
             resp->setBody("echo:" + req.body());
         });
@@ -165,24 +165,24 @@ TEST(HttpClientTest, PostAgainstCoxServer)
         loop.loop();
     });
 
-    while(!srv_started.load()) std::this_thread::sleep_for(1ms);
+    while (!srv_started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(30ms);
 
-    std::atomic<boo> got{false};
+    std::atomic<bool> got{false};
     std::string body;
     reactor::EventLoop* cli_loop = nullptr;
-    std::atomic<bool> cli_started {false};
+    std::atomic<bool> cli_started{false};
 
-    std::thread client_thread([&]{
+    std::thread client_thread([&] {
         reactor::EventLoop loop;
         cli_loop = &loop;
-        auto client = std::make_unique<HttpClient>(
+        auto client = std::make_shared<HttpClient>(
             &loop, net::InetAddress("127.0.0.1", kPort), "localhost");
         HttpRequest req;
         req.setMethod(Method::kPost);
         req.setPath("/submit");
         req.setBody("payload123");
-        client->send(req, [&](const HttpResponse& resp, const std::string& err){
+        client->send(req, [&](const HttpResponse& resp, const std::string& err) {
             if (err.empty())
             {
                 body = resp.body();
@@ -194,8 +194,8 @@ TEST(HttpClientTest, PostAgainstCoxServer)
         loop.loop();
     });
 
-    while( !cli_started.load()) std::this_thread::sleep_for(1ms);
-    for(int i = 0; i < 200 && !got.load(); ++i) std::this_thread::sleep_for(5ms);
+    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+    for (int i = 0; i < 200 && !got.load(); ++i) std::this_thread::sleep_for(5ms);
 
     EXPECT_TRUE(got.load());
     EXPECT_EQ(body, "echo:payload123");
@@ -212,9 +212,9 @@ TEST(HttpClientTest, KeepAliveReusesConnection)
     std::atomic<bool> srv_started{false};
     std::atomic<int> server_reqs{0};               // Requests the server handled
     std::atomic<int> server_conns{0};              // Connections accepted (via observer)
-    reactor::EventLoop* srv_loop{false};
+    reactor::EventLoop* srv_loop = nullptr;
 
-    std::thread server_thread([&]{
+    std::thread server_thread([&] {
         reactor::EventLoop loop;
         srv_loop = &loop;
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "srv");
@@ -222,10 +222,10 @@ TEST(HttpClientTest, KeepAliveReusesConnection)
         server.setConnectionObserver([&](const net::TcpConnectionPtr& c) {
             if (c->connected()) server_conns++;
         });
-        server.setHttpHandler([&](const HttpRequest& req, HttpResponse* resp){
+        server.setHttpHandler([&](const HttpRequest& req, HttpResponse* resp) {
             server_reqs++;
             resp->setStatus(200);
-            resp->setBody("r" + req.path());
+            resp->setBody("r:" + req.path());
         });
 
         server.start();
@@ -233,15 +233,15 @@ TEST(HttpClientTest, KeepAliveReusesConnection)
         loop.loop();
     });
 
-    while(!srv_started.load()) std::this_thread::sleep_for(1ms);
+    while (!srv_started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(30ms);
 
     std::atomic<int> replies{0};
     std::string body1, body2;
     reactor::EventLoop* cli_loop = nullptr;
-    std::atomic<bool> cli_started {false};
+    std::atomic<bool> cli_started{false};
 
-    std::thread client_thread([&]{
+    std::thread client_thread([&] {
         reactor::EventLoop loop;
         cli_loop = &loop;
         auto client = std::make_shared<HttpClient>(
@@ -249,7 +249,8 @@ TEST(HttpClientTest, KeepAliveReusesConnection)
         // HttpClient now keeps the connection alive by default (single-conn pool).
 
         // First request; in its callback, issue the second (sequential reuse).
-        client->get("/a", [&, client](const HttpResponse& resp, const std::string& err){
+        client->get("/a", [&, client](const HttpResponse& resp,
+                                      const std::string& err) {
             if (err.empty())
             {
                 body1 = resp.body();
@@ -257,7 +258,7 @@ TEST(HttpClientTest, KeepAliveReusesConnection)
             replies++;
 
             client->get("/b", [&](const HttpResponse& resp2,
-                                const std::string& err2){
+                                  const std::string& err2) {
                 if (err2.empty()) body2 = resp2.body();
                 replies++;
                 loop.quit();
@@ -267,8 +268,9 @@ TEST(HttpClientTest, KeepAliveReusesConnection)
         loop.loop();
     });
 
-    while( !cli_started.load()) std::this_thread::sleep_for(1ms);
-    for(int i = 0; i < 300 && replies.load() < 2; ++i) std::this_thread::sleep_for(5ms);
+    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+    for(int i = 0; i < 300 && replies.load() < 2; ++i)
+        std::this_thread::sleep_for(5ms);
 
     EXPECT_EQ(replies.load(), 2);
     EXPECT_EQ(body1, "r:/a");

@@ -12,7 +12,7 @@ class Buffer;
 namespace http
 {
 // HttpContext holds the incremental parse state for one connection's inbound
-// byte stream. parseRequest() consume bytes from the Buffer as they arrive
+// byte stream. parseRequest() consumes bytes from the Buffer as they arrive
 // (handling partial reads and pipelined requests); when a full request is
 // available, gotAll() becomes true and request() is complete.
 //
@@ -45,16 +45,16 @@ public:
     HttpRequest& request() { return request_; }
     const HttpRequest& request() const { return request_; }
 
-    // Reset for the next request on a keep-alive connections.
+    // Reset for the next request on a keep-alive connection.
     void reset();
 
-    // Maximum header section size (bytes) before rejecting (Dos Bound).
+    // Maximum header section size (bytes) before rejecting (Dos bound).
     static constexpr size_t kMaxHeaderBytes = 64 * 1024;
 
 private:
     bool parseRequestLine(const char* begin, const char* end);
 
-    State state_;
+    State state_{State::kExpectRequestLine};
     HttpRequest request_;
     size_t content_length_{0};
     size_t body_received_{0};

@@ -19,7 +19,7 @@ void TokenBucket::refillLocked(Clock::time_point now)
     const double elapsed_s =
         std::chrono::duration<double>(now - last_refill_).count();
     last_refill_ = now;
-    tokens_ = std::min(burst_, tokens_ + elapsed_s*qps_);
+    tokens_ = std::min(burst_, tokens_ + elapsed_s * qps_);
 }
 
 bool TokenBucket::tryAcquire() { return tryAcquireN(1.0); }

@@ -30,13 +30,13 @@ Backoff::Duration Backoff::applyJitter(Duration d)
     {
         return d;
     }
-    //xorshift64->uniform double n [0,1).
+    // xorshift64->uniform double n [0,1).
     rng_state_ ^= rng_state_ << 13;
     rng_state_ ^= rng_state_ >> 7;
     rng_state_ ^= rng_state_ << 17;
     
     double r = static_cast<double>(rng_state_ >> 11) / static_cast<double>(1ULL << 53);
-    double factor = 1.0 + jitter_ * r; // in [1, jitter)
+    double factor = 1.0 + jitter_ * r;  // in [1, jitter)
     return Duration(static_cast<Duration::rep>(d.count() * factor));
 }
 

@@ -7,10 +7,10 @@
 namespace logging
 {
 /*
-* Timestamp class represents a point in time, typically used for logging purpose.
+* Timestamp class represents a point in time, typically used for logging purposes.
 * timeval defined in <sys/time.h> is a structure that represents time in seconds and microsecond precision.
 * struct timeval {
-*   time_t tv_sec;        // seconds since the epoch
+*   time_t      tv_sec;  // seconds since the epoch
 *   suseconds_t tv_usec; // microseconds ( 0 to 999,999)
 * };
 * struct timeval tv;
@@ -23,7 +23,7 @@ namespace logging
 * struct timespec ts;
 * clock_gettime(CLOCK_REALTIME, &ts); // Get the current time
 *
-* itimerspec is defined in <time.h> and is used for setting and retrieving time intervals for interval timers.
+* itimerspec is defined in <time.h> and is used for setting and retrieving timer intervals for interval timers.
 * struct itimerspec {
 *   struct timespec it_interval;      // Timer interval
 *   struct timespec it_value;         // Initial expiration
@@ -50,13 +50,13 @@ public:
     Timestamp(const Timestamp& other) = default;
     Timestamp& operator=(const Timestamp& other) = default;
 
-    Timestamp(Timestamp && other) noexcept
+    Timestamp(Timestamp&& other) noexcept
     : microseconds_(other.microseconds_) 
     {
         other.microseconds_ = 0; // Reset the moved-from object
     }
 
-    Timestamp & operator=(Timestamp && other) noexcept
+    Timestamp& operator=(Timestamp&& other) noexcept
     {
         if (this != &other)
         {
@@ -66,22 +66,22 @@ public:
         return *this;
     }
 
-    // Returns the current time as a Timestamp
+    // Returns the current time as a Timestamp.
     static Timestamp now();
 
-    // Returns the time since epoch in milliseconds
+    // Returns the time since epoch in milliseconds.
     std::uint64_t millisecondsSinceEpoch() const {
         return microseconds_ / MicroSecondsPerMillisecond;
     }
 
-    // Returns the time since epoch in seconds
+    // Returns the time since epoch in seconds.
     std::uint64_t secondsSinceEpoch() const {
         return microseconds_ / MicroSecondsPerSecond;
     }
 
     std::string toString() const;
 
-    // Returns the raw microseconds since epoch
+    // Returns the raw microseconds since epoch.
     std::uint64_t microSecondsSinceEpoch() const {
         return static_cast<std::uint64_t>(microseconds_);
     }
@@ -100,7 +100,7 @@ private:
     long microseconds_ { 0 }; // Time in microseconds since epoch
 };
 
-// --- Free comparison operators ( chronological ordering) ---
+// --- Free comparison operators (chronological ordering) ---
 inline bool operator<(const Timestamp& lhs, const Timestamp& rhs)
 {
     return lhs.microSecondsSinceEpoch() < rhs.microSecondsSinceEpoch();
@@ -111,29 +111,29 @@ inline bool operator==(const Timestamp& lhs, const Timestamp& rhs)
     return lhs.microSecondsSinceEpoch() == rhs.microSecondsSinceEpoch();
 }
 
-inline bool operator!= (const Timestamp& lhs, const Timestamp& rhs)
+inline bool operator!=(const Timestamp& lhs, const Timestamp& rhs)
 {
     return !(lhs == rhs);
 }
 
-inline bool operator<= (const Timestamp& lhs, const Timestamp& rhs)
+inline bool operator<=(const Timestamp& lhs, const Timestamp& rhs)
 {
     return !(rhs < lhs);
 }
 
-inline bool operator> (const Timestamp& lhs, const Timestamp& rhs)
+inline bool operator>(const Timestamp& lhs, const Timestamp& rhs)
 {
     return rhs < lhs;
 }
 
-inline bool operator>= (const Timestamp& lhs, const Timestamp& rhs)
+inline bool operator>=(const Timestamp& lhs, const Timestamp& rhs)
 {
     return !(rhs < lhs);
 }
 
-// Return a new Timestamp advanced by the given number of milliseconds.
+// Returns a new Timestamp advanced by the given number of milliseconds.
 inline Timestamp addMilliseconds(Timestamp t, std::uint64_t milliseconds) {
-    return Timestamp(t.microSecondsSinceEpoch() + milliseconds*1000);
+    return Timestamp(t.microSecondsSinceEpoch() + milliseconds * 1000);
 }
 
 } // namespace logging

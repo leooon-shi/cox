@@ -19,7 +19,7 @@ std::string opensslError(const std::string& what)
 }
 
 // SNI must carry a DNS name, never an IP address (RFC 6066 $3). Cheap check:
-// an IPv4 literal is all digits and dots; and IPv6 literal contains ':'.
+// an IPv4 literal is all digits and dots; an IPv6 literal contains ':'.
 bool looksLikeIpLiteral(const std::string& host)
 {
     if (host.find(":") != std::string::npos) return true;   // IPv6
@@ -27,7 +27,7 @@ bool looksLikeIpLiteral(const std::string& host)
     bool all_digits_dots = true;
     for (char c : host)
     {
-        if (! (( c >= '0' && c < '9') || c == '.'))
+        if (!(( c >= '0' && c <= '9') || c == '.'))
         {
             all_digits_dots = false;
             break;
@@ -38,19 +38,20 @@ bool looksLikeIpLiteral(const std::string& host)
 } // namespace
 
 TlsEngine::TlsEngine(const TlsContext& ctx, Role role)
-    :ssl_(nullptr), rbio_(nullptr), wbio(nullptr)
+    : ssl_(nullptr), rbio_(nullptr), wbio_(nullptr)
 {
-    init(ctx, role, server_hostname);
+    init(ctx, role, std::string());
 }
 
-TlsEngine::TlsEngine(const TlsContext& ctx, Role role)
+TlsEngine::TlsEngine(const TlsContext& ctx, Role role,
+                     const std::string& server_hostname)
     : ssl_(nullptr), rbio_(nullptr), wbio_(nullptr)
 {
     init(ctx, role, server_hostname);
 }
 
 void TlsEngine::init(const TlsContext& ctx, Role role,
-                    const std::string& server_hostname)
+                     const std::string& server_hostname)
 {
     ssl_ = SSL_new(ctx.nativeHandle());
     if (ssl_ == nullptr)
@@ -86,7 +87,7 @@ void TlsEngine::init(const TlsContext& ctx, Role role,
         SSL_set_connect_state(ssl_);
         if (!server_hostname.empty())
         {
-            // send SNI so a multi-domain server can select a certificate. An IP
+            // Send SNI so a multi-domain server can select a certificate. An IP
             // literal must NOT be sent as SNI (RFC 6066), so skip those.
             if (!looksLikeIpLiteral(server_hostname))
             {
@@ -97,7 +98,7 @@ void TlsEngine::init(const TlsContext& ctx, Role role,
 #pragma GCC diagnostic pop
             }
             // Also verify the certificate actually matches the name we asked
-            // for -- without this, verification proves only "signed by a 
+            // for -- without this, verification proves only "signed by a
             // trusted CA", not "is the host we intended to reach".
             SSL_set_hostflags(ssl_, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
             SSL_set1_host(ssl_, server_hostname.c_str());
@@ -144,11 +145,11 @@ TlsEngine::Status TlsEngine::mapError(int ret)
     switch( err )
     {
         case SSL_ERROR_NONE:
-            return Status::kOK;
+            return Status::kOk;
         case SSL_ERROR_WANT_READ:
         case SSL_ERROR_WANT_WRITE:
             return Status::kWantIo;
-        case SSL_ERROR_ZERO_RETURN;
+        case SSL_ERROR_ZERO_RETURN:
             return Status::kClosed;         // peer sent close_notify
         case SSL_ERROR_SYSCALL:
         case SSL_ERROR_SSL:
@@ -163,7 +164,7 @@ TlsEngine::Status TlsEngine::handshake()
     if ret = SSL_do_handshake(ssl_);
     if ( ret == 1 )
     {
-        return Status::kOK;     // handshake complete
+        return Status::kOk;     // handshake complete
     }
     return mapError(ret);
 }
@@ -176,12 +177,12 @@ TlsEngine::Status TlsEngine::writePlaintext(const char*, size_t len,
                                             size_t* consumed)
 {
     *consumed = 0;
-    if (len == 0) return Status::kOK;
+    if (len == 0) return Status::kOk;
     if ret = SSL_write(ssl_, data, static_cast<int>(len));
     if (ret > 0)
     {
         *consumed = static_cast<size_t>(ret);
-        return status::kOK;
+        return status::kOk;
     }
     return mapError(ret);
 }
@@ -199,11 +200,11 @@ TlsEngine::Status TlsEngine::readPlaintext(std::string& out)
         }
 
         Status s = mapError(ret);
-        // kWantIO with some data already appended is stil kOK from the
-        // caller's perspective (they got data; more needs network input ).
+        // kWantIo with some data already appended is stil kOk from the
+        // caller's perspective (they got data; more needs network input).
         if (s == Status::kWantIo)
         {
-            return Status::kOK;
+            return Status::kOk;
         }
         return s;   // kClosed / kError
     }

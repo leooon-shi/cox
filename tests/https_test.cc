@@ -28,13 +28,13 @@ using namespace http;
 
 namespace
 {
-struct TestCert{
+struct TestCert {
     std::string cert = "/tmp/cox_https_cert.pem";
     std::string key = "/tmp/cox_https_key.pem";
     TestCert() {
         std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
-                        key + " -out" + cert +
-                        " -days 1 -subj '/CN=localhost' >/dev/null 2>&1";
+                          key + " -out" + cert +
+                          " -days 1 -subj '/CN=localhost' >/dev/null 2>&1";
         // See note in sni_test.cc: the valid() probe below is the real check.
         (void)test_util::runCmd(cmd);
     }
@@ -54,14 +54,16 @@ TEST(HttpsTest, ServerAndClientEndToEnd)
     std::atomic<bool> srv_started{false};
     reactor::EventLoop* srv_loop = nullptr;
 
-    std::thread server_thread([&]{
+    std::thread server_thread([&] {
         reactor::EventLoop loop;
-        loop_ptr = &loop;
+        srv_loop = &loop;
         auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kServer);
         ctx->useCertificateAndKey(cert.cert, cert.key);
 
-        HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "https", ctx);
-        server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp){
+        HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "https",
+                          ctx);
+        EXPECT_TRUE(server.usesTls());
+        server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp) {
             resp->setStatus(200);
             resp->setContentType("text/plain");
             resp->setBody("secure:" + req.path());
@@ -74,22 +76,19 @@ TEST(HttpsTest, ServerAndClientEndToEnd)
     while (!srv_started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(30ms);
 
-    std::atomic<bool> got {false};
+    std::atomic<bool> got{false};
     int status = 0;
     std::string body;
-    std::atomic<bool> cli_started {false};
+    std::atomic<bool> cli_started{false};
 
-    auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kClient);
-    ctx->setVerifyPeer(false);          // self-signed test cert
-
-    std::thread client_thread([&]{
+    std::thread client_thread([&] {
         reactor::EventLoop loop;
-        cli_loop = &loop;
         auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kClient);
         ctx->setVerifyPeer(false);              // self-signed test cert
         auto client = std::make_shared<HttpClient>(
             &loop, net::InetAddress("127.0.0.1", kPort), ctx, "localhost");
-        client->get("/data", [&](const HttpResponse& resp, const std::string& err){
+        client->get("/data", [&](const HttpResponse& resp,
+                                 const std::string& err) {
             if (err.empty())
             {
                 status = resp.statusCode(); body = resp.body();

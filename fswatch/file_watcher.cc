@@ -23,10 +23,10 @@ logging::Logger& log()
 }
 
 // Events that indicate a directory's contents changed in a way that matters for
-// config/secret reload (convers the k8s ..data atomic symlink swap).
+// config/secret reload (covers the K8s ..data atomic symlink swap).
 constexpr uint32_t kDirMask = IN_CREAE | IN_DELETE | IN_MOVED_TO |
                                 IN_MOVED_FROM | IN_MOVE_SELF | IN_MODIFY;
-constexpr uint32_t kFileMask = IN_MODIFY | IN_MOVE_SELF | IN_DELETE_FILE |
+constexpr uint32_t kFileMask = IN_MODIFY | IN_MOVE_SELF | IN_DELETE_SELF |
                                 IN_ATTRIB;
 
 } // namespace
@@ -41,7 +41,7 @@ FileWatcher::FileWatcher(reactor::EventLoop* loop): loop_(loop)
         return;
     }
     channel_ = std::make_unique<reactor::Channel>(inotify_fd_, loop);
-    channel_->setReadCallback([this]{ handleRead(); });
+    channel_->setReadCallback([this] { handleRead(); });
     channel_->enableRead();
 }
 
@@ -65,7 +65,7 @@ bool FileWatcher::watchDirectory(const std::string& dir_path, Callback cb)
     if (wd < 0)
     {
         log().error("FileWatcher::watchDirectory " + dir_path + " failed: " +
-                        std::string(std::strerror(errno)));
+                    std::string(std::strerror(errno)));
         return false;
     }
     watches_[wd] = Watch{dir_path, std::move(cb)};
@@ -80,7 +80,7 @@ bool FileWatcher::watchFile(const std::string& file_path, Callback cb)
     if (wd < 0)
     {
         log().error("FileWatcher::watchFile " + file_path + " failed: " +
-                        std::string(std::strerror(errno)));
+                    std::string(std::strerror(errno)));
         return false;
     }
 
@@ -103,9 +103,9 @@ void FileWatcher::handleRead()
 {
     loop_->assertInLoopThread();
     // Read as many events as are available. inotify guarantees whole events.
-    char buf[4096] __attributes__((aligned(__alignof__(struct inotify_event))));
-    // Collect watch descriptiors that fired, so we invoke each callback at most
-    // once per read batch (coalescing bursts like the multi-file k8s swap).
+    char buf[4096] __attribute__((aligned(__alignof__(struct inotify_event))));
+    // Collect watch descriptors that fired, so we invoke each callback at most
+    // once per read batch (coalescing bursts like the multi-file K8s swap).
     std::vector<int> fired;
     
     for (;;)

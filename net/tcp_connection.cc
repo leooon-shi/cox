@@ -40,7 +40,7 @@ TcpConnection::TcpConnection(reactor::EventLoop* loop, std::string name,
 TcpConnection::~TcpConnection()
 {
     log().debug("TcpConnection::dtor [" + name_ + "] state=" +
-                std::string(stateToString()));
+               std::string(stateToString()));
 }
 
 const char* TcpConnection::stateToString() const {
@@ -58,16 +58,16 @@ void TcpConnection::connectEstablished()
 {
     loop_->assertInLoopThread();
     setState(State::kConnected);
-    // Tie the channel to this connection so it survives its own callbacks
+    // Tie the channel to this connection so it survives its own callbacks.
     channel_.tie(shared_from_this());
     channel_.enableRead();
     if (connection_callback_)
     {
         connection_callback_(shared_from_this());
     }
-    // Arm the idle timeout if the connection callback configued one.
+    // Arm the idle timeout if the connection callback configured one.
     resetIdleTimer();
-    // Arm the connection max-age timer (fires once, regardless of acivity).
+    // Arm the connection max-age timer (fires once, regardless of activity).
     armMaxAgeTimer();
 }
 
@@ -77,15 +77,15 @@ void TcpConnection::connectDestroyed()
     // Cancel any armed timers FIRST. Each timer callback captures
     // shared_from_this() to stay valid until it fires, so an armed timer keeps
     // this connection (and its input/output Buffers) alive indefinitely when the
-    // loop is stopping and the timer wil never run. handlClose alreay does
+    // loop is stopping and the timer will never run. handleClose alreay does
     // this; connectDestroyed() is the other teardown path (client/server
-    // shutdown) and was missing it, which Leaksanitizer reported as an
+    // shutdown) and was missing it, which LeakSanitizer reported as an
     // unreclaimed TcpConnection.
     cancelIdleTimer();
     cancelWriteTimer();
     if (max_age_timer_armed_)
     {
-        loop_->cancel (max_age_timer_);
+        loop_->cancel(max_age_timer_);
         max_age_timer_armed_ = false;
     }
 
@@ -117,14 +117,14 @@ void TcpConnection::handleRead()
         // Enforce the input-buffer cap AFTER the app had a chance to consume.
         // If data still exceeds the limit, the peer is flooding faster than we
         // consume (or sent an oversized/unframed message): force-close to bound
-        // read-size memory.
+        // read-side memory.
         if (max_input_buffer_size_ > 0 &&
             input_buffer_.readableBytes() > max_input_buffer_size_)
         {
             log().warning("TcpConnection [" + name_ +
-                         "] input buffer exceeded " +
-                         std::to_string(max_input_buffer_size_) +
-                        "bytes; closing");
+                          "] input buffer exceeded " +
+                           std::to_string(max_input_buffer_size_) +
+                           " bytes; closing");
             forceClose();
         }
     }
@@ -149,12 +149,12 @@ void TcpConnection::resetIdleTimer() {
     cancelIdleTimer();
     // shared_from_this keeps the connection alive until the timer fires or is
     // cancelled; a fired timer that finds the connection already closed is a
-    // no-op via forceCLose's state guard.
+    // no-op via forceClose's state guard.
     auto self = shared_from_this();
     idle_timer_ = loop_->runAfter(
         static_cast<uint64_t>(idle_seconds_) * 1000, [self](){
             log().warning("TcpConnection [" + self->name_ +
-                         "] idle timeout; closing");
+                          "] idle timeout; closing");
             self->forceClose();
         });
     idle_timer_armed_ = true;
@@ -162,29 +162,30 @@ void TcpConnection::resetIdleTimer() {
 
 void TcpConnection::cancelIdleTimer() {
     loop_->assertInLoopThread();
-    if(idle_timer_armed_)
+    if (idle_timer_armed_)
     {
         loop_->cancel(idle_timer_);
         idle_timer_armed_ = false;
     }
 }
 
-void TcpConnection::armWriterTimer()
+void TcpConnection::armWriteTimer()
 {
     loop_->assertInLoopThread();
-    if (write_seconds_ == 0 || write_timer_armed_ || state_ != State::kConnected)
+    if (write_seconds_ == 0 || write_timer_armed_ ||
+        state_ != State::kConnected)
     {
         return;
     }
     auto self = shared_from_this();
     write_timer_ = loop_->runAfter(
-        static_cast<uint64_t>(write_seconds_) * 1000, [self](){
+        static_cast<uint64_t>(write_seconds_) * 1000, [self]() {
             self->write_timer_armed_ = false;
             // Still backed up after the deadline -> slow consumer; force-close.
             if (self->output_buffer_.readableBytes() > 0)
             {
                 log().warning("TcpConnection [" + self->name_ +
-                    "] write timeout (slow consumer); closing");
+                              "] write timeout (slow consumer); closing");
                 self->forceClose();
             }
     });
@@ -210,10 +211,10 @@ void TcpConnection::armMaxAgeTimer()
     }
     auto self = shared_from_this();
     max_age_timer_ = loop_->runAfter(
-        static_cast<uint64_t>(max_age_seconds_) * 1000, [self](){
+        static_cast<uint64_t>(max_age_seconds_) * 1000, [self]() {
             self->max_age_timer_armed_ = false;
             log().info("TcpConnection [" + self->name_ +
-                "] max age reached; closing");
+                       "] max age reached; closing");
             self->forceClose();
         }
     );
@@ -234,7 +235,7 @@ void TcpConnection::handleWrite()
         output_buffer_.retrieve(static_cast<size_t>(n));
         if (output_buffer_.readableBytes() == 0)
         {
-            // ALl buffered output flushed: stop watching for writability.
+            // All buffered output flushed: stop watching for writability.
             channel_.disableWrite();
             cancelWriteTimer();     // Output drained: no longer slow
             if (write_complete_callback_)
@@ -307,9 +308,9 @@ void TcpConnection::send(const char* data, size_t len)
     }
     else
     {
-        //Copy the data since the caller's buffer may not outlive the sync op.
+        // Copy the data since the caller's buffer may not outlive the async op.
         std::string copy(data, len);
-        loop_->runInLoop([self = shared_from_this(), copy = std::move(copy)](){
+        loop_->runInLoop([self = shared_from_this(), copy = std::move(copy)]() {
             self->sendInLoop(copy.data(), copy.size());
         });
     }
@@ -327,7 +328,7 @@ void TcpConnection::sendInLoop(const char* data, size_t len)
     size_t remaining = len;
 
     // If nothing is queued, try writing directly first (fast path).
-    if (channel_.isWriting() && output_buffer_.readableBytes() == 0)
+    if (!channel_.isWriting() && output_buffer_.readableBytes() == 0)
     {
         nwrote = ::write(channel_.fd(), data, len);
         if (nwrote >= 0)
@@ -343,21 +344,23 @@ void TcpConnection::sendInLoop(const char* data, size_t len)
             nwrote = 0;
             if (errno != EAGAIN && errno != EWOULDBLOCK)
             {
-                log().error("TcpConnection::sendInLoop [" + name_ + 
-                        "] " + std::string(std::strerror(errno)));
+                log().error("TcpConnection::sendInLoop [" + name_ + "] " +
+                            std::string(std::strerror(errno)));
             }
         }
     }
 
-    // Buffer whatever couldn't be written imediately and watch for writability.
+    // Buffer whatever couldn't be written immediately and watch for writability.
     if (remaining > 0)
     {
         const size_t old_len = output_buffer_.readableBytes();
         // Fire the high-water-mark callback on the upward crossing so the app
         // can apply backpressure. Only on the transition, not repeatedly.
-        if (old_len < high_water_mark_ && 
+        if (old_len < high_water_mark_ &&
+            old_len + remaining >= high_water_mark_ &&
             high_water_mark_callback_) {
-                loop_->runInLoop([self = shared_from_this(), n = old_len + remaining](){
+            loop_->runInLoop(
+                [self = shared_from_this(), n = old_len + remaining]() {
                     self->high_water_mark_callback_(self, n);
                 });
         }
@@ -368,9 +371,9 @@ void TcpConnection::sendInLoop(const char* data, size_t len)
             channel_.enableWrite();
         }
         // Output has backed up (peer isn't draining fast enough): arm the
-        // write-timeout watchdog. It is cancelled in handlwWrite once the
+        // write-timeout watchdog. It is cancelled in handleWrite once the
         // buffer fully drains.
-        armWriterTimer();
+        armWriteTimer();
     }
 }
 
@@ -384,9 +387,8 @@ void TcpConnection::shutdown()
     if (state_ == State::kConnected)
     {
         setState(State::kDisconnecting);
-        loop_->runInLoop([self = shared_from_this()](){
-            self->shutdownInLoop();
-        });
+        loop_->runInLoop(
+            [self = shared_from_this()]() { self->shutdownInLoop(); });
     }
 }
 
@@ -403,10 +405,10 @@ void TcpConnection::shutdownInLoop()
 
 void TcpConnection::forceClose()
 {
-    if (state_ == State::kConnected || state_ == State::kConnecting)
+    if (state_ == State::kConnected || state_ == State::kDisconnecting)
     {
         setState(State::kDisconnecting);
-        loop_->runInLoop([self = shared_from_this()](){ self->forceCloseInLoop(); });
+        loop_->runInLoop([self = shared_from_this()]() { self->forceCloseInLoop(); });
     }
 }
 
@@ -421,12 +423,12 @@ void TcpConnection::forceCloseInLoop()
 
 void TcpConnection::stopRead()
 {
-    loop_->runInLoop([self = shared_from_this()](){ self->stopReadInLoop(); });
+    loop_->runInLoop([self = shared_from_this()]() { self->stopReadInLoop(); });
 }
 
 void TcpConnection::startRead()
 {
-    loop_->runInLoop([self = shared_from_this()](){ self->startReadInLoop(); });
+    loop_->runInLoop([self = shared_from_this()]() { self->startReadInLoop(); });
 }
 
 void TcpConnection::stopReadInLoop()
@@ -435,7 +437,7 @@ void TcpConnection::stopReadInLoop()
     if (reading_ && channel_.isReading())
     {
         // Disable read interest: the kernel receive buffer fills, the TCP
-        // window closes, and the peer's writes are throtled (no data lost).
+        // window closes, and the peer's writes are throttled (no data lost).
         channel_.disableRead();
         reading_ = false;
     }

@@ -19,20 +19,14 @@ logging::Logger& log()
 } // namespace
 
 TlsConnection::TlsConnection(std::shared_ptr<net::TcpConnection> conn,
-                            const TlsContextPtr& ctx, Role role)
-    : conn_(std::move(conn)), engine_(*ctx, role)
-{
-
-}
+                             const TlsContextPtr& ctx, Role role)
+    : conn_(std::move(conn)), engine_(*ctx, role) {}
 
 TlsConnection::TlsConnection(std::shared_ptr<net::TcpConnection> conn,
                              const TlsContextPtr& ctx, Role role,
                              const std::string& server_hostname)
     : conn_(std::move(conn)),
-      engine_(*ctx, role, server_hostname)
-{
-
-}
+      engine_(*ctx, role, server_hostname) {}
 
 TlsConnection::~TlsConnection() = default;
 
@@ -40,16 +34,18 @@ void TlsConnection::start()
 {
     // Intercept the underlying TCP connection's byte stream.
     //
-    // WEAK capture: this object holds conn_ ( a shared_ptr back to this TlsConnection)
+    // WEAK capture: this object holds conn_ (a shared_ptr back to the TcpConnection)
+    // so installing callbacks that own a shared_ptr back to this TlsConnection
     // forms a cycle and neither is ever freed -- along with the SSL object and
     // its buffers. LeakSanitizer reported this as ~900KB across ~12900
     // allocations in the HTTPS tests, dominated by OpenSSL state hanging off the
     // unreclaimed engine.
     std::weak_ptr<TlsConnection> weak = weak_from_this();
-    conn_->setMessageCallback([weak](const net::TcpConnectionPtr&, buffer::Buffer* buf){
-        if (auto self = weak.lock()) self->onTcpMessage(buf);
-    });
-    conn_->setConnectionCallback([weak](const net::TcpConnectionPtr& c){
+    conn_->setMessageCallback(
+        [weak](const net::TcpConnectionPtr&, buffer::Buffer* buf){
+            if (auto self = weak.lock()) self->onTcpMessage(buf);
+        });
+    conn_->setConnectionCallback([weak](const net::TcpConnectionPtr& c) {
         if (c->connected()) return;
         if (auto self = weak.lock()) self->onTcpClose();
     });
@@ -81,7 +77,7 @@ void TlsConnection::driveHandshake()
     {
         handshake_done_ = true;
         log().info("TLS handshake complete: " + engine_.protocolVersion() +
-                    " " + engine_.cipherName());
+                   " " + engine_.cipherName());
         if (handshake_done_callback_)
         {
             handshake_done_callback_(shared_from_this());
@@ -93,7 +89,7 @@ void TlsConnection::driveHandshake()
 
 void TlsConnection::onTcpMessage(buffer::Buffer* buf)
 {
-    // Feed all received encrypted bytes into the engine
+    // Feed all received encrypted bytes into the engine.
     const size_t n = buf->readableBytes();
     if (n > 0)
     {
@@ -114,7 +110,7 @@ void TlsConnection::onTcpMessage(buffer::Buffer* buf)
     // Decrypt available application plaintext.
     std::string plaintext;
     TlsEngine::Status s = engine_.readPlaintext(plaintext);
-    // readPlaintext may also produce outbound bytes (e.g., TLS 1.3 session
+    // readPlaintext may also produce outbound bytes (e.g. TLS 1.3 session
     // tickets, renegotiation); flush them.
     flushOutbound();
 
@@ -146,7 +142,7 @@ void TlsConnection::onTcpClose()
 
 void TlsConnection::send( const std::string& data)
 {
-    if(!handshake_done_ || closed_)
+    if (!handshake_done_ || closed_)
     {
         log().warning("TlsConnection::send before handshake or after close");
         return;
@@ -156,8 +152,8 @@ void TlsConnection::send( const std::string& data)
     {
         size_t consumed = 0;
         TlsEngine::Status s = engine_.writePlaintext(
-                data.data() + offset, data.size() - offset, &consumed);
-        if (s == TlsEngine::Status::kOK)
+            data.data() + offset, data.size() - offset, &consumed);
+        if (s == TlsEngine::Status::kOk)
         {
             offset += consumed;
             flushOutbound();

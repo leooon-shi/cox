@@ -19,7 +19,7 @@ class TlsContext;
 using TlsContextPtr = std::shared_ptr<TlsContext>;
 
 // TlsContext wraps an OpenSSL SSL_CTX: the long-lived, shared configuration
-// (certificates, private key, protocol versions, verfication mode) from which
+// (certificates, private key, protocol versions, verification mode) from which
 // per-connection SSL objects are created. One context is typically shared by
 // all connections of a server (or client).
 //
@@ -35,14 +35,15 @@ public:
 
     // Load a PEM certificate chain and private key (server, or client with a
     // client cert). Throws std::runtime_error on failure. The key must match
-    // the certificates.
+    // the certificate.
     void useCertificateAndKey(const std::string& cert_pem_path,
                               const std::string& key_pem_path);
 
     // Reload the certificate/key (and CA, if previously loaded) from the paths
     // last passed to useCertificateAndKey()/loadCaFile(). Used for hot cert
     // rotation (e.g. Kubernetes Secret updates): new connections created after
-    // reload() use the fresh material; on failure the previous material remains in
+    // reload() use the fresh material; existing connections are unaffected.
+    // Returns true on successs; on failure the previous material remains in
     // effect (atomic-ish: a bad new cert does not break the running context).
     bool reload();
 
@@ -60,12 +61,12 @@ public:
     //
     // A client sends the hostname it intends to reach in the TLS handshake
     // (RFC 6066), BEFORE any certificate is chosen. That is what makes it
-    // possible for one port to serve several domains with different 
+    // possible for one port to serve several domains with different
     // certificates -- virtual hosting, multi-tenant, reverse proxies.
     //
     // Register a per-hostname context with addSniContext(); this context stays
     // the DEFAULT, used when the client sends no SNI or an unknown name (an
-    // unknown name deliberately falls back rather than aborting the handshake, 
+    // unknown name deliberately falls back rather than aborting the handshake,
     // matching nginx's default_server behavior).
     //
     // Exact names and single-level wildcards ("*.example.com") are supported;
@@ -74,7 +75,7 @@ public:
     void addSniContext(const std::string& hostname, TlsContextPtr ctx);
 
     // Look up the context for a hostname: exact match, then wildcard, else
-    // nullptr, (meaning "use the default"). Exposed for testing.
+    // nullptr (meaning "use the default"). Exposed for testing.
     TlsContext* findSniContext(const std::string& hostname) const;
 
     // Number of registered SNI hostnames.

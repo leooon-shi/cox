@@ -13,7 +13,7 @@
 #include "resolver.h"
 #include "thread_pool.h"
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 #include <atomic>
 #include <chrono>
@@ -33,7 +33,7 @@ public:
 
     void start(HttpServer::HttpHandler handler)
     {
-        thread_ = std::thread([this, handler]{
+        thread_ = std::thread([this, handler] {
             reactor::EventLoop loop;
             loop_ = &loop;
             HttpServer server(&loop, net::InetAddress(port_), "dns-test");
@@ -48,7 +48,7 @@ public:
 
     void stop()
     {
-        if (loop_) loop_->runInLoop([this]{ loop_->quit(); })
+        if (loop_) loop_->runInLoop([this] { loop_->quit(); })
         if (thread_.joinable()) thread_.join();
     }
 private:
@@ -66,7 +66,7 @@ TEST(DnsClientTest, HttpClientResolvesHostname)
     server.start([](const HttpRequest& req, HttpResponse* resp) {
         resp->setStatus(200);
         resp->setContentType("text/plain");
-        resp->setBody("hello" + req.header("host"));
+        resp->setBody("hello " + req.header("host"));
     });
 
     concurrent::ThreadPool dns_pool("dns");
@@ -76,12 +76,12 @@ TEST(DnsClientTest, HttpClientResolvesHostname)
     int status = 0;
     std::string body, error, host_hdr_seen;
 
-    std::thread client_thread([&]{
+    std::thread client_thread([&] {
         reactor::EventLoop loop;
         net::ThreadPoolResolver resolver(&loop, &dns_pool);
         // Hostname, not a numeric address -- resolved by the client itself.
         HttpClient client(&loop, "localhost", kPort, &resolver);
-        client.get("/", [&](const HttpResponse& resp, const std::string& err){
+        client.get("/", [&](const HttpResponse& resp, const std::string& err) {
             status = resp.statusCode();
             body = resp.body();
             error = err;
@@ -112,7 +112,7 @@ TEST(DnsClientTest, HttpClientReportsResolutionFailure)
     concurrent::ThreadPool dns_pool("dns");
     dns_pool.start(2);
 
-    std::atomic<bool> done {false};
+    std::atomic<bool> done{false};
     std::string error;
 
     std::thread client_thread([&] {
@@ -120,14 +120,14 @@ TEST(DnsClientTest, HttpClientReportsResolutionFailure)
         net::ThreadPoolResolver resolver(&loop, &dns_pool);
         HttpClient client(&loop, "no.such.host.invalid.", 80, &resolver);
         client.get("/", [&](const HttpResponse&, const std::string& err) {
-            errror = err;
+            error = err;
             done = true;
             loop.quit();
         });
         loop.loop();
     });
 
-    for (int i = 0; i < 600 && !done.load(); ++i )
+    for (int i = 0; i < 600 && !done.load(); ++i)
     {
         std::this_thread::sleep_for(5ms);
     }
@@ -135,7 +135,7 @@ TEST(DnsClientTest, HttpClientReportsResolutionFailure)
 
     EXPECT_TRUE(done.load());
     EXPECT_NE(error.find("DNS resolution failed"), std::string::npos)
-                << "error: " << error;
+        << "error: " << error;
 }
 
 TEST(DnsClientTest, PoolQueueRequestsDuringResolution)
@@ -151,12 +151,12 @@ TEST(DnsClientTest, PoolQueueRequestsDuringResolution)
     dns_pool.start(2);
 
     std::atomic<int> completed{0};
-    std::atomic<bool> finished {false};
+    std::atomic<bool> finished{false};
     bool queued_before_resolve = false;
     bool resolved_after = false;
     std::string first_error;
 
-    std::thread client_thread([&]{
+    std::thread client_thread([&] {
         reactor::EventLoop loop;
         net::ThreadPoolResolver resolver(&loop, &dns_pool);
         ConnectionPool pool(&loop, "localhost", kPort, &resolver);
@@ -169,7 +169,7 @@ TEST(DnsClientTest, PoolQueueRequestsDuringResolution)
         for (int i = 0; i < 3; ++i)
         {
             pool.request(req, [&](const HttpResponse& resp,
-                                const std::string& err) {
+                                  const std::string& err) {
                 if (!err.empty() && first_error.empty()) first_error = err;
                 if (resp.statusCode() == 200) ++completed;
                 if(completed.load() == 3)
@@ -205,7 +205,7 @@ TEST(DnsClientTest, MultiOriginPoolResolvesHostname)
 {
     const uint16_t kPort = 18133;
     ServerThread server(kPort);
-    server.start([&](const HttpRequest& req, HttpResponse* resp){
+    server.start([](const HttpRequest& req, HttpResponse* resp) {
         resp->setStatus(200);
         resp->setBody(req.path());
     });
@@ -213,7 +213,7 @@ TEST(DnsClientTest, MultiOriginPoolResolvesHostname)
     concurrent::ThreadPool dns_pool("dns");
     dns_pool.start(2);
 
-    std::atomic<bool> done {false};
+    std::atomic<bool> done{false};
     int status = 0;
     std::string body, error;
 
@@ -227,7 +227,7 @@ TEST(DnsClientTest, MultiOriginPoolResolvesHostname)
         req.setMethod(Method::kGet);
         req.setPath("/multi");
         pool.request("localhost", kPort, req,
-                    [&](const HttpResponse& resp, const std::string& err){
+                    [&](const HttpResponse& resp, const std::string& err) {
                         status = resp.statusCode();
                         body = resp.body();
                         error = err;
@@ -262,9 +262,9 @@ TEST(DnsClientTest, NumbericOriginIsResolvedImmediately)
 
     std::thread t([&] {
         reactor::EventLoop loop;
-        // Numberic origin: no DNS path at all, resolved() true from the start.
+        // Numeric origin: no DNS path at all, resolved() true from the start.
         ConnectionPool pool(&loop, net::InetAddress("127.0.0.1", 18134));
-        numberic_resolved = pool.resolved();
+        numeric_resolved = pool.resolved();
 
         checked = true;
         loop.quit();
@@ -274,6 +274,6 @@ TEST(DnsClientTest, NumbericOriginIsResolvedImmediately)
     t.join();
 
     EXPECT_TRUE(checked.load());
-    EXPECT_TRUE(numeric_.load());
+    EXPECT_TRUE(numeric_resolved);
     dns_pool.stop();
 }

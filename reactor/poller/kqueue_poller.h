@@ -12,6 +12,7 @@ namespace logging {
 }
 
 namespace reactor {
+class Channel;
 class KQueuePoller : public Poller {
 public:
     KQueuePoller();
@@ -26,7 +27,7 @@ private:
     std::unique_ptr<logging::Logger> logger_;
     int kqueueFd_;
     std::vector<struct kevent> events_;
-    std::map<int, short*> registeredEvents_; // Map of file descriptor to registered events
+    std::map<int, short*> registeredEvents;
 };
 }
-#endif
+#endif // BSD / macOS

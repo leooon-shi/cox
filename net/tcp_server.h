@@ -27,17 +27,17 @@ class Acceptor;
 //
 // Concurrency: by default (thread num 0) all connections run on the base loop.
 // Call setThreadNum(N) to distribute accepted connections round-robin across an
-// EventLoopThreadPool of N io threads ("on loop per thread"). The acceptor
+// EventLoopThreadPool of N io threads ("one loop per thread"). The acceptor
 // always runs on the base loop; each connection is established on its assigned
 // io loop.
 class TcpServer
 {
 public:
-    enum class Option {kNoReusePort, kReusePort};
+    enum class Option { kNoReusePort, kReusePort };
     using ThreadInitCallback = std::function<void(reactor::EventLoop*)>;
 
     TcpServer(reactor::EventLoop* loop, const InetAddress& listen_addr,
-            std::string name, Option option = Option::kNoReusePort);
+              std::string name, Option option = Option::kNoReusePort);
     ~TcpServer();
 
     TcpServer(const TcpServer&) = delete;
@@ -66,10 +66,10 @@ public:
     // 5. invoke on_complete when the last connection is gone.
     // Safe to call from any thread. Idempotent.
     void shutdown(uint32_t drain_deadline_seconds = 30,
-                DrainCompleteCallback on_complete = DrainCompleteCallback());
+                  DrainCompleteCallback on_complete = DrainCompleteCallback());
     // Optional per-connection callback invoked at drain start (on the
-    // connection's io loop) so the application can initialize an orderly close
-    // (e.g., send a final message, disable keep-alive) before half-close.
+    // connection's io loop) so the application can initiate an orderly close
+    // (e.g. send a final message, disable keep-alive) before half-close.
     void setDrainCallback(ConnectionCallback cb)
     {
         drain_callback_ = std::move(cb);
@@ -115,7 +115,7 @@ public:
     }
 
     // Cap each connection's lifetime (seconds); recycle after this age.
-    // 0 disables
+    // 0 disables.
     void setMaxConnectionAge(uint32_t max_age_seconds)
     {
         max_age_seconds_ = max_age_seconds;
@@ -134,7 +134,7 @@ public:
     // accept-rate limit. The application can use this for metrics/alerts. Cox
     // has already closed the shed connection's fd; the app connot respond on it
     // (there is no protocol context at the TCP layer). For request-level
-    // shedding with a 503-style-response, use ConcurrencyLimiter in the message
+    // shedding with a 503-style response, use ConcurrencyLimiter in the message
     // callback where request boundaries are known.
     using OverloadCallback = std::function<void(const InetAddress& peer)>;
     void setOverloadCallback(OverloadCallback cb)
@@ -155,14 +155,14 @@ private:
     void removeConnection(const TcpConnectionPtr& conn);
     void removeConnectionInLoop(const TcpConnectionPtr& conn);
 
-    //Graceful shutdown internals (run on the base loop).
+    // Graceful-shutdown internals (run on the base loop).
     void shutdownInLoop(uint32_t drain_deadline_seconds);
     void forceCloseAllInLoop();
     void maybeFinishDrain();
 
     using ConnectionMap = std::map<std::string, TcpConnectionPtr>;
 
-    reactor::EventLoop* loop_;  // base/reactor loop
+    reactor::EventLoop* loop_;  // base/acceptor loop
     const std::string ip_port_;
     const std::string name_;
     std::unique_ptr<Acceptor> acceptor_;
@@ -176,7 +176,7 @@ private:
     DrainCompleteCallback drain_complete_callback_;
     OverloadCallback overload_callback_;
 
-    // Accept-rate limiter (nullptr - disabled). Accessed only on the base loop.
+    // Accept-rate limiter (nullptr = disabled). Accessed only on the base loop.
     std::unique_ptr<flowcontrol::TokenBucket> accept_limiter_;
 
     std::atomic<bool> started_ {false};
@@ -190,3 +190,4 @@ private:
     ConnectionMap connections_;     // accessed only on base loop
 };
 } // namespace net
+

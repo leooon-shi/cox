@@ -105,11 +105,11 @@ TEST(EventLoopTest, PendingTaskExceptionDoesNotKillLoop)
     reactor::EventLoop loop;
     std::atomic<bool> survivorRan{false};
 
-    std::thread producer([&]{
+    std::thread producer([&]() {
         // Give the loop a moment to start and block in poll().
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
-        loop.runInLoop([](){ throw std::runtime_error("boom"); });
-        loop.runInLoop([&](){ survivorRan = true; });
+        loop.runInLoop([]() { throw std::runtime_error("boom"); });
+        loop.runInLoop([&]() { survivorRan = true; });
         std::this_thread::sleep_for(std::chrono::milliseconds(80));
         loop.quit();
     });

@@ -13,10 +13,10 @@ EventLoopThreadPool::EventLoopThreadPool(EventLoop* base_loop, std::string name)
 
 EventLoopThreadPool::~EventLoopThreadPool()
 {
-    //EventLoopThread destructors quit and join their loops.
+    // EventLoopThread destructors quit and join their loops.
 }
 
-void EventLoopThreadPool::start( const ThreadInitCallback& cb)
+void EventLoopThreadPool::start(const ThreadInitCallback& cb)
 {
     assert(!started_);
     base_loop_->assertInLoopThread();
@@ -64,4 +64,4 @@ std::vector<EventLoop*> EventLoopThreadPool::getAllLoops()
     return loops_;
 }
 
-}
+} // namespace reactor

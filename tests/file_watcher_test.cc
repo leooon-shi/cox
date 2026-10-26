@@ -22,7 +22,7 @@ namespace
 std::string makeTempDir(const char* tag)
 {
     std::string dir = std::string("/tmp/cox_fswatch_") + tag + "_"+
-                        std::to_string(::getpid());
+                      std::to_string(::getpid());
     ::mkdir(dir.c_str(), 0700);
     return dir;
 }
@@ -60,11 +60,48 @@ TEST(FileWatcherTest, DirectoryChangeFiresCallback)
     {
         std::this_thread::sleep_for(5ms);
     }
-
     EXPECT_GT(fires.load(), 0);
 
     loop_ptr->quit();
     loop_thread.join();
-    ::remove(dir + "/a.txt").c_str();
+    ::remove((dir + "/a.txt").c_str());
+    ::rmdir(dir.c_str());
+
+TEST(FileWatcherTest, AtomicSymblinkSwapDetected)
+{
+    // Simulate the Kubernetes ..data atomic swap: create a ".. data" dir, then
+    // rename a new one over it. Watching the parent dir must catch the MOVED_TO.
+    const std::string dir = makeTempDir("K8s");
+    std::atomic<bool> started{false};
+    std::atomic<int> fires{0};
+    reactor::EventLoop* loop_ptr = nullptr;
+
+    std::thread loop_thread([&] {
+        reactor::EventLoop loop;
+        loop_ptr = &loop;
+        FileWatcher watcher(&loop);
+        watcher.watchDirectory(dir, [&](const std::string&) { fires++; });
+        started = true;
+        loop.loop();
+    });
+
+    while (!started.load()) std::this_thread::sleep_for(1ms);
+    std::this_thread::sleep_for(20ms);
+
+    // Create a ..data_tmp then rename to ..data (the K8s pattern).
+    std::string tmp = dir + "/..data_tmp";
+    std::string data = dir + "/..data";
+    ::mkdir(tmp.c_str(), 0700);
+    ::rename(tmp.c_str(), data.c_str());        // Atomic swap (IN_MOVED_TO)
+
+    for (int i = 0; i < 100 && fires.load() == 0; ++i)
+    {
+        std::this_thread::sleep_for(5ms);
+    }
+    EXPECT_GT(fires.load(), 0);
+
+    loop_ptr->quit();
+    loop_thread.join();
+    ::rmdir(data.c_str());
     ::rmdir(dir.c_str());
 }

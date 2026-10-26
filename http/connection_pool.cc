@@ -28,7 +28,7 @@ logging::Logger& log()
 }
 } // namespace
 
-// One pooled connection: a TcpClient/conection (optionally warpped in TLS)
+// One pooled connection: a TcpClient/connection (optionally warpped in TLS)
 // plus its parser and the callback for the request currently in flight.
 class PooledConn : public std::enable_shared_from_this<PooledConn>
 {
@@ -52,7 +52,7 @@ public:
     void init()
     {
         // WEAK, not strong: this object OWNs client_, so capturing a
-        // shared_ptr to self in client_'s callbacks crates a reference cycle
+        // shared_ptr to self in client_'s callbacks creates a reference cycle
         // (PooledConn -> TcpClient -> callback -> PooledConn) and the connection
         // - along with its 1KB input/output Buffers - can never be freed.
         // LeakSanitizer found this as a set of indirect leaks with no direct
@@ -121,7 +121,7 @@ private:
 
     void onConnection(const net::TcpConnectionPtr& c)
     {
-        if(c->connected())
+        if (c->connected())
         {
             conn_ = c;
             last_used_ = logging::Timestamp::now();
@@ -177,7 +177,7 @@ private:
         }
     }
 
-    // Plaintext (non-TLS) inbound bytes arrive as a Buffer
+    // Plaintext (non-TLS) inbound bytes arrive as a Buffer.
     void onTcpMessage(const net::TcpConnectionPtr& c, buffer::Buffer* buf)
     {
         if (tls_conn_) return;  // TLS path handles bytes via TlsConnection
@@ -217,7 +217,7 @@ private:
             ResponseCallback cb = takeCallback();
             if (server_keep_alive)
             {
-                if (on_free) on_fre(shared_from_this());
+                if (on_free) on_free(shared_from_this());
             } else {
                 close();
             }
@@ -234,12 +234,12 @@ private:
     ResponseParser parser_;
     ResponseCallback callback_;
     logging::Timestamp last_used_;
-    bool ready_ {flase};
-    bool busy_ {false};
-    bool done_ {false};
+    bool ready_{flase};
+    bool busy_{false};
+    bool done_{false};
 };
 
-// Pool internals
+// Pool internals.
 class ConnectionPool::Impl : public std::enable_shared_from_this<Impl> {
 public:
     Impl(reactor::EventLoop* loop, const net::InetAddress& origin,
@@ -279,7 +279,7 @@ public:
         // WEAK capture: this is a REPEATING timer that is never cancelled, so a
         // strong self-capture would keep the Impl -- and therefore every pooled
         // connection -- alive for the lifetime of the loop. That made the pool
-        // leak by construction (LeakSanitizer reported the connection as
+        // leak by construction (LeakSanitizer reported the connections as
         // indirect leaks). With a weak_ptr the timer becomes a no-op once the
         // pool is gone.
         std::weak_ptr<Impl> weak = weak_from_this();
@@ -388,11 +388,11 @@ private:
 
     void wireCallbacks(const ConnPtr& c)
     {
-        // WEAK: Impl owns the connections (idle_/busy_/connecting_), so handling
+        // WEAK: Impl owns the connections (idle_/busy_/connecting_), so handing
         // each connection a strong ref back to Impl is a cycle -- neither side
         // is ever freed. This was the root of the pool's leak: LeakSanitizer
         // reported Impl, PooledConn and TcpConnection as indirect leaks with no
-        // direct leak, which is the signature of cycle rather than a missing
+        // direct leak, which is the signature of a cycle rather than a missing
         // delete.
         std::weak_ptr<Impl> weak = weak_from_this();
         c->on_ready = [weak](const ConnPtr& conn){
@@ -401,7 +401,7 @@ private:
         c->on_free = [weak](const ConnPtr& conn) {
             if (auto self = weak.lock()) self->onFree(conn);
         };
-        c->on_closed = [weak](const ConnPtr& conn){
+        c->on_closed = [weak](const ConnPtr& conn) {
             if (auto self = weak.lock()) self->onClosed(conn);
         };
     }
@@ -425,11 +425,11 @@ private:
         if (it != pending_.end())
         {
             busy_.push_back(c);
-            Pending p  = std::move(it->second);
+            Pending p = std::move(it->second);
             pending_.erase(it);
             c->start(p.req, std::move(p.cb));
         } else {
-            idle_.push_back(c);     // no pending req (shouldn't normally happen)
+            idle_.push_back(c);  // no pending req (shouldn't normally happen)
         }
     }
 
@@ -488,7 +488,7 @@ private:
         for (auto& c : to_close)
         {
             removeFrom(idle_, c);
-            c->close();         // onClosed wil fully remove it.
+            c->close();     // onClosed wil fully remove it.
         }
     }
 
@@ -502,12 +502,12 @@ private:
     std::vector<ConnPtr> idle_;
     std::vector<ConnPtr> busy_;
     std::vector<ConnPtr> connecting_;
-    std::map<PooledConn*, Pending> pending_;        // connecting -> its request
-    std::deque<Pending> queue_;                     // waiting for a free connection
+    std::map<PooledConn*, Pending> pending_;    // connecting -> its request
+    std::deque<Pending> queue_;                 // waiting for a free connection
 
     // DNS state (hostname origins only). resolved_ is true from construction
     // for numeric origins, so those pay nothing for this path.
-    bool resolved_ {true};
+    bool resolved_{true};
     bool resolving_{false};
     std::string dns_host_;
     uint16_t dns_port_{0};
@@ -515,12 +515,12 @@ private:
     std::deque<Pending> waiting_on_dns_;            // parked until the name resolves
 
     reactor::TimerId eviction_timer_{};
-    bool eviction_timer_armed_ {false};
+    bool eviction_timer_armed_{false};
 };
 
 // ---- ConnectionPool facade ----
 
-http::ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
+ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
                                      const net::InetAddress& origin,
                                      std::string host_header) {
     impl_ = std::make_shared<Impl>(loop, origin, std::move(host_header),
@@ -529,17 +529,17 @@ http::ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
     impl_->startEviction();
 }
 
-http::ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
+ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
                                      const net::InetAddress& origin,
                                      tls::TlsContextPtr tls_ctx,
                                      std::string host_header) {
     impl_ = std::make_shared<Impl>(loop, origin, std::move(host_header),
-                                    std::move(tls_ctx), &max_connections_,
-                                    &idle_timeout_s_);
+                                   std::move(tls_ctx), &max_connections_,
+                                   &idle_timeout_s_);
     impl_->startEviction();
 }
 
-http::ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
+ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
                                      const std::string& host, uint16_t port,
                                      net::Resolver* resolver,
                                      std::string host_header) {
@@ -550,21 +550,21 @@ http::ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
     impl_->startEviction();
 }
 
-http::ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
+ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
                                      const std::string& host, uint16_t port,
                                      net::Resolver* resolver,
                                      tls::TlsContextPtr tls_ctx,
                                      std::string host_header) {
     std::string hdr = host_header.empty() ? host : std::move(host_header);
     impl_ = std::make_shared<Impl>(loop, host, port, resolver, std::move(hdr),
-                                    std::move(tls_ctx), &max_connections_,
-                                    &idle_timeout_s_);
+                                   std::move(tls_ctx), &max_connections_,
+                                   &idle_timeout_s_);
     impl_->startEviction();
 }
-http::ConnectionPool::~ConnectionPool() {
+ConnectionPool::~ConnectionPool() {
     // Stop the eviction timer so the loop drops its reference to Impl; otherwise
     // the pool outlives the ConnectionPool facade.
-    if(impl_) impl_->stopEviction();
+    if (impl_) impl_->stopEviction();
 }
 
 void http::ConnectionPool::request(const HttpRequest& req,

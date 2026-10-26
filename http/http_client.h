@@ -18,18 +18,18 @@ namespace http
 {
 class ConnectionPool;
 
-// A simple HTTP/1.1 client for one origin, support keep-alive connection
+// A simple HTTP/1.1 client for one origin, supporting keep-alive connection
 // reuse and (optionally) TLS/HTTPS. Implemented as a single-connection
 // ConnectionPool, so it shares the pool's proven keep-alive + TLS machinery.
 //
-// All callbacks fire on the provided EventLoop's thread. Use it sequetially
+// All callbacks fire on the provided EventLoop's thread. Use it sequentially
 // (one request in flight); issue the next from the previous callback.
 class HttpClient {
 public:
     using ResponseCallback = 
         std::function<void(const HttpResponse& resp, const std::string& error)>;
 
-    // Plaintext HTTP client
+    // Plaintext HTTP client.
     HttpClient(reactor::EventLoop* loop, const net::InetAddress& server,
         std::string host_header = "");
     // HTTPS/mTLS client: tls_ctx is a client-role TlsContext.
@@ -46,14 +46,14 @@ public:
                 std::string host_header = "");
     ~HttpClient();
 
-    // Issue a request:; the callback fires once with the response or an error.
+    // Issue a request; the callback fires once with the response or an error.
     void send(const HttpRequest& req, ResponseCallback cb);
 
     // Convenience: GET a path.
     void get(const std::string& path, ResponseCallback cb);
 
 private:
-        std::shared_ptr<ConnectionPool> pool_;
+    std::shared_ptr<ConnectionPool> pool_;
 };
 
 } // namespace http

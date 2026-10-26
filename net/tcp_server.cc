@@ -21,17 +21,18 @@ logging::Logger& log()
 } // namespace
 
 TcpServer::TcpServer(reactor::EventLoop* loop, const InetAddress& listen_addr,
-                    std::string name, Option option)
+                     std::string name, Option option)
     : loop_(loop),
       ip_port_(listen_addr.toIpPort()),
       name_(std::move(name)),
       acceptor_(std::make_unique<Acceptor>(loop, listen_addr,
-                    option == Option::kReusePort)),
-      thread_pool_(std::make_unique<reactor::EventLoopThreadPool>(loop, name_))
+                                           option == Option::kReusePort)),
+      thread_pool_(std::make_shared<reactor::EventLoopThreadPool>(loop, name_))
 {
-    acceptor_->setNewConnectionCallback([this](int sockfd, const InetAddress& peer){
-        newConnection(sockfd, peer);
-    });
+    acceptor_->setNewConnectionCallback(
+        [this](int sockfd, const InetAddress& peer){
+            newConnection(sockfd, peer);
+        });
 }
 
 TcpServer::~TcpServer()
@@ -42,7 +43,7 @@ TcpServer::~TcpServer()
     {
         TcpConnectionPtr c(conn);
         conn.reset();
-        c->getLoop()->runInLoop([c](){ c->connectDestroyed(); });
+        c->getLoop()->runInLoop([c]() { c->connectDestroyed(); });
     }
 }
 
@@ -89,8 +90,8 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peer)
     if (accept_limiter_ && !accept_limiter_->tryAcquire())
     {
         log().warning("TcpServer::newConnection [" + name_ + 
-                    "] accept rate limit exceeded; shedding " +
-                    peer.toIpPort());
+                      "] accept rate limit exceeded; shedding " +
+                      peer.toIpPort());
         sockets::close(sockfd);
         if (overload_callback_)
         {
@@ -99,6 +100,21 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peer)
         return;
     }
 
+    // Enforce the connection cap: reject beyond the limit by closing the newly
+    // accepted fd immediately. This keeps the accept queue moving (no wedge)
+    // while bounding resource use.
+    if (max_connections_ > 0 && connections_.size() >= max_connections_)
+    {
+        log().warning("TcpServer::newConnection [" + name_ +
+                      "] connection cap " + std::to_string(max_connections_) +
+                      " reached; rejecting " + peer.toIpPort());
+        sockets::close(sockfd);
+        if (overload_callback_)
+        {
+            overload_callback_(peer);
+        }
+        return;
+    }
     std::string conn_name =
         name_ + "-" + ip_port_ + "#" + std::to_string(next_conn_id_++);
     log().debug("TcpServer::newConnection [" + name_ + "] new connection " +
@@ -109,27 +125,27 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peer)
 
     InetAddress local = sockets::getLocalAddr(sockfd);
     auto conn = std::make_shared<TcpConnection>(io_loop, conn_name, sockfd,
-                                    local, peer);
+                                                local, peer);
     connections_[conn_name] = conn;     // map is owned by the base loop
     conn->setConnectionCallback(connection_callback_);
     conn->setMessageCallback(message_callback_);
     conn->setWriteCompleteCallback(write_complete_callback_);
-    conn->setCloseCallback([this](const TcpConnectionPtr& c){
+    conn->setCloseCallback([this](const TcpConnectionPtr& c) {
         removeConnection(c);
     });
-    if(idle_seconds_ > 0)
+    if (idle_seconds_ > 0)
     {
         conn->setIdleTimeout(idle_seconds_);
     }
-    if(write_seconds_ > 0)
+    if (write_seconds_ > 0)
     {
         conn->setWriteTimeout(write_seconds_);
     }
-    if(max_input_buffer_size_ > 0)
+    if (max_input_buffer_size_ > 0)
     {
         conn->setMaxInputBufferSize(max_input_buffer_size_);
     }
-    if(max_age_seconds_)
+    if (max_age_seconds_)
     {
         conn->setMaxConnectionAge(max_age_seconds_);
     }
@@ -142,13 +158,14 @@ void TcpServer::removeConnection(const TcpConnectionPtr& conn)
 {
     // May be invoked from the connection's loop; hop to the server loop to
     // mutate the connection map safely.
-    loop_->runInLoop([this, conn](){ removeConnectionInLoop(conn); });
+    loop_->runInLoop([this, conn]() { removeConnectionInLoop(conn); });
 }
 
 void TcpServer::removeConnectionInLoop(const TcpConnectionPtr& conn)
 {
     loop_->assertInLoopThread();
-    log().debug("TcpServer::removeConnectionInLoop [" + name_ + "] " + conn->name());
+    log().debug("TcpServer::removeConnectionInLoop [" + name_ + "] " +
+                conn->name());
 
     connections_.erase(conn->name());
     conn->getLoop()->runInLoop([conn](){ conn->connectDestroyed(); });
@@ -164,7 +181,8 @@ void TcpServer::shutdown(uint32_t drain_deadline_seconds,
                         DrainCompleteCallback on_complete)
 {
     // Marshal onto the base loop; all shutdown state lives there.
-    loop_->runInLoop([this, drain_deadline_seconds, cb = std::move(on_complete)]() mutable {
+    loop_->runInLoop([this, drain_deadline_seconds,
+                      cb = std::move(on_complete)]() mutable {
         if (draining_.exchange(true))
         {
             return;     // already draining
@@ -178,21 +196,22 @@ void TcpServer::shutdownInLoop(uint32_t drain_deadline_seconds)
 {
     loop_->assertInLoopThread();
     log().info("TcpServer::shutdown [" + name_ + "] draining " +
-                std::to_string(connections_.size()) + " connection(s), deadline " +
-                std::to_string(drain_deadline_seconds) + "s");
+               std::to_string(connections_.size()) + " connection(s), deadline " +
+               std::to_string(drain_deadline_seconds) + "s");
     // 1. Stop accepting new connections.
     acceptor_->stopListening();
 
     // 2. Ask each live connection to finish and half-close. Copy the pointers
     //    first since callbacks may mutate the map.
     std::vector<TcpConnectionPtr> conns;
-    for (auto & [name, conn] : connections_)
+    conns.reserve(connections_.size());
+    for (auto& [name, conn] : connections_)
     {
         conns.push_back(conn);
     }
     for (const auto& conn : conns)
     {
-        conn->getLoop()->runInLoop([this, conn](){
+        conn->getLoop()->runInLoop([this, conn]() {
             if (drain_callback_)
             {
                 drain_callback_(conn);  // app-level orderly close hook
@@ -212,7 +231,7 @@ void TcpServer::shutdownInLoop(uint32_t drain_deadline_seconds)
     if (drain_deadline_seconds > 0)
     {
         loop_->runAfter(static_cast<uint64_t>(drain_deadline_seconds) * 1000,
-                        [this](){ forceCloseAllInLoop(); });
+                        [this]() { forceCloseAllInLoop(); });
     }
 }
 
@@ -224,11 +243,11 @@ void TcpServer::forceCloseAllInLoop()
         return;
     }
     log().warning("TcpServer::forceCloseAll [" + name_ + "] deadline reached; " +
-                    "force-closing " + std::to_string(connections_.size()) +
-                    " connection(s)");
+                  "force-closing " + std::to_string(connections_.size()) +
+                  " connection(s)");
     std::vector<TcpConnectionPtr> conns;
     conns.reserve(connections_.size());
-    for (auto & [name, conn] : connections_)
+    for (auto& [name, conn] : connections_)
     {
         conns.push_back(conn);
     }

@@ -20,7 +20,7 @@ namespace http
 {
 // HttpServer is an HTTP/1.1 server built on net::TcpServer, optionally
 // TLS-terminating (HTTPS). It gives each connection an HttpContext parser,
-// dispatches each fully-parsed request to a user handler, serialize the
+// dispatches each fully-parsed request to a user handler, serializes the
 // response, and manages keep-alive.
 //
 // For HTTPS, construct with a server-role TlsContext; each accepted connection
@@ -31,11 +31,11 @@ public:
     using HttpHandler =
         std::function<void(const HttpRequest& req, HttpResponse* resp)>;
     // Plaintext HTTP server.
-    HttpServer(reactor::EventLoop* lop, const net::InetAddress& addr,
-                std::string name);
+    HttpServer(reactor::EventLoop* loop, const net::InetAddress& addr,
+               std::string name);
     // HTTPS server: tls_ctx is a server-role TlsContext (cert/key loaded).
     HttpServer(reactor::EventLoop* loop, const net::InetAddress& addr,
-                std::string name, tls::TlsContextPtr tls_ctx);
+               std::string name, tls::TlsContextPtr tls_ctx);
     ~HttpServer();
 
     void setHttpHandler(HttpHandler handler) { handler_ = std::move(handler); }
@@ -48,7 +48,7 @@ public:
         connection_observer_ = std::move(obs);
     }
 
-    void setKeepAliveTimeout( uint32_t seconds) { server_.setIdleTimeout(seconds); }
+    void setKeepAliveTimeout(uint32_t seconds) { server_.setIdleTimeout(seconds); }
     void setMaxBodySize(size_t bytes) { server_.setMaxInputBufferSize(bytes); }
 
     net::TcpServer& tcpServer() { return server_; }
@@ -61,7 +61,7 @@ private:
     void onPlainMessage(const net::TcpConnectionPtr& conn, buffer::Buffer* buf);
 
     // Parse from `in`, dispatch complete requests, write responses via `send`,
-    // half-close via `close` when a request is not keep-alive.
+    // and half-close via `close` when a request is not keep-alive.
     void processInput(const std::string& conn_name, buffer::Buffer* in,
                       const std::function<void(const std::string&)>& send, 
                       const std::function<void()>& close);
@@ -81,4 +81,4 @@ private:
     // callbacks see a valid map.
     net::TcpServer server_;
 };
-}
+}   // namespace http

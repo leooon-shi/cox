@@ -2,16 +2,16 @@
 
 // Small helpers shared by the socket-based tests.
 // WHY THIS EXISTS: glibc marks write()/read()/system() warn_unused_result, and
-// optimized GCC builds turn an ignored return into a -Werror-unused-result
-// failure. Tests legitimately drive I/O just to set up a scanrio, where the
+// optimized GCC builds turn an ignored return into a -Werror=unused-result
+// failure. Tests legitimately drive I/O just to set up a scenario, where the
 // exact byte count is not the thing under test -- but silently discarding the
 // result is still wrong, because a failed write would make the surrounding
 // assertions meaningless rather than failing loudly.
 //
 // These wrappers make the intent explicit at each call site:
-//  sendAll()   -- Write and REQUIRE it fully succeed (setup that must work)
-//  drainSome() -- Read whatever is available, tolerating none (teardown/drain)
-//  runCmd()    -- RUn a shell command and return its status for checking
+//   sendAll()   -- Write and REQUIRE it fully succeeded (setup that must work)
+//   drainSome() -- Read whatever is available, tolerating none (teardown/drain)
+//   runCmd()    -- Run a shell command and return its status for checking
 
 #include <unistd.h>
 
@@ -28,7 +28,7 @@ inline bool sendAll(int fd, const void* data, size_t len)
     while (sent < len)
     {
         ssize_t n = ::write(fd, p + sent, len - sent);
-        if ( n <= 0) return false;
+        if (n <= 0) return false;
         sent += static_cast<size_t>(n);
     }
     return true;
@@ -46,7 +46,7 @@ inline ssize_t drainSome(int fd, char* buf, size_t len)
     return ::read(fd, buf, len);
 }
 
-// Run a shell command, returning its exit status ( 0 == success).
+// Run a shell command, returning its exit status (0 == success).
 inline int runCmd(const std::string& cmd)
 {
     return std::system(cmd.c_str());

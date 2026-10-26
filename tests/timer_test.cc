@@ -17,14 +17,14 @@ class LoopFixture
 public:
     LoopFixture()
     {
-        thread_ = std::thread([this]{
+        thread_ = std::thread([this] {
             reactor::EventLoop loop;
             loop_ = &loop;
             started_.store(true);
             loop.loop();
             loop_ = nullptr;
         });
-        while (!started.load())
+        while (!started_.load())
         {
             std::this_thread::sleep_for(1ms);
         }
@@ -35,7 +35,7 @@ public:
         {
             loop_->quit();
         }
-        if(thread_.joinable())
+        if (thread_.joinable())
         {
             thread_.join();
         }
@@ -58,9 +58,9 @@ private:
 TEST(TimerTest, RunAfterFiresOnce)
 {
     LoopFixture fx;
-    std::atomic<int> count{0}
+    std::atomic<int> count{0};
     
-    fx.loop()->runAfter(50, [&] { count++; })
+    fx.loop()->runAfter(50, [&] { count++; });
 
     std::this_thread::sleep_for(200ms);
     EXPECT_EQ(count.load(), 1);
@@ -69,7 +69,7 @@ TEST(TimerTest, RunAfterFiresOnce)
 TEST(TimerTest, RunAfterDoesNotFireEarly)
 {
     LoopFixture fx;
-    std::atomic<int> count {0};
+    std::atomic<int> count{0};
 
     fx.loop()->runAfter(300, [&] { count++; });
 
@@ -102,7 +102,7 @@ TEST(TimerTest, MultipleTimersFireInOrder)
         order.push_back(id);
     }
 
-    // Schedule out of order; expect firing order 1, 2, 3 by delay.
+    // Schedule out of order; expect firing order 1,2,3 by delay.
     fx.loop()->runAfter(150, [&] { record(3); });
     fx.loop()->runAfter(50, [&] { record(1); });
     fx.loop()->runAfter(100, [&] { record(2); });
@@ -111,9 +111,9 @@ TEST(TimerTest, MultipleTimersFireInOrder)
 
     std::lock_guard<std::mutex> lock(m);
     ASSERT_EQ(order.size(), 3u);
-    ASSERT_EQ(order[0], 1);
-    ASSERT_EQ(order[1], 2);
-    ASSERT_EQ(order[2], 3);
+    EXPECT_EQ(order[0], 1);
+    EXPECT_EQ(order[1], 2);
+    EXPECT_EQ(order[2], 3);
 }
 
 TEST(TimerTest, CancelPreventsFiring)
@@ -128,7 +128,7 @@ TEST(TimerTest, CancelPreventsFiring)
         loop_ptr = &loop;
 
         loop.runInLoop([&] {
-            reactor::TimerId id = loop.runAfter(150, [&]{ count++; });
+            reactor::TimerId id = loop.runAfter(150, [&] { count++; });
             // Cancel before it fires.
             loop.runAfter(50, [&, id]() mutable { loop.cancel(id); });
         });
@@ -137,7 +137,7 @@ TEST(TimerTest, CancelPreventsFiring)
         loop.loop();
     });
 
-    while( !started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(300ms);
     loop_ptr->quit();
     t.join();
@@ -148,11 +148,11 @@ TEST(TimerTest, CancelPreventsFiring)
 TEST(TimerTest, CrossThreadRunAfter)
 {
     LoopFixture fx;
-    std::atomic<int> count {0};
+    std::atomic<int> count{0};
 
     // Called from the test thread (not the loop thread) -> marshalled in.
-    std::thread scheduler([&]{
-        fx.loop()->runAfter(50, [&] {count++; });
+    std::thread scheduler([&] {
+        fx.loop()->runAfter(50, [&] { count++; });
     });
     scheduler.join();
 

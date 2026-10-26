@@ -26,17 +26,17 @@ TEST(AcceptorTest, CallbackFiresOnConnect)
 {
     const uint16_t kPort = 45789;
     std::atomic<bool> started{false};
-    std::atomic<int> accepted_count {0};
-    std::atomic<uint16_t> peer_port {0};
+    std::atomic<int> accepted_count{0};
+    std::atomic<uint16_t> peer_port{0};
     reactor::EventLoop* loop_ptr = nullptr;
 
-    std::thread loop_thread([&]{
+    std::thread loop_thread([&] {
         reactor::EventLoop loop;
         loop_ptr = &loop;
         InetAddress listen_addr("127.0.0.1", kPort);
         Acceptor acceptor(&loop, listen_addr, /*reuse_port=*/false);
         acceptor.setNewConnectionCallback(
-            [&](int connfd, const InetAddress& peer){
+            [&](int connfd, const InetAddress& peer) {
                 accepted_count++;
                 peer_port = peer.port();
                 sockets::close(connfd);
@@ -46,7 +46,7 @@ TEST(AcceptorTest, CallbackFiresOnConnect)
         loop.loop();
     });
     
-    while(!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(20ms);      // ensure listen() ran in loop.
 
     // Connect from the test thread.
@@ -69,17 +69,17 @@ TEST(AcceptorTest, CallbackFiresOnConnect)
 TEST(AcceptorTest, MultipleConnections)
 {
     const uint16_t kPort = 45790;
-    std::atomic<bool> started {false};
-    std::atomic<int> accepted_count {0};
+    std::atomic<bool> started{false};
+    std::atomic<int> accepted_count{0};
     reactor::EventLoop* loop_ptr = nullptr;
 
-    std::thread loop_thread([&]{
+    std::thread loop_thread([&] {
         reactor::EventLoop loop;
         loop_ptr = &loop;
         InetAddress listen_addr("127.0.0.1", kPort);
         Acceptor acceptor(&loop, listen_addr, /*reuse_port=*/false);
         acceptor.setNewConnectionCallback(
-            [&](int connfd, const InetAddress& peer){
+            [&](int connfd, const InetAddress&) {
                 accepted_count++;
                 sockets::close(connfd);
             });
@@ -88,12 +88,12 @@ TEST(AcceptorTest, MultipleConnections)
         loop.loop();
     });
 
-    while(!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(20ms);      // ensure listen() ran in loop.
 
     constexpr int kNumClients = 5;
     std::vector<Socket> clients;
-    for (int i = 0; i <kNumClients; ++i)
+    for (int i = 0; i < kNumClients; ++i)
     {
         clients.emplace_back(sockets::createNonBlockingOrDie(AF_NET));
         InetAddress server("127.0.0.1", kPort);
@@ -108,5 +108,5 @@ TEST(AcceptorTest, MultipleConnections)
     EXPECT_EQ(accepted_count.load(), kNumClients);
 
     loop_ptr->quit();
-    loop_thread.jion();
+    loop_thread.join();
 }

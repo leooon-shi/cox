@@ -20,7 +20,7 @@ namespace http
 {
 // An HTTP/1.1 connection pool to a single origin (host:port), optionally over
 // TLS. It maintains a set of reusable keep-alive connections, dispatches
-// requests over idle ones ( opening new connections up to a cap), returns
+// requests over idle ones (opening new connections up to a cap), returns
 // connections to the idle set after each response, evicts connections idle 
 // beyond a timeout, and queues requests when all connections are busy and the
 // cap is reached.
@@ -28,14 +28,14 @@ namespace http
 // TLS: pass a TlsContext (client role) to pool HTTPS/mTLS connections. Pooling
 // amortizes the TLS handshake across many requests -- the primary performance
 // reason to pool for HTTPS. A connection becomes poolable only after its
-// handleshake completes.
+// handshake completes.
 //
 // DNS: the origin can be given either as a numeric net::InetAddress or as a
-// hostname + port + net::resolver. In the latter case the name is resolved once
-// (asynchronously, on first request) and the resulting address is used for alll
+// hostname + port + net::Resolver. In the latter case the name is resolved once
+// (asynchronously, on first request) and the resulting address is used for all
 // connections; requests arriving during resolution are queued.
 //
-// Single-loop by design: all pooled connections live on on EventLoop, so
+// Single-loop by design: all pooled connections live on one EventLoop, so
 // concurrency comes from multiple connections on that loop (not threads) and
 // the pool needs no locking. Create one pool per origin.
 class ConnectionPool : public std::enable_shared_from_this<ConnectionPool> {
@@ -80,8 +80,8 @@ private:
     class Impl;
     std::shared_ptr<Impl> impl_;
 
-    size_t max_connections_;
-    uint32_t idle_timeout_s_ {60};
+    size_t max_connections_{8};
+    uint32_t idle_timeout_s_{60};
 };
 
-}
+}    // namespace http

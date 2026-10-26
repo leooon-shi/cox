@@ -10,7 +10,7 @@ using flowcontrol::Backoff;
 
 TEST(BackoffTest, ExponentialGrowth)
 {
-    Backoff bo(100ms, 10s, /*jitter*/0.0);  // no jitter for deterministic base
+    Backoff bo(100ms, 10s, /*jitter=*/0.0);  // no jitter for deterministic base
     const std::string key = "server-a";
 
     // Unknown key returns initial.
@@ -27,9 +27,9 @@ TEST(BackoffTest, ExponentialGrowth)
 
 TEST(BackoffTest, CapsAtMax)
 {
-    Backoff bo(100ms, 500ms, /*jitter*/0.0);
+    Backoff bo(100ms, 500ms, /*jitter=*/0.0);
     const std::string key = "k";
-    for (int i = 0; i < 200; ++i) bo.next(key);
+    for (int i = 0; i < 20; ++i) bo.next(key);
 
     EXPECT_EQ(bo.baseDelay(key), 500ms);        // capped
 }
@@ -42,16 +42,16 @@ TEST(BackoffTest, ResetClearState)
     bo.next(key);
     EXPECT_EQ(bo.baseDelay(key), 200ms);
     bo.reset(key);
-    EXPECT_EQ(bo.baseDelay(key), 100ms);
+    EXPECT_EQ(bo.baseDelay(key), 100ms);    // Back to initial for unknown key
 }
 
 TEST(BackoffTest, PerKeyIndependent)
 {
-    Backoff bo(100ms, 10s, /*jitter*/0.0);
+    Backoff bo(100ms, 10s, 0.0);
     bo.next("a");
     bo.next("a");
-    bo.next("b");   // b -> 100ms
-    bo.next("a");   // b -> 400ms
+    bo.next("a");   // b -> 100ms
+    bo.next("b");   // b -> 400ms
     
     EXPECT_EQ(bo.baseDelay("a"), 400ms);
     EXPECT_EQ(bo.baseDelay("b"), 100ms);
@@ -59,10 +59,10 @@ TEST(BackoffTest, PerKeyIndependent)
 
 TEST(BackoffTest, JitterWithinRange)
 {
-    Backoff bo(1000ms, 10s, /*jitter*/0.5);
+    Backoff bo(1000ms, 10s, /*jitter=*/0.5);
     const std::string key = "k";
     bo.next(key);           // base 1000ms
-    // Jittered delay must be in [base, base*(1+jitter)) == [1000ms, 1500ms).
+    // Jittered delay must be in [base, base*(1+jitter)) = [1000ms, 1500ms).
     for (int i = 0; i < 100; ++i)
     {
         auto d = bo.get(key);

@@ -1,6 +1,6 @@
 // OCSP stapling tests. Builds a real mini-PKI (CA + leaf), runs OpenSSL's own
 // `openssl ocsp` responder locally, fetches a real signed response, and checks
-// that a handshake delivers the staple to the client
+// that a handshake delivers the staple to the client.
 //
 // The heavyweight PKI/responder tests are skipped (not failed) if the openssl
 // CLI cannot produce the material, so the suite stays green in a minimal
@@ -35,6 +35,8 @@ using namespace std::chrono_literals;
 
 namespace
 {
+constexpr in kResponderPort = 18790;
+
 bool fileExists(const std::string& p)
 {
     std::ifstream f(p);
@@ -43,7 +45,7 @@ bool fileExists(const std::string& p)
 
 int runCmd(const std::string& cmd)
 {
-    return std::system( (cmd + " >/dev/null 2>&1").c_str());
+    return std::system((cmd + " >/dev/null 2>&1").c_str());
 }
 
 // A throwaway CA plus a leaf certificate carrying an AIA extension pointing at
@@ -52,13 +54,13 @@ struct MiniPki
 {
     std::string dir = "/tmp/cow_ocsp_pki";
     std::string ca_key  = dir + "/ca.key.pem";
-    std::string ca_cert = dir + "ca.cert.pem";
-    std::string leaf_key = dir + "leaf.key.pem";
+    std::string ca_cert = dir + "/ca.cert.pem";
+    std::string leaf_key = dir + "/leaf.key.pem";
     std::string leaf_csr = dir + "/leaf.csr.pem";
     std::string leaf_cert = dir + "/leaf.cert.pem";
     std::string index = dir + "/index.txt";
     std::string ext = dir + "/leaf.ext";
-    std::string resp_der = dir + "resp.der";
+    std::string resp_der = dir + "/resp.der";
     bool ok = false;
 
     MiniPki() { ok = build(); }
@@ -69,7 +71,7 @@ struct MiniPki
         runCmd("rm -rf " + dir);
         if (runCmd("mkdir -p " + dir) != 0) return false;
 
-        // CA
+        // CA.
         if (runCmd("openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
                     ca_key + " -out " + ca_cert +
                     " -days 2 -subj '/CN=Cox Test CA'") != 0) {
@@ -80,7 +82,7 @@ struct MiniPki
         if (runCmd("openssl req -newkey rsa:2048 -nodes -keyout " + leaf_key +
                    " -out " + leaf_csr + 
                    " -subj '/CN=ocsp.example.com'") != 0) {
-            reuturn false;
+            return false;
         }
 
         // The AIA extension advertises the responder URL; this is what
@@ -89,13 +91,13 @@ struct MiniPki
         if (!e.good()) return false;
         e << "basicConstraints=CA:FALSE\n"
           << "subjectAltName=DNS:ocsp.example.com\n"
-          << "authorityInfoAccess=OCSP;URI:http://127.0.1:"
+          << "authorityInfoAccess=OCSP;URI:http://127.0.0.1:"
           << kResponderPort << "\n";
         e.close();
 
         // openssl ca needs an index/serial database to track issued certs,
         // which the responder then consults for revocation status.
-        std::ofstream indx(index);
+        std::ofstream idx(index);
         idx.close();
         std::ofstream serial(dir + "/serial");
         serial << "01\n";
@@ -103,15 +105,15 @@ struct MiniPki
 
         std::ofstream conf(dir + "/ca.cnf");
         conf << "[ca]\ndefault_ca=CA_default\n\n[CA_default]\n"
-             << "dir=" << dir <<"\n"
+             << "dir=" << dir << "\n"
              << "database=" << index << "\n"
-             << "serial=" << dir <<"/serial\n"
+             << "serial=" << dir << "/serial\n"
              << "new_certs_dir=" << dir << "\n"
              << "certificate=" << ca_cert << "\n"
              << "private_key=" << ca_key << "\n"
              << "default_md=sha256\n"
              << "policy=policy_any\ndefault_days=2\n"
-             << "copy_extensions=copy\nuniqe_subject=no\n\n"
+             << "copy_extensions=copy\nunique_subject=no\n\n"
              << "[policy_any]\ncommonName=supplied\n";
         conf.close();
 
@@ -127,7 +129,7 @@ struct MiniPki
 // Runs `openssl ocsp` in responder mode for the lifetime of the object.
 // `nmin` sets the nextUpdate window in minutes; 0 omits nextUpdate entirely
 // (OpenSSL's default), which is legal but gives no expiry hint.
-struct responder{
+struct responder {
     std::string pid_file = "/tmp/cox_ocsp_responder.pid";
     bool started = false;
 
@@ -139,22 +141,22 @@ struct responder{
             " -index " + pki.index + " -CA " + pki.ca_cert + " -rkey " +
             pki_ca_key + " -rsigner " + pki.ca_cert + nmin_opt +
             " -nrequests 5" +
-            " >/dev/null 2>&1 & echo $1 > " + pid_file;
+            " >/dev/null 2>&1 & echo $! > " + pid_file;
         // Responder is started in the background; readiness is probed by
-        // the fresh()/skip logic in each test-rather than this status.
-        (void) test_util::runCmd(cmd);
+        // the refresh()/skip logic in each test rather than this status.
+        (void)test_util::runCmd(cmd);
         std::this_thread::sleep_for(500ms);         // Let it bind
         started = true;
     }
 
     ~Responder() {
         // Best-effort teardown: the responder may have already exited.
-        (void)test_util::runCmd("kill $(cat " + pid_file + )") >/dev/null 2>&1");
+        (void)test_util::runCmd("kill $(cat " + pid_file + ") >/dev/null 2>&1");
         std::remove(pid_file.c_str());
     }
 };
 
-size_t pump(TlsEngine & from, TlsEngine& to)
+size_t pump(TlsEngine& from, TlsEngine& to)
 {
     std::string enc;
     from.takeEncrypted(enc);
@@ -164,7 +166,7 @@ size_t pump(TlsEngine & from, TlsEngine& to)
 
 bool driveHandshake(TlsEngine& client, TlsEngine& server)
 {
-    for(int round = 0; round < 20; ++round)
+    for (int round = 0; round < 20; ++round)
     {
         client.handshake();
         pump(client, server);
@@ -190,7 +192,7 @@ TEST(OcspTest, RejectsGarbageResponse)
     OcspStapler stapler("/nonexistent.pem", "/nonexistent.pem");
     // Must not cache unparseable bytes: serving a broken staple is worse than
     // serving none.
-    EXPECT_FALSE(stapler.setResponseDer("this is not a DER OCSP respnse"));
+    EXPECT_FALSE(stapler.setResponseDer("this is not a DER OCSP response"));
     EXPECT_FALSE(stapler.hasResponse());
 }
 
@@ -204,7 +206,7 @@ TEST(OcspTest, RejectsMissingFile)
 TEST(OcspTest, NoResponseMeansNoExpiry)
 {
     OcspStapler stapler("/nonexistent.pem", "/nonexistent.pem");
-    EXPECT_TRUE(stapler.secondsUntilExpiry(), 0);
+    EXPECT_EQ(stapler.secondsUntilExpiry(), 0);
 }
 
 TEST(OcspTest, RefreshFailsWithoutResponderUrl)
@@ -256,7 +258,7 @@ TEST(OcspTest, DiscoverResponderUrlFromAia)
     if (!pki.ok) GTEST_SKIP() << "openssl CLI could not build the test PKI";
 
     OcspStapler stapler(pki.leaf_cert, pki.ca_cert);
-    // The URL must come from the certificate's AIA extension not be guessed.
+    // The URL must come from the certificate's AIA extension, not be guessed.
     EXPECT_EQ(stapler.responderUrl(),
                 "http://127.0.0.1:" + std::to_string(kResponderPort));
 }
@@ -284,10 +286,10 @@ TEST(OcspTest, AbsentNextUpdateIsReportedDistinctly)
 {
     MiniPki pki;
     if (!pki.ok) GTEST_SKIP() << "openssl CLI could not build the test PKI";
-    Responder responder(pki);
+    Responder responder(pki, /*nmin=*/0);       // Omit nextUpdate (OpenSSL default)
 
     OcspStapler stapler(pki.leaf_cert, pki.ca_cert);
-    if(stapler.refresh())
+    if (!stapler.refresh())
     {
         GTEST_SKIP() << "local OCSP responder unavailable";
     }
@@ -320,7 +322,7 @@ TEST(OcspTest, LoadsResponseFromFile)
     OcspStapler stapler(pki.leaf_cert, pki.ca_cert);
     ASSERT_TRUE(stapler.loadFromFile(pki.resp_der));
     EXPECT_TRUE(stapler.hasResponse());
-    EXPECT_FALSE(stapler.secondsUntilExpiry(), 0);
+    EXPECT_GT(stapler.secondsUntilExpiry(), 0);
 }
 
 TEST(OcspTest, ClientReceivesStapleResponse)
@@ -330,7 +332,7 @@ TEST(OcspTest, ClientReceivesStapleResponse)
     Responder responder(pki);
 
     OcspStapler stapler(pki.leaf_cert, pki.ca_cert);
-    if(stapler.refresh())
+    if(!stapler.refresh())
     {
         GTEST_SKIP() << "local OCSP responder unavailable";
     }
@@ -363,8 +365,9 @@ TEST(OcspTest, ClientReceivesStapleResponse)
     EXPECT_GT(len, 0) << "client did not receive a stapled OCSP response";
     ASSERT_NE(resp, nullptr);
 
-    // And it parses as a successful OCSP response
+    // And it parses as a successful OCSP response.
     OCSP_RESPONSE* parsed = d2i_OCSP_RESPONSE(nullptr, &resp, len);
+    ASSERT_GT(parsed, nullptr);
     EXPECT_EQ(OCSP_response_status(parsed), OCSP_RESPONSE_STATUS_SUCCESSFUL);
     OCSP_RESPONSE_free(parsed);
 }

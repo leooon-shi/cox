@@ -18,16 +18,16 @@ namespace reactor {
 // cross-thread posts), so functionally the loop could block forever. The
 // timeout is NOT the timer mechanism -- timers fire precisely via the timerfd.
 //
-//   - Debug builds block indefinitely { -1 }. A missed wakeup then surfaces as an
+//   - Debug builds block indefinitely (-1). A missed wakeup then surfaces as an
 //     obvious hang during development, making the bug easy to catch.
 //   - Release builds use a bounded LIVENESS BACKSTOP: if any wakeup path were
 //     ever missed, poll(-1) would hang the service permanently, which is
 //     unacceptable in production. A bounded timeout degrades that worst case to
 //     at most kPollTimeoutMs of latency (self-healing) at negligible idle cost.
 //
-//  See insights/poll-timeout-strategy.md for the full rationale.
+// See insights/poll-timeout-strategy.md for the full rationale.
 #if defined(DEBUG)
-static constexpr int kPollTimeoutMs = -1;      // Block forever ( dev visibility)
+static constexpr int kPollTimeoutMs = -1;      // Block forever (dev visibility)
 #else
 static constexpr int kPollTimeoutMs = 10000;   // 10s backstop (prod safety)
 #endif
@@ -41,81 +41,81 @@ EventLoop::EventLoop(std::unique_ptr<Poller> poller)
     wakeup_fd_ = file_opts::createEventfd();
     std::exchange(wakeup_channel_, std::make_unique<Channel>(wakeup_fd_, this));
 
-    wakeup_channel_->setReadCallback([this]{handleWakeup();});
+    wakeup_channel_->setReadCallback([this] { handleWakeup(); });
 
     std::ostringstream oss;
     oss << std::hex << reinterpret_cast<std::uintptr_t>(wakeup_channel_.get());
     
-    logger_->info("EventLoop created with custom poller, wakeup channel 0x" +oss.str());
+    logger_->info("EventLoop created with custom poller, wakeup channel 0x" + oss.str());
  }
 #endif //DEBUG
 
 EventLoop::EventLoop()
 : logger_(std::make_unique<logging::Logger>()),
-  poller_(PollerFactor::create()),
+  poller_(PollerFactory::create()),
   loop_thread_id_(current_thread::tid())
 {
-wakeup_fd_ = file_opts::createEventfd();
+    wakeup_fd_ = file_opts::createEventfd();
 
-std::exchange(wakeup_channel_, std::make_unique<Channel>(wakeup_fd_, this));
+    std::exchange(wakeup_channel_, std::make_unique<Channel>(wakeup_fd_, this));
 
-wakeup_channel_->setReadCallback([this]{ handleWakeup();});
+    wakeup_channel_->setReadCallback([this] { handleWakeup();});
 
-wakeup_channel_->enableRead();
+    wakeup_channel_->enableRead();
 
-// TimerQueue registers its own timerfd channel with this loop's poller.
-timer_queue_ = std::make_unique<TimerQueue>(this);
+    // TimerQueue registers its own timerfd Channel with this loop's poller.
+    timer_queue_ = std::make_unique<TimerQueue>(this);
 
-logger_->info("EventLoop created, wakeup_fd: " + std::to_string(wakeup_fd_));
+    logger_->info("EventLoop created, wakeup_fd: " + std::to_string(wakeup_fd_));
 }
 
 EventLoop::~EventLoop()
 {
-assert(quit_);
+    assert(quit_);
 
-// Tear down the timer queue first: it removes its timerfd channel from the
-// poller while this loop is still fully alive.
-timer_queue_.reset();
+    // Tear down the timer queue first: it removes its timerfd channel from the
+    // poller while this loop is still fully alive.
+    timer_queue_.reset();
 
-wakeup_channel_->disableAll();
+    wakeup_channel_->disableAll();
 
-poller_->removeChannel(wakeup_channel_.get());
+    poller_->removeChannel(wakeup_channel_.get());
 
-wakeup_channel_.reset();
+    wakeup_channel_.reset();
 
-// Invalidates the fd under the same lock wakeup() uses, THEN close it. A
-// concurrent wakeup() from another thread (quit()/queueInLoop()) will see
-// -1 and skip the write, rather than writing into a descriptor number the
-// OS may already have handed to something else.
-int fd_to_close = -1;
-{
-    std::lock_guard<std::mutex> lock(task_mutex_);
-    fd_to_close = wakeup_fd_;
-    wakeup_fd_ = -1;
-}
+    // Invalidate the fd under the same lock wakeup() uses, THEN close it. A
+    // concurrent wakeup() from another thread (quit()/queueInLoop()) will see
+    // -1 and skip the write, rather than writing into a descriptor number the
+    // OS may already have handed to something else.
+    int fd_to_close = -1;
+    {
+        std::lock_guard<std::mutex> lock(task_mutex_);
+        fd_to_close = wakeup_fd_;
+        wakeup_fd_ = -1;
+    }
 
-if (fd_to_close >= 0)
-{
-    ::close(fd_to_close);
-}
+    if (fd_to_close >= 0)
+    {
+        ::close(fd_to_close);
+    }
 
-logger_->info("~EventLoop");
+    logger_->info("~EventLoop");
 }
 
 void EventLoop::loop()
 {
-#if defined(DEBUG)
+#ifdef DEBUG
     assertInLoopThread();
 #endif
 
-    while(!quit_)
+    while (!quit_)
     {
         // Timeout policy is defined by kPollTimeoutMs (see top of file):
         // -1 (block forever) in Debug, a bounded backstop in Release.
         active_channels_.clear();
         poller_->poll(kPollTimeoutMs, active_channels_);
 
-        for (auto * channel : active_channels_)
+        for (auto* channel : active_channels_)
         {
             processing_channel_.store(channel, std::memory_order_relaxed);
             channel->handleEvents();
@@ -134,7 +134,7 @@ void EventLoop::runInLoop(Task && task)
     if (isInLoopThread())
     {
         // logger_->info("isInLoopThread");
-        task();
+        task();     // Run immediatelly in the loop
     }
     else
     {
@@ -152,7 +152,7 @@ void EventLoop::queueInLoop(Task && task)
 
     // Wake up if the caller is not in the loop thread, or if the loop is
     // currently dispatching channel events (so the newly queued task is not
-    // delayed until the next wakeup).
+    // delayed until the next poll wakeup).
     if (!isInLoopThread() || processing_channel_.load(std::memory_order_relaxed))
     {
         wakeup();
@@ -171,7 +171,7 @@ TimerId EventLoop::runAt(logging::Timestamp when, Task task)
     }
 
     auto shared_task = std::make_shared<Task>(std::move(task));
-    queueInLoop([this, when, shared_task]{
+    queueInLoop([this, when, shared_task] {
         timer_queue_->addTimer(std::move(*shared_task), when, 0);
     });
 
@@ -181,7 +181,7 @@ TimerId EventLoop::runAt(logging::Timestamp when, Task task)
 TimerId EventLoop::runAfter(uint64_t delay_ms, Task task)
 {
     logging::Timestamp when = logging::addMilliseconds(logging::Timestamp::now(), delay_ms);
-    runAt(when, std::move(task));
+    return runAt(when, std::move(task));
 }
 
 TimerId EventLoop::runEvery(uint64_t interval_ms, Task task)
@@ -193,8 +193,8 @@ TimerId EventLoop::runEvery(uint64_t interval_ms, Task task)
     }
 
     auto shared_task = std::make_shared<Task>(std::move(task));
-    queueInLoop([this, when, interval_ms, shared_task]{
-        timer_queue_->addTimer(std::move(*shared_task), when, interval_ms)
+    queueInLoop([this, when, interval_ms, shared_task] {
+        timer_queue_->addTimer(std::move(*shared_task), when, interval_ms);
     });
 
     return TimerId();
@@ -208,7 +208,7 @@ void EventLoop::cancel(TimerId id)
     }
     else
     {
-        queueInLoop([this, id]{ timer_queue_->cancel(id); });
+        queueInLoop([this, id] { timer_queue_->cancel(id); });
     }
 }
 
@@ -225,7 +225,7 @@ void EventLoop::assertInLoopThread() const
     if (!isInLoopThread())
     {
         logger_->error("EventLoop::assertInLoopThread - current thread id: " + std::string(current_thread::tidStr())+
-            ", loop thread id: " + std::to_string(loop_thread_id_));
+                       ", loop thread id: " + std::to_string(loop_thread_id_));
         throw std::runtime_error("EventLoop is not in the loop thread");
     }
 }
@@ -250,18 +250,27 @@ void EventLoop::removeChannel(Channel* channel)
     poller_->removeChannel(channel);
 }
 
+void EventLoop::quit()
+{
+    quit_ = true;
+    // Wakeup when caller is not in loop thread. At worst,
+    if (!isInLoopThread())
+    {
+        wakeup();       // Provide a chance to handle pending tasks.
+    }
+}
 void EventLoop::wakeup()
 {
-    uint64_t one = -1;
+    uint64_t one = 1;
     ssize_t n = -1;
     {
         // Hold task_mutex_ so the fd cannot be closed by ~EventLoop between the
         // validaty check and the write. wakeup_fd_ is set to -1 under the same
         // lock during teardown, so a late wakeup from another thread becomes a
-        // no-op instead of wrting to a closed (possibly recycled) descriptor.
+        // no-op instead of writing to a closed (possibly recycled) descriptor.
 
         std::lock_guard<std::mutex> lock(task_mutex_);
-        if(wakeup_fd_ < 0)
+        if (wakeup_fd_ < 0)
         {
             return; // loop is being torn down; nothing to wake
         }
@@ -271,7 +280,7 @@ void EventLoop::wakeup()
 
     if (o != sizeof(one))
     {
-        logger_->error("EventLoop::wakeup writes " + std::string(n) +
+        logger_->error("EventLoop::wakeup writes " + std::to_string(n) +
                         " bytes instead of 8");
     }
 }

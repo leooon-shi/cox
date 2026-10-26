@@ -3,6 +3,7 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/eventfd.h>
 #include <stdexcept>
 #include <cstring>
 #include <string>
@@ -13,6 +14,15 @@ void setNonBlocking(int fd) {
     ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
+int createEventFd() {
+    int fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+    if (fd < 0)
+    {
+        throw std::runtime_error("eventfd() failed: " +
+                                 std::string(std::strerror(errno)));
+    }
+    return fd;
+}
 std::pair<int, int> createNonBlockingPipe() {
     int fds[2];
     if (::pipe(fds) != 0) {

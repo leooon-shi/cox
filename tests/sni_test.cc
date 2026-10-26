@@ -1,5 +1,5 @@
 // SNI (Server Name Indication) tests: one server port, several hostnames, each
-// with its own certificate. Drives two TlsEngine against each other so the
+// with its own certificate. Drives two TlsEngines against each other so the
 // selection is verified through a real handshake, not just the lookup table.
 
 #include "tls_context.h"
@@ -87,7 +87,7 @@ bool driveHandshake(TlsEngine& client, TlsEngine& server)
 } // namespace
 
 
-// ----- registry / matching (no handshake) ---
+// ----- registry / matching (no handshake) ----
 
 TEST(SniTest, ExactHostnameLookup)
 {
@@ -97,9 +97,9 @@ TEST(SniTest, ExactHostnameLookup)
     auto def = makeServerCtx(base);
     def->addSniContext("a.example.com", makeServerCtx(a));
 
-    EXPECT_EQ(def-sniCount(), 1u);
+    EXPECT_EQ(def->sniCount(), 1u);
     EXPECT_NE(def->findSniContext("a.example.com"), nullptr);
-    EXPECT_EQ(def->findSniContext("other.example.com", "2"), nullptr);
+    EXPECT_EQ(def->findSniContext("other.example.com"), nullptr);
 }
 
 TEST(SniTest, LoopupIsCaseInsensitive)
@@ -122,7 +122,7 @@ TEST(SniTest, WildcardMatchesOneLabelOnly)
     ASSERT_TRUE(base.valid() && w.valid());
 
     auto def = makeServerCtx(base);
-    def->addSniContext("*.exmample.com", makeServerCtx(w));
+    def->addSniContext("*.example.com", makeServerCtx(w));
 
     EXPECT_NE(def->findSniContext("api.example.com"), nullptr);
     EXPECT_NE(def->findSniContext("web.example.com"), nullptr);
@@ -134,7 +134,8 @@ TEST(SniTest, WildcardMatchesOneLabelOnly)
 
 TEST(SniTest, ExactMatchWinsOverWildcard)
 {
-    NamedCert base("default.test", "base4"), wild("wild.test", "w4"), exact("api.example.com", "e4");
+    NamedCert base("default.test", "base4"), wild("wild.test", "w4"),
+        exact("api.example.com", "e4");
     ASSERT_TRUE(base.valid() && wild.valid() && exact.valid());
 
     auto def = makeServerCtx(base);
@@ -156,7 +157,8 @@ TEST(SniTest, ClientRoleRejectsRegistration)
     auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
     // SNI selection is a server-side concern; registering on a client context
     // is a programming error, not a silent no-op.
-    EXPECT_THROW(client_ctx->addSniContext("x.example.com", makeServerCtx(c)));
+    EXPECT_THROW(client_ctx->addSniContext("x.example.com", makeServerCtx(c)),
+                 std::runtime_error);
 }
 
 // ---- end-to-end handshake selection ----
@@ -187,7 +189,7 @@ TEST(SniTest, NoSniWhenHostnameOmitted)
     auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
     client_ctx->setVerifyPeer(false);
 
-    TlsEngine client(*client_ctx, Role::kClient,);  // No hostname
+    TlsEngine client(*client_ctx, Role::kClient);  // No hostname
     TlsEngine server(*server_ctx, Role::kServer);
     ASSERT_TRUE(driveHandshake(client, server));
 
@@ -202,7 +204,7 @@ TEST(SniTest, IpLiteralIsNotSentAsSni)
     auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
     client_ctx->setVerifyPeer(false);
 
-    // RFC 6066 forbids an IP literal in SNI; it must be supressed.
+    // RFC 6066 forbids an IP literal in SNI; it must be suppressed.
     TlsEngine client(*client_ctx, Role::kClient, "127.0.0.1");
     TlsEngine server(*server_ctx, Role::kServer);
     ASSERT_TRUE(driveHandshake(client, server));
@@ -217,13 +219,13 @@ TEST(SniTest, SelectsPerHostCertificateAndVerifies)
     NamedCert b_cert("beta.example.com", "sel_b");
     ASSERT_TRUE(def_cert.valid() && a_cert.valid() && b_cert.valid());
 
-    // One "server port": default context plus two per-host context.
+    // One "server port": default context plus two per-host contexts.
     auto server_ctx = makeServerCtx(def_cert);
     server_ctx->addSniContext("alpha.example.com", makeServerCtx(a_cert));
     server_ctx->addSniContext("beta.example.com", makeServerCtx(b_cert));
 
     // A client asking for alpha must receive alpha's cert -- proven by trusting
-    // ONLY alpha's cert as CA and requiring verfication to pass.
+    // ONLY alpha's cert as CA and requiring verification to pass.
     {
         auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
         client_ctx->loadCaFile(a_cert.cert_path);
@@ -233,21 +235,21 @@ TEST(SniTest, SelectsPerHostCertificateAndVerifies)
         TlsEngine server(*server_ctx, Role::kServer);
 
         EXPECT_TRUE(driveHandshake(client, server))
-                << "alpha handshake failed: " << client.lastError();
+            << "alpha handshake failed: " << client.lastError();
         EXPECT_EQ(server.requestedServerName(), "alpha.example.com");
     }
 
     // Same server, different name -> beta's cert, verified agianst beta only.
     {
         auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
-        client_ctx->loadCaFile(a_cert.cert_path);
+        client_ctx->loadCaFile(b_cert.cert_path);
         client_ctx->setVerifyPeer(true);
 
         TlsEngine client(*client_ctx, Role::kClient, "beta.example.com");
         TlsEngine server(*server_ctx, Role::kServer);
 
         EXPECT_TRUE(driveHandshake(client, server))
-                << "beta handshake failed: " << client.lastError();
+            << "beta handshake failed: " << client.lastError();
         EXPECT_EQ(server.requestedServerName(), "beta.example.com");
     }
 }
@@ -259,15 +261,14 @@ TEST(SniTest, WrongCertificateFailsVerification)
     NamedCert b_cert("beta.example.com", "wrong_b");
     ASSERT_TRUE(def_cert.valid() && a_cert.valid() && b_cert.valid());
 
-    // One "server port": default context plus two per-host context.
     auto server_ctx = makeServerCtx(def_cert);
     server_ctx->addSniContext("alpha.example.com", makeServerCtx(a_cert));
 
-    // Ask for alpha (so alpha's cert is served) but trust only bta: the
-    // handshake MUST fail. Thi sis the control proving the previous test's
+    // Ask for alpha (so alpha's cert is served) but trust only beta: the
+    // handshake MUST fail. This is the control proving the previous test's
     // success was real selection, not verification being disabled.
     auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
-    client_ctx->loadCaFile(a_cert.cert_path);
+    client_ctx->loadCaFile(b_cert.cert_path);
     client_ctx->setVerifyPeer(true);
 
     TlsEngine client(*client_ctx, Role::kClient, "alpha.example.com");
@@ -288,14 +289,14 @@ TEST(SniTest, UnknownHostnameFallsBackToDefaultCert)
     // certificate (nginx default_server behavior). Verified by trusting only
     // the DEFAULT cert and asking for an unknown host.
     auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
-    client_ctx->loadCaFile(a_cert.cert_path);
+    client_ctx->loadCaFile(def_cert.cert_path);
     client_ctx->setVerifyPeer(false);          // Name don't match default cert's CN
 
-    TlsEngine client(*client_ctx, Role::kClient, "unknown.example.com");
+    TlsEngine client(*client_ctx, Role::kClient, "unknown.example.org");
     TlsEngine server(*server_ctx, Role::kServer);
-    EXPECT_FALSE(driveHandshake(client, server))
+    EXPECT_TRUE(driveHandshake(client, server))
         << "unknown SNI should fall back, not fail: " << client.lastError();
-    EXPECT_EQ(server.requestedServerName(), "unknown.example.com");
+    EXPECT_EQ(server.requestedServerName(), "unknown.example.org");
 }
 
 TEST(SniTest, WildcardContextServesSubdomai)
@@ -315,6 +316,6 @@ TEST(SniTest, WildcardContextServesSubdomai)
     // selects it.
     TlsEngine client(*client_ctx, Role::kClient, "api.example.com");
     TlsEngine server(*server_ctx, Role::kServer);
-    EXPECT_FALSE(driveHandshake(client, server))
+    EXPECT_TRUE(driveHandshake(client, server))
         << "wildcard handshake failed: " << client.lastError();
 }

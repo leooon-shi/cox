@@ -19,7 +19,7 @@ int hexValue(char c)
 
 bool isUnreserved(unsigned char c)
 {
-return std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~';
+    return std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~';
 }
 } // namespace
 
@@ -30,9 +30,9 @@ std::string urlDecode(const std::string& in, bool plus_as_space)
     for (size_t i = 0; i < in.size(); ++i)
     {
         char c = in[i];
-        if (c == '%' && i+2 < in.size())
+        if (c == '%' && i + 2 < in.size())
         {
-            int hi = hexValue(in[i + 2]);
+            int hi = hexValue(in[i + 1]);
             int lo = hexValue(in[i + 2]);
             if ( hi >= 0 && lo >= 0)
             {
@@ -42,7 +42,7 @@ std::string urlDecode(const std::string& in, bool plus_as_space)
             }
             out.push_back(c);       // malformed escape: keep literally
         }
-        else if ( c == '+' && plus_as_space)
+        else if (c == '+' && plus_as_space)
         {
             out.push_back(' ');
         } else {
@@ -79,7 +79,7 @@ QueryParams parseQuery(const std::string& query)
     while (i < query.size())
     {
         size_t amp = query.find('&', i);
-        if (amp = std::string::npos)
+        if (amp == std::string::npos)
         {
             amp = query.size();
         }
@@ -88,22 +88,22 @@ QueryParams parseQuery(const std::string& query)
         if (eq == std::string::npos || eq > amp)
         {
             // Valueless key ("flag").
-            std::string key = urlDecode(query.substr(i, amp -i ));
+            std::string key = urlDecode(query.substr(i, amp - i ));
             if (!key.empty())
             {
                 params[std::move(key)] = std::string();
             }
-            else
-            {
-                std::string key = urlDecode(query.substr(i, eq-i));
-                std::string value = urlDecode(query.substr(eq+1, amp-eq-1));
-                if (!key.empty())
-                {
-                    params[std::move(key)] = std::move(value);
-                }
-            }
-            i = amp + 1;
         }
+        else
+        {
+            std::string key = urlDecode(query.substr(i, eq - i));
+            std::string value = urlDecode(query.substr(eq + 1, amp - eq - 1));
+            if (!key.empty())
+            {
+                params[std::move(key)] = std::move(value);
+            }
+        }
+        i = amp + 1;
     }
     return params;
 }

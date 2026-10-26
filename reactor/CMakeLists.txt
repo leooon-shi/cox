@@ -1,4 +1,4 @@
-set(REACTOR_SOURCES
+set(REACTOR_SOURCES 
     poller/io_poller_factory.cc
     io_channel.cc
     event_loop.cc
@@ -8,7 +8,7 @@ set(REACTOR_SOURCES
     event_loop_thread_pool.cc
 )
 
-set(REACTOR_HEADERS
+set(REACTOR_HEADERS 
     poller/io_poller.h
     poller/io_poller_factory.h
     io_channel.h
@@ -19,7 +19,7 @@ set(REACTOR_HEADERS
     event_loop_thread_pool.h
 )
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     message(STATUS "Platform: " ${CMAKE_SYSTEM_NAME})
     list(APPEND REACTOR_SOURCES
         poller/epoll_poller.cc
@@ -36,7 +36,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         poller/kqueue_poller.h
     )
 else()
-    message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
+    message(FATAL_ERROR "Unsupported platform: " ${CMAKE_SYSTEM_NAME})
 endif()
 
 add_library(cow_reactor STATIC ${REACTOR_SOURCES} ${REACTOR_HEADERS})

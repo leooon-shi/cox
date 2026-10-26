@@ -11,7 +11,7 @@ EventLoopThread::EventLoopThread(ThreadInitCallback cb, std::string name)
 EventLoopThread::~EventLoopThread()
 {
     exiting_ = true;
-    if (loop != nullptr)
+    if (loop_ != nullptr)
     {
         // quit() is thread-safe: it wakes the loop via the eventfd.
         loop_->quit();
@@ -24,7 +24,7 @@ EventLoopThread::~EventLoopThread()
 
 EventLoop* EventLoopThread::startLoop()
 {
-    thread_ = std::thread([this]{threadFunc(); });
+    thread_ = std::thread([this] { threadFunc(); });
 
     EventLoop* loop = nullptr;
     {
@@ -53,9 +53,9 @@ void EventLoopThread::threadFunc()
         cond_.notify_one();
     }
 
-    loop.loop(); //runs until quit()
+    loop.loop(); // runs until quit()
 
-    // Loop has exited; clear the pointer so the descriptor won't touch a stale
+    // Loop has exited; clear the pointer so the desctructor won't touch a stale
     // stack object
     std::lock_guard<std::mutex> lock(mutex_);
     loop_ = nullptr;

@@ -2,7 +2,7 @@ set(LOGGING_SOURCES
     formatter.cc
     json_formatter.cc
     default_formatter.cc
-    skink.cc
+    sink.cc
     async_sink.cc
     logger.cc
     timestamp.cc

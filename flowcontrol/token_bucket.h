@@ -10,9 +10,9 @@ namespace flowcontrol
 // flowcontrol.RateLimiter (which wraps golang.org/x/time/rate).
 //
 // Tokens accrue continuously at `qps` per second up to a maximum of `burst`
-// tokens. Each admitted event consumes on token. This smooths a bursty
+// tokens. Each admitted event consumes one token. This smooths a bursty
 // arrival pattern to an average rate while permitting short bursts up to the
-// bucket capacity
+// bucket capacity.
 //
 // Refill is lazy (computed on access from elapsed time), so there is no
 // background timer. All methods are safe to call from multiple threads.
@@ -21,8 +21,8 @@ class TokenBucket
 public:
     using Clock = std::chrono::steady_clock;
 
-    // qps: sustained tokens added per second ( >0 ).
-    // burst: maximum tokens the bucket can hold (>=1). The bucket starts full.
+    // qps: sustained tokens added per second (>0).
+    // burst: maximum tokens the bucket can hold (>= 1). The bucket starts full.
     TokenBucket(double qps, double burst);
 
     // Try to consume one token without waiting. Returns true if a token was

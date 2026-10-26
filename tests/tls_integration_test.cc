@@ -1,6 +1,6 @@
 // End-to-end TLS over real sockets: a TcpServer wraps each accepted connection
 // in a server-side TlsConnection; a TcpClient wraps its connection in a
-// client-side TlsConnection. Full handshake + encrypted echo round-trip
+// client-side TlsConnection. Full handshake + encrypted echo round-trip.
 
 #include "tls_connection.h"
 #include "tls_context.h"
@@ -46,7 +46,7 @@ struct TestCert {
     {
         std::string cmd =
             "openssl req -x509 -newkey rsa:2048 -nodes -keyout " + key_path +
-            " -out " + cert_path + " -days 1 -subj '/CN=localhost'"
+            " -out " + cert_path + " -days 1 -subj '/CN=localhost' "
             ">/dev/null 2>&1";
         // See note in sni_test.cc: valid() below is the real check.
         (void)test_util::runCmd(cmd);
@@ -76,7 +76,7 @@ TEST(TlsIntegrationTest, HandshakeAndEncryptedEcho)
     reactor::EventLoop* srv_loop = nullptr;
     reactor::EventLoop* cli_loop = nullptr;
 
-    // Keep server-side TlsConnection alive for the connection's lifetime.
+    // Keep server-side TlsConnections alive for the connection's lifetime.
     std::mutex srv_mutex;
     std::map<std::string, TlsConnectionPtr> srv_tls;
 
@@ -94,7 +94,7 @@ TEST(TlsIntegrationTest, HandshakeAndEncryptedEcho)
             if (conn->connected())
             {
                 auto tls_conn =
-                std::make_shared<TlsConnection>(conn, ctx, Role::kServer);
+                    std::make_shared<TlsConnection>(conn, ctx, Role::kServer);
                 tls_conn->setMessageCallback(
                     [](const TlsConnectionPtr& tc, std::string& msg) {
                         tc->send(msg);          // echo decrypted plaintext back
@@ -120,7 +120,7 @@ TEST(TlsIntegrationTest, HandshakeAndEncryptedEcho)
     while (!srv_started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(20ms);
 
-    // ---- client thread ----
+    // ---- Client thread ----
     TlsConnectionPtr client_tls;
     std::mutex cli_mutex;
 
@@ -133,21 +133,21 @@ TEST(TlsIntegrationTest, HandshakeAndEncryptedEcho)
 
         InetAddress addr("127.0.0.1", kPort);        
         TcpClient client(&loop, addr, "tls-cli");
-        client.setConnectionCallback([&](const TcpConnectionPtr & conn){
+        client.setConnectionCallback([&](const TcpConnectionPtr & conn) {
             if (conn->connected())
             {
                 auto tc =
-                std::make_shared<TlsConnection>(conn, ctx, Role::kClient);
+                    std::make_shared<TlsConnection>(conn, ctx, Role::kClient);
                 tc->setHandshakeDoneCallback([](const TlsConnectionPtr& t) {
-                        t->send("secret hello");          // send once secure
+                    t->send("secret hello");          // send once secure
                 });
                 tc->setMessageCallback(
-                    [&](const TlsConnectionPtr& tc, std::string& msg) {
+                    [&](const TlsConnectionPtr&, std::string& msg) {
                         reply = msg;
                         got_reply = true;
-                });
+                    });
                 {
-                    std::lock_guard<std::mutex> lock(srv_mutex);
+                    std::lock_guard<std::mutex> lock(cli_mutex);
                     client_tls = tc;
                 }
                 tc->start();
@@ -171,7 +171,7 @@ TEST(TlsIntegrationTest, HandshakeAndEncryptedEcho)
         std::lock_guard<std::mutex> lock(cli_mutex);
         if (client_tls)
         {
-            EXPEC_TURE(clien_tls->handshakeDone());
+            EXPECT_TURE(clien_tls->handshakeDone());
             EXPECT_FALSE(client_tls->protocolVersion().empty());
         }
     }

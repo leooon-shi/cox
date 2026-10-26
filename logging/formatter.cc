@@ -1,11 +1,11 @@
-// LogLevel string mapping. The formatter base is header-only (default dtor);
+// LogLevel string mapping. The Formatter base is header-only (defaulted dtor);
 // factories live in default_formatter.cc
 #include "log_record.h"
 
 namespace logging {
 const char* toString(LogLevel level)
 {
-    switch(level)
+    switch (level)
     {
         case LogLevel::Debug:   return "DEBUG";
         case LogLevel::Info:    return "INFO";

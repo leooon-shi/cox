@@ -85,19 +85,22 @@ void HttpServer::onConnection(const net::TcpConnectionPtr& conn)
                 conn, tls_ctx_, tls::Role::kServer);
             pc->tls = tc;
             std::string name = conn->name();
-            tc->setMessageCallback([this, name](const tls::TlsConnectionPtr&, std::string& pt){
-                // Route decrypted bytes; find state by connection name.
-                auto it = conns_.find(name);
-                if(it == conns_.end()) return;
-                auto pcp = it->second;
-                pcp->in.append(pt);
-                auto self_tls = pcp->tls;
-                processInput(name, &pcp->in, 
-                            [self_tls](const std::string& data){
-                                self_tls->send(data);
-                            }, [self_tls](){self_tls->shutdown(); });
+            tc->setMessageCallback(
+                [this, name](const tls::TlsConnectionPtr&, std::string& pt){
+                    // Route decrypted bytes; find state by connection name.
+                    auto it = conns_.find(name);
+                    if(it == conns_.end()) return;
+                    auto pcp = it->second;
+                    pcp->in.append(pt);
+                    auto self_tls = pcp->tls;
+                    processInput(
+                        name, &pcp->in, 
+                        [self_tls](const std::string& data) {
+                            self_tls->send(data);
+                        }, [self_tls](){ self_tls->shutdown(); });
             });
             conns_[conn->name()] = pc;
+            tc->start();
         }
         else
         {
@@ -114,12 +117,12 @@ void HttpServer::onConnection(const net::TcpConnectionPtr& conn)
 void HttpServer::onPlainMessage(const net::TcpConnectionPtr& conn,
                                 buffer::Buffer* buf)
 {
-    if (tls_ctx_) return;           // TLS path handles bytes via TlsConnection
+    if (tls_ctx_) return;   // TLS path handles bytes via TlsConnection
     std::string name = conn->name();
     net::TcpConnectionPtr c = conn;
     processInput(
         name, buf,
-        [c](const std::string& data) {c->send(data); },
+        [c](const std::string& data) { c->send(data); },
         [c](){ c->shutdown(); });
 }
 
@@ -142,7 +145,7 @@ void HttpServer::processInput(
         return;
     }
 
-    while(ctx.gotAll())
+    while (ctx.gotAll())
     {
         const HttpRequest& req = ctx.request();
         const bool keep_alive = req.keepAlive();
@@ -174,9 +177,9 @@ void HttpServer::processInput(
         if (!ctx.parseRequest(in))
         {
             log().debug("malformed pipelined request on " + conn_name +
-                         "; sending 400");
+                        "; sending 400");
             send("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n"
-                    "Connection: close\r\n\r\n");
+                 "Connection: close\r\n\r\n");
             close();
             return;
         }

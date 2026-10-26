@@ -40,7 +40,7 @@ bool CertReloader::startWatching(const std::string& dir_to_watch)
 {
     loop_->assertInLoopThread();
     watcher_ = std::make_unique<fswatch::FileWatcher>(loop_);
-    bool ok = watcher_->watchDirectory(dir_to_watch, [this](const std::string&){
+    bool ok = watcher_->watchDirectory(dir_to_watch, [this](const std::string&) {
         // Any change in the cert directory triggers a reload attempt. The
         // TlsContext::reload() validates the new material and keeps the old on
         // failure, so a transient/partial state is safe.
@@ -54,7 +54,7 @@ bool CertReloader::startWatching(const std::string& dir_to_watch)
     else
     {
         log().info("CertReloader: watching " + dir_to_watch +
-                    " for cert rotation");
+                   " for cert rotation");
     }
     return ok;
 }
@@ -73,7 +73,7 @@ void CertReloader::startPolling(const std::string& cert_path,
     ca_mtime_ = mtimeOf(ca_path_);
     polling_ = true;
 
-    loop_->runEvery(interval_ms, [this](){
+    loop_->runEvery(interval_ms, [this]() {
         if (polling_ && filesChanged())
         {
             log().info("CertReloader: cert files changed (poll); reloading");
@@ -81,7 +81,7 @@ void CertReloader::startPolling(const std::string& cert_path,
         }
     });
     log().info("CertReloader: polling cert files every " +
-                std::to_string(interval_ms) + " ms");
+               std::to_string(interval_ms) + " ms");
 }
 
 bool CertReloader::filesChanged()
@@ -89,7 +89,7 @@ bool CertReloader::filesChanged()
     long c = mtimeOf(cert_path_);
     long k = mtimeOf(key_path_);
     long a = mtimeOf(ca_path_);
-    bool changed = (c != cert_mtime_) || ( k != key_mtime_) || (a != ca_mtime_);
+    bool changed = (c != cert_mtime_) || (k != key_mtime_) || (a != ca_mtime_);
     if (changed)
     {
         cert_mtime_ = c;

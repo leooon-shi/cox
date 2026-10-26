@@ -7,6 +7,7 @@ set(NET_SOURCES
     tcp_server.cc
     net_runtime.cc
     connector.cc
+    tcp_client.cc
     resolver.cc
 )
 
@@ -24,14 +25,14 @@ set(NET_HEADERS
 
 # Optional async DNS resolver via c-ares.
 if (COX_HAVE_CARES)
-    list(APPEND NET SOURCES cares_resolver.cc)
+    list(APPEND NET_SOURCES cares_resolver.cc)
     list(APPEND NET_HEADERS cares_resolver.h)
 endif()
 
 add_library(cow_net STATIC ${NET_SOURCES} ${NET_HEADERS})
 
 target_link_libraries(cow_net PUBLIC cow_reactor cow_buffer cow_logging
-                        cow_utilities cow_flowcontrol cow_concurrent)
+                      cow_utilities cow_flowcontrol cow_concurrent)
 
 if (COX_HAVE_CARES)
     target_compile_definitions(cow_net PUBLIC COX_HAVE_CARES)

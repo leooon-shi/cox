@@ -14,7 +14,7 @@ namespace flowcontrol
 // after a period of success/inactivity.
 //
 // Jitter is applied to the returned delay to avoid a thundering herd when many
-// keys back off in lockstep (e.g., mass reconnect after a server restart).
+// keys back off in lockstep (e.g. mass reconnect after a server restart).
 //
 // Typical use:
 //   Backoff bo(1s, 30s);               // initial 1s, cap 30s
@@ -33,7 +33,7 @@ public:
 
     // initial: base backoff duration.
     // max:     cap on the backoff duration.
-    // jitter:  frational jitter in [0, 1]. The returned delay is multiplied by
+    // jitter:  fractional jitter in [0, 1]. The returned delay is multiplied by
     //          a random factor in [1, 1+jitter). Default 0.5 (client-go-like).
     Backoff(Duration initial, Duration max, double jitter = 0.5);
 
@@ -48,7 +48,7 @@ public:
     // Advance and return the jittered delay in one call (failure + get).
     Duration nextDelay(const std::string& key);
 
-    // Clear backoff state for `key` (call on success)
+    // Clear backoff state for `key` (call on success).
     void reset(const std::string& key);
 
     // Remove entries not updated within `max_age` (housekeeping to bound the
@@ -71,6 +71,6 @@ private:
     const double jitter_;
     std::mutex mutex_;
     std::unordered_map<std::string, Entry> entries_;
-    uint64_t rng_state_;    //xorshift, guided by mutex;
+    uint64_t rng_state_;    // xorshift, guided by mutex_
 };
 } // namepace flowcontrol

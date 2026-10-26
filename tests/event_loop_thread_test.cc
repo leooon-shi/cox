@@ -20,9 +20,9 @@ TEST(EventLoopThreadTest, StartLoopRunsTaskInThread)
     EventLoop* loop = thread.startLoop();
     ASSERT_NE(loop, nullptr);
 
-    std::atomic<bool> ran {false};
+    std::atomic<bool> ran{false};
     std::thread::id run_tid;
-    loop->runInLoop([&](){
+    loop->runInLoop([&]() {
         run_tid = std::this_thread::get_id();
         ran = true;
     });
@@ -34,7 +34,7 @@ TEST(EventLoopThreadTest, StartLoopRunsTaskInThread)
 
     EXPECT_TRUE(ran.load());
     // The task ran in the loop's own thread, not the test thread.
-    EXPEN_NE(run_tid, std::this_thread::get_id());
+    EXPECT_NE(run_tid, std::this_thread::get_id());
     // Destructor quits and joins.
 }
 
@@ -42,8 +42,8 @@ TEST(EventLoopThreadPoolTest, ZeroThreadUsesBaseLoop)
 {
     EventLoop base;
     // start() and getNextLoop() must be called on the base loop thread.
-    std::atomic<bool> done {false};
-    base.runInLoop([&](){
+    std::atomic<bool> done{false};
+    base.runInLoop([&]() {
         EventLoopThreadPool pool(&base, "pool0");
         pool.setThreadNum(0);
         pool.start();
@@ -59,9 +59,9 @@ TEST(EventLoopThreadPoolTest, ZeroThreadUsesBaseLoop)
 TEST(EventLoopThreadPoolTest, RoundRobinAcrossLoops)
 {
     EventLoop base;
-    std::atomic<bool> done {false};
+    std::atomic<bool> done{false};
 
-    base.runInLoop([&](){
+    base.runInLoop([&]() {
         EventLoopThreadPool pool(&base, "pool3");
         pool.setThreadNum(3);
         pool.start();

@@ -15,7 +15,7 @@ namespace
 const char* findCrlf(const char* begin, const char* end)
 {
     const char* p = begin;
-    while (p+1 < end)
+    while (p + 1 < end)
     {
         if (p[0] == '\r' && p[1] == '\n') return p;
         ++p;
@@ -26,14 +26,14 @@ const char* findCrlf(const char* begin, const char* end)
 
 bool HttpContext::parseRequestLine(const char* begin, const char* end)
 {
-    // METHOD SP path [?query] SP HTTP/x.y
+    // METHOD SP path[?query] SP HTTP/x.y
     const char* space1 = std::find(begin, end, ' ');
     if (space1 == end) return false;
     Method m = methodFromString(std::string(begin, space1));
     if (m == Method::kInvalid) return false;
     request_.setMethod(m);
 
-    const char* target = space1 +1;
+    const char* target = space1 + 1;
     const char* space2 = std::find(target, end, ' ');
     if (space2 == end) return false;
 
@@ -42,10 +42,10 @@ bool HttpContext::parseRequestLine(const char* begin, const char* end)
     request_.setPath(std::string(target, q));
     if (q != space2)
     {
-        request_.setQuery(std::string(q+1, space2));
+        request_.setQuery(std::string(q + 1, space2));
     }
 
-    std::string version(space2 +1, end);
+    std::string version(space2 + 1, end);
     if (version != "HTTP/1.0" && version != "HTTP/1.1") return false;
     request_.setVersion(version);
     return true;
@@ -54,13 +54,14 @@ bool HttpContext::parseRequestLine(const char* begin, const char* end)
 bool HttpContext::parseRequest(buffer::Buffer* buf)
 {
     bool progress = true;
-    while(progress)
+    while (progress)
     {
         progress = false;
 
         if (state_ == State::kExpectRequestLine)
         {
-            const char* crlf = findCrlf(buf->peek(), buf->peek() + buf->readableBytes());
+            const char* crlf = findCrlf(buf->peek(),
+                                        buf->peek() + buf->readableBytes());
 
             if (crlf)
             {
@@ -77,7 +78,8 @@ bool HttpContext::parseRequest(buffer::Buffer* buf)
         }
         else if (state_ == State::kExpectHeaders)
         {
-            const char* crlf = findCrlf(buf->peek(), buf->peek() + buf->readableBytes());
+            const char* crlf = findCrlf(buf->peek(),
+                                        buf->peek() + buf->readableBytes());
             if (crlf)
             {
                 if (crlf == buf->peek())
@@ -98,7 +100,7 @@ bool HttpContext::parseRequest(buffer::Buffer* buf)
                                     : static_cast<size_t>(std::strtoul(c1.c_str(), nullptr, 10));
                         body_received_ = 0;
                         state_ = (content_length_ > 0) ? State::kExpectBody
-                                                        : State::kGotAll;
+                                                       : State::kGotAll;
                     }
                     progress = true;
                 }
@@ -111,9 +113,10 @@ bool HttpContext::parseRequest(buffer::Buffer* buf)
                         return false;
                     }
                     std::string key(buf->peek(), colon);
-                    const char* vbegin = colon +1;
+                    const char* vbegin = colon + 1;
                     while (vbegin < crlf && *vbegin == ' ') ++vbegin;    // trim SP
                     request_.addHeader(std::move(key), std::string(vbegin, crlf));
+                    header_bytes_ += (crlf + 2) - buf->peek();
                     if (header_bytes_ > kMaxHeaderBytes)
                     {
                         state_ = State::kError;
@@ -149,7 +152,8 @@ bool HttpContext::parseRequest(buffer::Buffer* buf)
             {
                 // Hex chunk size (ignore any ;ext).
                 std::string line(buf->peek(), crlf);
-                chunk_remaining_ = static_cast<size_t>(std::strtoul(line.c_str(), nullptr, 16));
+                chunk_remaining_ = static_cast<size_t>(
+                    std::strtoul(line.c_str(), nullptr, 16));
                 buf->retrieve((crlf+2) - buf->peek());
                 state_ = (chunk_remaining_ == 0) ? State::kGotAll
                                                  : State::kExpectChunkData;

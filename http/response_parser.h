@@ -36,7 +36,7 @@ public:
     // Called when the peer closes: finalizes an EOF-delimited body.
     void onEof();
 
-    bool gotAll() const { return state_ == State::kGotAll;}
+    bool gotAll() const { return state_ == State::kGotAll; }
     bool hasError() const { return state_ == State::kError; }
 
     HttpResponse& response() { return response_; }
@@ -52,11 +52,11 @@ private:
     State state_ { State::kExpectStatusLine };
     HttpResponse response_;
     std::map<std::string, std::string> lower_headers_;  // for framing lookups
-    size_t content_length_ {0};
-    size_t body_received_ {0};
-    size_t header_bytes_ {0};
+    size_t content_length_{0};
+    size_t body_received_{0};
+    size_t header_bytes_{0};
     size_t chunk_remaining_{0};
-    bool has_content_length_ {false};
+    bool has_content_length_{false};
     std::string body_accum_;
 };
 

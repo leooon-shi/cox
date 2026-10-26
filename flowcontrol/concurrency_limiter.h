@@ -7,21 +7,21 @@ namespace flowcontrol
 {
 // A concurrency limiter that bounds the number of in-flight units of work
 // (e.g. concurrent requests being processed), as opposed to a rate limiter
-// which bounds the rate of admission over time
+// which bounds the rate of admission over time.
 //
-// Connection count is not a good proxy for load. many idle keep-alive
+// Connection count is not a good proxy for load: many idle keep-alive
 // connections are cheap, while a few connections each with heavy in-flight
 // work can saturate CPU/memory. This limiter caps the concurrent work directly.
 //
 // Usage (RAII permit)
-//   ConcurrencyLimiter limiter(100)
+//   ConcurrencyLimiter limiter(100);
 //   if (auto permit = limiter.tryAcquire()) {
-//      // admitted: do the work; permit releases on scope exit
+//       // admitted: do the work; permit releases on scope exit
 //   } else {
-//      // over capacity: shed load (reject early / notify)
+//       // over capacity: shed load (reject early / notify)
 //   }
 //
-// Thread-safe (lock-free counter)
+// Thread-safe (lock-free counter).
 class ConcurrencyLimiter
 {
 public:
@@ -31,16 +31,16 @@ public:
     {
     public:
         Permit() : limiter_(nullptr) {}
-        explicit Permit(ConcurrencyLimiter* l): limiter_(l) {}
+        explicit Permit(ConcurrencyLimiter* l) : limiter_(l) {}
 
         Permit(const Permit&) = delete;
         Permit& operator=(const Permit&) = delete;
 
-        Permit(Permit && other) noexcept : limiter_(other.limiter_)
+        Permit(Permit&& other) noexcept : limiter_(other.limiter_)
         {
             other.limiter_ = nullptr;
         }
-        Permit& operator=(Permit && other) noexcept
+        Permit& operator=(Permit&& other) noexcept
         {
             if (this != &other)
             {
@@ -68,7 +68,7 @@ public:
         ConcurrencyLimiter* limiter_;
     };
 
-    // Max_concurrency: maximum in-flight units. 0 means unlimited.
+    // max_concurrency: maximum in-flight units. 0 means unlimited.
     explicit ConcurrencyLimiter(size_t max_concurrency)
     : max_(max_concurrency), in_flight_(0) {}
 
@@ -84,9 +84,9 @@ public:
             return Permit(this);
         }
         size_t cur = in_flight_.load(std::memory_order_relaxed);
-        while(cur < max_)
+        while (cur < max_)
         {
-            if (in_flight_.compare_exchange_weak(cur, cur+1,
+            if (in_flight_.compare_exchange_weak(cur, cur + 1,
                                                 std::memory_order_acquire,
                                                 std::memory_order_relaxed))
             {

@@ -14,8 +14,7 @@ namespace http
 // wire. Sets Content-Length automatically from the body on serialize.
 class HttpResponse {
 public:
-    explicit HttpResponse(bool keep_alive = true): keep_alive_(keep_alive) {
-    }
+    explicit HttpResponse(bool keep_alive = true) : keep_alive_(keep_alive) {}
     void setStatus(int code, std::string reason = std::string())
     {
         status_code_ = code;
@@ -51,10 +50,10 @@ public:
     static const char* defaultReason(int code);
 
 private:
-    int status_code_ {200};
-    std::string status_reason_ {"OK"};
+    int status_code_{200};
+    std::string status_reason_{"OK"};
     std::map<std::string, std::string> headers_;
     std::string body_;
     bool keep_alive_;
 };
-}
+} // namespace http

@@ -32,7 +32,7 @@ void benchmarkConcurrency(reactor::EventLoop* loop, int numThreads, int numTasks
         threads.emplace_back([loop, numTasksPerThread]() {
             for (int i = 0; i < numTasksPerThread; ++i) {
                 loop->runInLoop([i]() {
-                    // Simulate a lightweight task ( see note above).
+                    // Simulate a lightweight task (see note above).
                     volatile int x = i * i;
                     (void)x;
                 });

@@ -1,6 +1,6 @@
 // Unit test for the TLS state machine (TlsEngine) with NO sockets: a server and
 // a client engine drive a full handshake and exchange application data by
-// piping each other's encrypted output back and forth in memory
+// piping each other's encrypted output back and forth in memory.
 
 #include "tls_context.h"
 #include "tls_engine.h"
@@ -22,7 +22,7 @@ namespace
 {
 
 // Generate an ephemeral self-signed cert+key pair for the test, returning the
-// two temp file paths. Uses the Openssl CLI (available n the build env).
+// two temp file paths. Uses the Openssl CLI (available in the build env).
 struct TestCert {
     std::string cert_path;
     std::string key_path;
@@ -34,7 +34,7 @@ struct TestCert {
         std::string cmd =
             "openssl req -x509 -newkey rsa:2048 -nodes "
             "-keyout " + key_path + " -out " + cert_path +
-            " -days 1 -subj '/CN=localhost' > /dev/null 2>&1";
+            " -days 1 -subj '/CN=localhost' >/dev/null 2>&1";
         // See note in sni_test.cc: valid() below is the real check.
         (void)test_util::runCmd(cmd);
     }
@@ -54,24 +54,24 @@ size_t pump(TlsEngine& from, TlsEngine& to)
 {
     std::string enc;
     from.takeEncrypted(enc);
-    if(!enc.empty())
+    if (!enc.empty())
     {
         to.feedEncrypted(enc.data(), enc.size());
     }
     return enc.size();
 }
 
-// Drive both engines' handshake to completion by shutting bytes until both
-// report done ( or a bounded number of rounds elapses).
+// Drive both engines' handshake to completion by shuttling bytes until both
+// report done (or a bounded number of rounds elapses).
 bool driveHanshake(TlsEngine& client, TlsEngine& server)
 {
     for (int round = 0; round < 20; ++round)
     {
         client.handshake();
         pump(client, server);
-        server.hanshake();
+        server.handshake();
         pump(server, client);
-        if(client.handshakeDone() && server.handshakeDone())
+        if (client.handshakeDone() && server.handshakeDone())
         {
             return true;
         }
@@ -102,7 +102,7 @@ TEST(TlsEngineTest, HandshakeCompletes)
 
     // TLS 1.2 or 1.3 negotiated.
     EXPECT_FALSE(client.protocolVersion().empty());
-    EXEPCT_FALSE(client.cipherName().empty());
+    EXPECT_FALSE(client.cipherName().empty());
 }
 
 TEST(TlsEngineTest, EncryptedDataRoundTrip)
@@ -110,7 +110,7 @@ TEST(TlsEngineTest, EncryptedDataRoundTrip)
     TestCert cert;
     ASSERT_TRUE(cert.valid());
 
-    TlsContext server_ctx(Role:kServer);
+    TlsContext server_ctx(Role::kServer);
     server_ctx.useCertificateAndKey(cert.cert_path, cert.key_path);
     TlsContext client_ctx(Role::kClient);
     client_ctx.setVerifyPeer(false);
@@ -119,21 +119,26 @@ TEST(TlsEngineTest, EncryptedDataRoundTrip)
     TlsEngine client(client_ctx, Role::kClient);
     ASSERT_TRUE(driveHandshake(client, server));
 
-    // client -> server.
+    // Client -> server.
     const std::string msg = "hello over TLS";
     size_t consumed = 0;
-    ASSERT_EQ(client.writePlaintext(msg.data(), msg.size()), &consumed),
-                    TlsEngine::Status::kOK;
+    ASSERT_EQ(client.writePlaintext(msg.data(), msg.size(), &consumed),
+                    TlsEngine::Status::kOk);
     EXPECT_EQ(consumed, msg.size());
+    pump(client, server);
+
+    std::string received;
+    ASSERT_EQ(server.readPlaintext(received), TlsEngine::Status::kOk);
+    EXPECT_EQ(received, msg);
 
     // Server -> client (reply).
     const std::string reply = "ack from server";
     ASSERT_EQ(server.writePlaintext(reply.data(), reply.size(), &consumed),
-                        TlsEngine::Status::kOK);
+              TlsEngine::Status::kOk);
     pump(server, client);
 
     std::string got;
-    ASSERT_EQ(client.readPlaintext(got), TlsEngine::Status::kOK);
+    ASSERT_EQ(client.readPlaintext(got), TlsEngine::Status::kOk);
     EXPECT_EQ(got, reply);
 }
 
@@ -147,19 +152,24 @@ TEST(TlsEngineTest, LargeDataRoundTrip)
     TlsContext client_ctx(Role::kClient);
     client_ctx.setVerifyPeer(false);
 
+    TlsEngine server(server_ctx, Role::kServer);
+    TlsEngine client(client_ctx, Role::kClient);
+    ASSERT_TRUE(driveHandshake(client, server));
+
     // A payload larger than a single TLS record (16 KB) to exercise chunking.
     std::string big(100000, 'z');
-    size_it offset = 0;
-    while(offset < big.size())
+    size_t offset = 0;
+    std::string received;
+    while (offset < big.size())
     {
         size_t consumed = 0;
         auto st = client.writePlaintext(big.data() + offset,
                                         big.size() - offset, &consumed);
-        ASSERT_EQ(st, TlsEngine::Status::kOK);
+        ASSERT_EQ(st, TlsEngine::Status::kOk);
         offset += consumed;
         pump(client, server);
         std::string chunk;
-        ASSERT_EQ(server.readPlaintext(chunk), TlsEngine::Status::kOK);
+        ASSERT_EQ(server.readPlaintext(chunk), TlsEngine::Status::kOk);
         received += chunk;
     }
 
@@ -181,14 +191,14 @@ TEST(TlsEngineTest, VerificationFailsWithoutTrust)
     TlsContext server_ctx(Role::kServer);
     server_ctx.useCertificateAndKey(cert.cert_path, cert.key_path);
     TlsContext client_ctx(Role::kClient);
-    client_ctx.setVerifyPeer(false);
+    client_ctx.setVerifyPeer(true);     // Verify, but no CA loaded for self-signed
 
     TlsEngine server(server_ctx, Role::kServer);
     TlsEngine client(client_ctx, Role::kClient);
 
     // Handshake must NOT complete successfully: the client rejects the
     // untrusted self-signed certificate.
-    boo done = driveHandshake(client, server);
+    bool done = driveHandshake(client, server);
     EXPECT_FALSE(done);
 
 }

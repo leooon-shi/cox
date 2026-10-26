@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Reactor task-scheduling micro-benchmark (existing)
+# Reactor task-scheduling micro-benchmark (existing).
 add_executable(reactor_benchmark reactor_benchmark.cc)
 target_link_libraries(reactor_benchmark PRIVATE cow_reactor cow_logging)
 
@@ -8,7 +8,7 @@ target_link_libraries(reactor_benchmark PRIVATE cow_reactor cow_logging)
 add_executable(echo_throughput_bench echo_throughput_bench.cc)
 target_link_libraries(echo_throughput_bench PRIVATE cow_net)
 
-# Buffer micro-benchmark
+# Buffer micro-benchmark.
 add_executable(buffer_bench buffer_bench.cc)
 target_link_libraries(buffer_bench PRIVATE cow_buffer)
 

@@ -35,7 +35,7 @@ bool waitReadable(int fd, int ms)
 bool waitWritable(int fd, int ms)
 {
     struct pollfd pfd{fd, POLLOUT, 0};
-    return ::poll(&pfd, 1, ms) > 0 && (pfd.revents & POLLIN);
+    return ::poll(&pfd, 1, ms) > 0 && (pfd.revents & POLLOUT);
 }
 int connectClient(uint16_t port)
 {
@@ -60,9 +60,9 @@ std::string readAll(int fd, int ms)
         {
             // crude: assume small body arrives together
             std::this_thread::sleep_for(10ms);
-            while(waitReadable(fd, 10)){
+            while (waitReadable(fd, 10)) {
                 n = ::read(fd, buf, sizeof(buf));
-                if ( n <= 0) break;
+                if (n <= 0) break;
                 out.append(buf, n);
             }
             break;
@@ -78,11 +78,11 @@ TEST(HttpServerTest, GetRequestResponse)
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
 
-    std::thread server_thread([&]{
+    std::thread server_thread([&] {
         reactor::EventLoop loop;
         loop_ptr = &loop;
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "http");
-        server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp){
+        server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp) {
             resp->setStatus(200);
             resp->setContentType("text/plain");
             resp->setBody("path=" + req.path());
@@ -112,7 +112,7 @@ TEST(HttpServerTest, GetRequestResponse)
 TEST(HttpServerTest, KeepAliveTwoRequests)
 {
     const uint16_t kPort = 55502;
-    std::atomic<bool> started {false};
+    std::atomic<bool> started{false};
     std::atomic<int> request_count{0};
     reactor::EventLoop* loop_ptr = nullptr;
 
@@ -120,7 +120,7 @@ TEST(HttpServerTest, KeepAliveTwoRequests)
         reactor::EventLoop loop;
         loop_ptr = &loop;
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "http");
-        server.setHttpHanddler([&](const HttpRequest&, HttpResponse* resp){
+        server.setHttpHanddler([&](const HttpRequest&, HttpResponse* resp) {
             request_count++;
             resp->setStatus(200);
             resp->setBody("ok");
@@ -130,10 +130,10 @@ TEST(HttpServerTest, KeepAliveTwoRequests)
         loop.loop();
     });
 
-    while(!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(30ms);
 
-    int client = connecClient(kPort);
+    int client = connectClient(kPort);
     // First request (keep-alive default in 1.1).
     std::string r1 = "GET /a HTTP/1.1\r\nHOST: x\r\n\r\n";
     ASSERT_TRUE(test_util::sendAll(client, r1));
@@ -146,7 +146,7 @@ TEST(HttpServerTest, KeepAliveTwoRequests)
     std::string resp2 = readAll(client, 1000);
     EXPECT_NE(resp2.find("200 OK"), std::string::npos);
 
-    EXPECT_NE(request_count.load(), 2);
+    EXPECT_EQ(request_count.load(), 2);
 
     ::close(client);
     loop_ptr->quit();
@@ -156,14 +156,14 @@ TEST(HttpServerTest, KeepAliveTwoRequests)
 TEST(HttpServerTest, PostEcho)
 {
     const uint16_t kPort = 55503;
-    std::atomic<bool> started {false};
+    std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
 
     std::thread server_thread([&] {
         reactor::EventLoop loop;
         loop_ptr = &loop;
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "http");
-        server.setHttpHanddler([&](const HttpRequest&, HttpResponse* resp){
+        server.setHttpHanddler([](const HttpRequest&, HttpResponse* resp) {
             request_count++;
             resp->setStatus(200);
             resp->setBody(req.body());          // echo the posted body
@@ -173,13 +173,13 @@ TEST(HttpServerTest, PostEcho)
         loop.loop();
     });
 
-    while(!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(30ms);
 
     int client = connectClient(kPort);
     std::string body = "the payload";
     std::string req = "POST /submit HTTP/1.1\r\nHost: x\r\nContent-Length: "+
-                        std::to_string(body.size()) + "\r\n\r\n" + body;
+                      std::to_string(body.size()) + "\r\n\r\n" + body;
     ASSERT_TRUE(test_util::sendAll(client, req));
 
     std::string resp = readAll(client, 1000);

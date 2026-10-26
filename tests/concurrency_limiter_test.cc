@@ -4,7 +4,7 @@
 
 #include <atomic>
 #include <thread>
-#inlcude <vector>
+#include <vector>
 
 using flowcontrol::ConcurrencyLimiter;
 
@@ -51,6 +51,17 @@ TEST(ConcurrencyLimiterTest, ExplicitRelease)
     EXPECT_EQ(limiter.inFlight(), 0u);
 }
 
+TEST(ConcurrencyLimiterTest, MoveTransfersOwnership)
+{
+    ConcurrencyLimiter limiter(1);
+    auto p = limiter.tryAcquire();
+    EXPECT_EQ(limiter.inFlight(), 1u);
+    auto p2 = std::move(p);
+    EXPECT_FALSE(p);            // moved-from is empty
+    EXPECT_TRUE(p2);
+    EXPECT_EQ(limiter.inFlight(), 1u);          // Still one slot held
+}
+
 TEST(ConcurrencyLimiterTest, UnlimitedAlwaysAdmits)
 {
     ConcurrencyLimiter limiter(0);          // 0 = unlimited
@@ -68,7 +79,7 @@ TEST(ConcurrencyLimiterTest, UnlimitedAlwaysAdmits)
 TEST(ConcurrencyLimiterTest, ConcurrentNeverExceedsMax)
 {
     constexpr size_t kMax = 8;
-    ConcurrencyLimiter limiter (kMax);
+    ConcurrencyLimiter limiter(kMax);
     std::atomic<size_t> peak{0};
     std::atomic<int> admitted{0};
 
@@ -78,7 +89,7 @@ TEST(ConcurrencyLimiterTest, ConcurrentNeverExceedsMax)
             auto p = limiter.tryAcquire();
             if (p)
             {
-                adimitted++;
+                admitted++;
                 size_t cur = limiter.inFlight();
                 size_t prev = peak.load();
                 while (cur > prev && !peak.compare_exchange_weak(prev, cur)) {}
@@ -90,9 +101,10 @@ TEST(ConcurrencyLimiterTest, ConcurrentNeverExceedsMax)
 
     std::vector<std::thread> threads;
     for (int t = 0; t < 8; ++t) threads.emplace_back(worker);
-    for (auto & t : threads) t.join();
+    for (auto& t : threads) t.join();
 
     EXPECT_LE(peak.load(), kMax);           // Invariant: never exceed max concurrency
     EXPECT_GT(admitted.load(), 0);
+
     EXPECT_EQ(limiter.inFlight(), 0u);      // All released
 }

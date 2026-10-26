@@ -28,7 +28,7 @@ namespace logging
 // wait on disk.
 //
 // OVERFLOW POLICY: the queue is BOUNDED and DROPS when full, incrementing a
-// counter. Blocking a producer would defeat the purpose ( a stalled disk would
+// counter. Blocking a producer would defeat the purpose (a stalled disk would
 // stall the event loop, which is exactly the failure being avoided), and
 // unbounded growth turns a logging burst into OOM. This mirrors Cox's existing
 // load-shedding posture (ThreadPool::tryRun, accept-rate shedding) and Fluent
@@ -41,8 +41,8 @@ public:
     // flush_interval_ms bounds how long a line can sit unwritten on an idle
     // system (so a low-traffic service still gets timely logs).
     explicit AsyncSink(std::unique_ptr<Sink> downstream,
-                        size_t max_buffered_lines = 8192,
-                        uint32_t flush_interval_ms = 500);
+                       size_t max_buffered_lines = 8192,
+                       uint32_t flush_interval_ms = 500);
     ~AsyncSink() override;
 
     AsyncSink(const AsyncSink&) = delete;
@@ -72,11 +72,11 @@ private:
     std::condition_variable not_empty_;
     std::condition_variable drained_;
 
-    std::vector<std::string> current_; // Producers append here
-    std::vector<std::string> writing_; // Writer drains this (swapped in)
-    std::atomic<uint64_t> dropped_ {0};
-    uint64_t reported_drops_ {0};      // Already announced in the log
-    bool running_ {false};
+    std::vector<std::string> current_;  // Producers append here
+    std::vector<std::string> writing_;  // Writer drains this (swapped in)
+    std::atomic<uint64_t> dropped_{0};
+    uint64_t reported_drops_{0};        // Already announced in the log
+    bool running_{false};
     std::thread thread_;
 };
 

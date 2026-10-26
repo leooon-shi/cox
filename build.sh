@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Convenience wrapper around CMake presets ( see CMakePresets.json).
+# Convenience wrapper around CMake presets (see CMakePresets.json).
 #
 # Build configuration lives in the presets, not here, so that CI, this script
 # and a manual `cmake --preset ...` all produce identical builds. Each preset
@@ -18,7 +18,7 @@ RUN_TESTS="OFF"
 CLEAN="OFF"
 
 print_usage() {
-    cat << 'EOF'
+    cat <<'EOF'
 Usage: ./build.sh [options]
 
 Options:

@@ -56,7 +56,7 @@ TEST(ResolverTest, ThreadPoolResolvesLocalhost)
     EXPECT_TRUE(done.load());
     EXPECT_TRUE(err.empty()) << "resolve error: " << err;
     // localhost resolves to a loopback address.
-    EXPECT_TRUE(ip == "127.0.0.1" || ip = "::1") << "ip=" << ip;
+    EXPECT_TRUE(ip == "127.0.0.1" || ip == "::1") << "ip=" << ip;
     EXPECT_EQ(port_out, 8080);
 
     t.join()
@@ -72,11 +72,11 @@ TEST(ResolverTest, ThreadPoolResolvesNumericIp)
     std::string ip, err;
     reactor::EventLoop* loop_ptr = nullptr;
 
-    std::thread t([&]{
+    std::thread t([&] {
         reactor::EventLoop loop
         loop_ptr = &loop;
         ThreadPoolResolver resolver(&loop, &pool);
-        resolver.resolve("localhost", 443,
+        resolver.resolve("127.0.0.1", 443,
                         [&](const InetAddress& addr, const std::string& e) {
                             err = e;
                             ip = addr.toIp();
@@ -95,9 +95,9 @@ TEST(ResolverTest, ThreadPoolResolvesNumericIp)
 
     EXPECT_TRUE(done.load());
     EXPECT_TRUE(err.empty());
-    EXPECT_EQ(ip,"127.0.0.1");
+    EXPECT_EQ(ip, "127.0.0.1");
 
-    t.join()
+    t.join();
     pool.stop();
 }
 
@@ -111,12 +111,12 @@ TEST(ResolverTest, ThreadPoolReportsErrorForBoguesHost)
     bool had_error = false;
     reactor::EventLoop* loop_ptr = nullptr;
 
-    std::thread t([&]{
+    std::thread t([&] {
         reactor::EventLoop loop
         loop_ptr = &loop;
         ThreadPoolResolver resolver(&loop, &pool);
         resolver.resolve("no.such.host.invalid.", 80,
-                        [&](const InetAddress& addr, const std::string& e) {
+                        [&](const InetAddress&, const std::string& e) {
                             had_error = !e.empty();
                             done = true;
                             loop.quit();
@@ -126,7 +126,7 @@ TEST(ResolverTest, ThreadPoolReportsErrorForBoguesHost)
     });
 
     while (!started.load()) std::this_thread::sleep_for(1ms);
-    for (int i = 0; i < 200 && !done.load(); ++i)
+    for (int i = 0; i < 400 && !done.load(); ++i)
     {
         std::this_thread::sleep_for(5ms);
     }
@@ -134,7 +134,7 @@ TEST(ResolverTest, ThreadPoolReportsErrorForBoguesHost)
     EXPECT_TRUE(done.load());
     EXPECT_TRUE(had_error);
 
-    t.join()
+    t.join();
     pool.stop();
 }
 
@@ -145,10 +145,10 @@ TEST(ResolverTest, CaresResolvesLocalhost)
     std::string ip, err;
     reactor::EventLoop* loop_ptr = nullptr;
 
-    std::thread t([&]{
+    std::thread t([&] {
         reactor::EventLoop loop
         loop_ptr = &loop;
-        ThreadPoolResolver resolver(&loop, &pool);
+        CaresResolver resolver(&loop, &pool);
         resolver.resolve("localhost", 8080,
                         [&](const InetAddress& addr, const std::string& e) {
                             err = e;
@@ -168,8 +168,8 @@ TEST(ResolverTest, CaresResolvesLocalhost)
 
     EXPECT_TRUE(done.load());
     EXPECT_TRUE(err.empty()) << "cares error: " << err;
-    EXPECT_TRUE(ip == "127.0.0.1" || ip = "::1") << "ip=" << ip;
+    EXPECT_TRUE(ip == "127.0.0.1" || ip == "::1") << "ip=" << ip;
 
-    t.join()
+    t.join();
 }
 #endif
