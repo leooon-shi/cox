@@ -52,7 +52,7 @@ public:
     bool startWatching(const std::string& dir_to_watch);
 
     // Start timer-based reloading: poll the cert/key/CA files every
-    // internal_ms and reload if any modification time changed.
+    // interval_ms and reload if any modification time changed.
     void startPolling(const std::string& cert_path, const std::string& key_path,
                       const std::string& ca_path, uint64_t interval_ms);
     // Trigger a reload now (also invoked internally by the triggers).

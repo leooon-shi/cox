@@ -28,7 +28,7 @@ logging::Logger& log()
 }
 } // namespace
 
-// One pooled connection: a TcpClient/connection (optionally warpped in TLS)
+// One pooled connection: a TcpClient/connection (optionally wrapped in TLS)
 // plus its parser and the callback for the request currently in flight.
 class PooledConn : public std::enable_shared_from_this<PooledConn>
 {
@@ -487,7 +487,7 @@ private:
         for (auto& c : to_close)
         {
             removeFrom(idle_, c);
-            c->close(); // onClosed wil fully remove it.
+            c->close(); // onClosed will fully remove it.
         }
     }
 

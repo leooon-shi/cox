@@ -161,7 +161,7 @@ TEST(SinkTest, FlushLevelIsConfigurable)
     EXPECT_GT(h.sink->flushCount(), before);
 }
 
-pthread_testcancel(SinkTest, SetSinkRedirectsOutput)
+TEST(SinkTest, SetSinkRedirectsOutput)
 {
     auto h = makeDefault();
     h.log->info("to first");

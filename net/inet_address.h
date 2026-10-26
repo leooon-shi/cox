@@ -47,7 +47,7 @@ public:
     bool isIpv6() const { return family() == AF_INET6; }
     bool isUnix() const { return family() == AF_UNIX; }
 
-    // For Unix addresses, the filesystem path (empty ofr IP addresses).
+    // For Unix addresses, the filesystem path (empty for IP addresses).
     std::string unixPath() const;
 
     // Numeric IP without port (empty for Unix addresses).

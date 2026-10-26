@@ -36,7 +36,7 @@ public:
     HttpClient(reactor::EventLoop* loop, const net::InetAddress& server,
                tls::TlsContextPtr tls_ctx, std::string host_header = "");
     
-    // Hostname clients: `host` is resolved via `resolver` (which must outline
+    // Hostname clients: `host` is resolved via `resolver` (which must outlive
     // the client) before connecting, so callers need to resolve themselves.
     // The host header defaults to `host`.
     HttpClient(reactor::EventLoop* loop, const std::string& host, uint16_t port,

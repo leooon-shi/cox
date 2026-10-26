@@ -28,7 +28,7 @@ long mtimeOf(const std::string& path)
     }
     return static_cast<long>(st.st_mtime);
 }
-}   // namespce
+}   // namespace
 
 CertReloader::CertReloader(reactor::EventLoop* loop, TlsContextPtr ctx)
     : loop_(loop), ctx_(std::move(ctx)) {}

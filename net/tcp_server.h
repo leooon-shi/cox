@@ -132,7 +132,7 @@ public:
     // Overload notification. Invoked (on the base loop) when the server sheds a
     // connection due to overload -- either the connection cap or, if set, an
     // accept-rate limit. The application can use this for metrics/alerts. Cox
-    // has already closed the shed connection's fd; the app connot respond on it
+    // has already closed the shed connection's fd; the app cannot respond on it
     // (there is no protocol context at the TCP layer). For request-level
     // shedding with a 503-style response, use ConcurrencyLimiter in the message
     // callback where request boundaries are known.

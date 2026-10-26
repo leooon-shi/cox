@@ -22,7 +22,7 @@ class TlsContext;
 // once per refresh period instead of once per client, and the client gets the
 // proof for free inside the handshake it was already doing.
 //
-// WHEN IT MATTERS: only for publicky-trusted, CA-issued certificates served to
+// WHEN IT MATTERS: only for publicly-trusted, CA-issued certificates served to
 // public clients. It is pointless for private-CA, self-signed, or short-lived
 // certificates -- there is no responder to ask, and a certificate that expires
 // in hours cannot meaningfully be revoked. See insights/roadmap.md.
@@ -69,7 +69,7 @@ public:
     //   > 0  : time remaining before the staple goes stale.
     //     0  : no response cached, or the cached one has expired.
     //    -1  : cached, but the response carries NO nextUpdate field. That is
-    //          legal (nextUpdate is OPTIONAL in REF 6960 §4.2.1) and means the
+    //          legal (nextUpdate is OPTIONAL in RFC 6960 §4.2.1) and means the
     //          responder gives no expiry hint, so the caller must pick its own
     //          refresh interval rather than treating it as expired.
     // Use it to schedule the next refresh well before expiry.

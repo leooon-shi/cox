@@ -77,7 +77,7 @@ void TcpConnection::connectDestroyed()
     // Cancel any armed timers FIRST. Each timer callback captures
     // shared_from_this() to stay valid until it fires, so an armed timer keeps
     // this connection (and its input/output Buffers) alive indefinitely when the
-    // loop is stopping and the timer will never run. handleClose() alreay does
+    // loop is stopping and the timer will never run. handleClose() already does
     // this; connectDestroyed() is the other teardown path (client/server
     // shutdown) and was missing it, which LeakSanitizer reported as an
     // unreclaimed TcpConnection.

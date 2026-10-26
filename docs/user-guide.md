@@ -523,7 +523,7 @@ timer (see `examples/echo/echo_server.cc`).
 
 ## 16. Logging
 
-Levels are `debug/info/warning/error/fatal`, filtterred at `Info` by default:
+Levels are `debug/info/warning/error/fatal`, filtered at `Info` by default:
 
 ```cpp
 #include "logger.h"
@@ -533,7 +533,7 @@ log.info("server started");
 log.setLevel(logging::LogLevel::Debug);     // enable Debug
 ```
 
-Attach structured fields isntead of interpolating context info the message -
+Attach structured fields instead of interpolating context info the message -
 they survive into JSON as real fields you can filter on:
 
 ```cpp
@@ -578,7 +578,7 @@ blocking your loop or growing until OOM. Drops are counted, not hidden - check
 `sink->droppedCount()` and watch for the `"dropped N log line(s)"` summary. If
 you see drops, the destination is too slow or the buffer too small.
 
-`Fatal` records flush immediately so a crash explaination is never stuck in a
+`Fatal` records flush immediately so a crash explanation is never stuck in a
 buffer; lower the threshold with `log.setFlushLevel(logging::LogLevel::Error)`.
 
 ## 17. Gotchas and rules

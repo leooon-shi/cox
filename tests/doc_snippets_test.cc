@@ -157,7 +157,7 @@ TEST(DocSnippets, DocumentedConstructionForms)
     loop.quit();   // ~EventLoop asserts the loop was quit, even if never run.
 }
 
-// --- docs (logging.md): formmaters and structured fields are wired ---
+// --- docs (logging.md): formatters and structured fields are wired ---
 TEST(DocSnippets, LoggingFormattersAndFields)
 {
     logging::Logger log;

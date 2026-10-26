@@ -43,7 +43,7 @@ public:
     void runInLoop(Task && task);
 
     // Queue a task to run on a LATER loop iteration, never inline -- even when
-    // called from the loop thread. Use this (not runInLoop) to defer destorying
+    // called from the loop thread. Use this (not runInLoop) to defer destroying
     // an object from inside its own callback: runInLoop executes immediately
     // when already on the loop thread, which would free the object while its
     // caller is still using it. (A real use-after-free found this way; see
@@ -81,7 +81,7 @@ private:
     // queueInLoop()), while ~EventLoop() closes the fd on the loop thread. Writing
     // to a closed fd is not merely useless -- the number can be recycled by the
     // OS, so the write could land on an unrelated socket. wakeup_fd_ is
-    // therefore guarded by task_mutex_ (already token on the cross-thread path)
+    // therefore guarded by task_mutex_ (already taken on the cross-thread path)
     // and set to -1 before being closed, so a concurrent wakeup() sees the
     // teardown and does nothing. Found by ThreadSanitizer.
     int wakeup_fd_{-1};

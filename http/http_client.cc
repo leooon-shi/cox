@@ -16,7 +16,7 @@ HttpClient::HttpClient(reactor::EventLoop* loop, const net::InetAddress& server,
                        std::string host_header)
     : pool_(std::make_shared<ConnectionPool>(loop, server, std::move(host_header)))
 {
-    pool_->setMaxConnections(1);    // single connection, resued (keep-alive)
+    pool_->setMaxConnections(1);    // single connection, reused (keep-alive)
 }
 
 HttpClient::HttpClient(reactor::EventLoop* loop, const net::InetAddress& server,

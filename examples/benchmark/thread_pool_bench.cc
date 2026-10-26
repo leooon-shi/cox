@@ -32,7 +32,7 @@ namespace
 {
 // Describe the build/runtime environment so a results table is interpretable on
 // its own -- benchmark numbers are machine-, compiler- and build-dependent, and
-// a table with no prevenance is a table you cannot trust or compare against.
+// a table with no provenance is a table you cannot trust or compare against.
 std::string compilerId(){
 #if defined(__clang__)
     return "clang++ " __clang_version__;

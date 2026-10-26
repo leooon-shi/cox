@@ -134,7 +134,7 @@ void EventLoop::runInLoop(Task && task)
     if (isInLoopThread())
     {
         // logger_->info("isInLoopThread");
-        task();  // run immediatelly in the loop
+        task();  // run immediately in the loop
     }
     else
     {
@@ -265,7 +265,7 @@ void EventLoop::wakeup()
     ssize_t n = -1;
     {
         // Hold task_mutex_ so the fd cannot be closed by ~EventLoop between the
-        // validaty check and the write. wakeup_fd_ is set to -1 under the same
+        // validity check and the write. wakeup_fd_ is set to -1 under the same
         // lock during teardown, so a late wakeup from another thread becomes a
         // no-op instead of writing to a closed (possibly recycled) descriptor.
 

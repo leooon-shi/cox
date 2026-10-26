@@ -33,7 +33,7 @@ struct NamedCert
         : cn(common_name) {
           cert_path = "/tmp/cox_sni_" + tag + "_cert.pem";
           key_path = "/tmp/cox_sni_" + tag + "_key.pem";
-          // subjectAllName is required for modern hostname verification; CN alone
+          // subjectAltName is required for modern hostname verification; CN alone
           // is no longer honored by OpenSSL's X509_check_host.
           std::string cmd=
               "openssl req -x509 -newkey rsa:2048 -nodes -keyout " + key_path +

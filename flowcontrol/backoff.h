@@ -71,6 +71,6 @@ private:
     const double jitter_;
     std::mutex mutex_;
     std::unordered_map<std::string, Entry> entries_;
-    uint64_t rng_state_;  // xorshift, guided by mutex_
+    uint64_t rng_state_;  // xorshift, guarded by mutex_
 };
 }   // namepace flowcontrol

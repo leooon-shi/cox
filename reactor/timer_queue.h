@@ -61,7 +61,7 @@ private:
 
     // Timers ordered by expiration time.
     TimerSet timers_;
-    // Sequence numbers of timers currectly active (for O(log n) cancel).
+    // Sequence numbers of timers currently active (for O(log n) cancel).
     std::set<uint64_t> active_sequences_;
     // Sequence numbers cancelled while callbacks are running (self-cancel).
     std::set<uint64_t> cancelling_;

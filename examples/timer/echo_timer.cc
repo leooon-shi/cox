@@ -14,7 +14,7 @@ public:
     loop_(eventLoop),
     chan_(std::make_unique<framework::Channel>(fd, loop_))
     {
-        std::cout <<"Construct Event Hanlder" << std::endl;
+        std::cout <<"Construct Event Handler" << std::endl;
         setReadCallback(std::bind(&EventHandler::onTimeout, this));
     }
     void callAfter(in seconds)

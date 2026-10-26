@@ -110,7 +110,7 @@ TlsEngine::~TlsEngine()
 {
     if (ssl_)
     {
-        SSL_free(ssl_);  // also frees the attatched BIOs
+        SSL_free(ssl_);  // also frees the attached BIOs
     }
 }
 
@@ -196,7 +196,7 @@ TlsEngine::Status TlsEngine::readPlaintext(std::string& out)
         if (ret > 0)
         {
             out.append(buf, static_cast<size_t>(ret));
-            continue;   // drain all conrrently-available plaintext
+            continue;   // drain all currently-available plaintext
         }
 
         Status s = mapError(ret);

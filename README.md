@@ -1,17 +1,17 @@
 # Cox
 Cox is an event-driven architecture designed for high performance.
 
-A reactor core (epoll, timerfd, eventfd) with TCP and Unix-domain trasports,
+A reactor core (epoll, timerfd, eventfd) with TCP and Unix-domain transports,
 TLS 1.2+/1.3+ (incl, mTLS, SNI, cert hot-reload, OCSP stapling), HTTP/1.1 with
 REST routing and connection pooling, async DNS, flow/overload control,
 structured logging, and graceful shutdown.
-- Deisgn retionale per feature: [`docs/insights/features/`](docs/insights/features/)
+- Design retionale per feature: [`docs/insights/features/`](docs/insights/features/)
 - Status, deffered and discarded work: [`docs/insights/roadmap.md`](docs/insights/roadmap.md)
 - User guide: [`docs/user-guide.md`](docs/user-guide.md)
 
 ## Code Style
 The project follows the [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html),
-with one deliverate deviation: 4-space indentation instead of 2. The rules are
+with one deliberate deviation: 4-space indentation instead of 2. The rules are
 encoded in `.clang-format` so they are checkable rather than aspirational:
 
 ``bash
@@ -33,7 +33,7 @@ To run all test cases:
 ## Build
 
 Requires CMake 3.21+,  a C++20 compiler (clang++ or g++), and OpenSSL. c-ares is
-optional - when present, the async DSN backen is compiled in.
+optional - when present, the async DSN backend is compiled in.
 
 Build configurations are defined in `CMakePresets.json`, so the same commands
 run locally and in CI:

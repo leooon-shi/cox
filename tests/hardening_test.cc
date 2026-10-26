@@ -96,7 +96,7 @@ TEST(HardeningTest, MaxConnectionAgeRecyclesConnection)
         std::this_thread::sleep_for(100ms);
     }
 
-    EXPECT_EQ(disconnects.load(), 1);  // recycled despite actvity
+    EXPECT_EQ(disconnects.load(), 1);  // recycled despite activity
 
     ::close(client);
     loop_ptr->quit();

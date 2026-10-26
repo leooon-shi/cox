@@ -39,7 +39,7 @@ public:
     MultiOriginPool(const MultiOriginPool&) = delete;
     MultiOriginPool& operator=(const MultiOriginPool&) = delete;
 
-    // Resolve origin hostnames through `resolver` (must outline this pool).
+    // Resolve origin hostnames through `resolver` (must outlive this pool).
     // Applies to sub-pools created after this call.
     void setResolver(net::Resolver* resolver) { resolver_ = resolver; }
 
@@ -73,7 +73,7 @@ private:
     };
 
     reactor::EventLoop* loop_;
-    net::Resolver* resolver_{nullptr};  // nullptr -> origins must be numberic IPs
+    net::Resolver* resolver_{nullptr};  // nullptr -> origins must be numeric IPs
     size_t max_per_origin_{8};
     uint32_t idle_timeout_s_{60};
     std::map<std::pair<std::string, uint16_t>, tls::TlsContextPtr> tls_ctx_;

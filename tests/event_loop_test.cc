@@ -28,7 +28,7 @@ TEST(EventLoopTest, QuitBeforeLoop) {
         loop.loop();
     }
     {
-        // Call quit() mutiple times before starting the loop
+        // Call quit() multiple times before starting the loop
         loop.quit();
         loop.quit();
         loop.quit();

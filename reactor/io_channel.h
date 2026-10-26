@@ -64,4 +64,4 @@ private:
     Callback errorCallback_;
     Callback closeCallback_;
 };
-}   // namespace ractor
+}   // namespace reactor

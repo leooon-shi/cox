@@ -91,7 +91,7 @@ TEST(CertReloaderTest, ReloadsOnFileChange)
     // Transient failures are acceptable and safe: a non-atomic multi-file
     // update can momentarily present a mismatched cert/key, which reload()
     // correctly rejects while keeping the previous certificate. (Kubernetes
-    // udpates secrets atomically via the ..data symlink swap, avoiding this;
+    // updates secrets atomically via the ..data symlink swap, avoiding this;
     // genCert here writes the two files non-atomically, so we tolerate it.)
     EXPECT_GT(reload_ok.load(), 0);       // reload succeeded on rotation
 
@@ -134,7 +134,7 @@ TEST(CertReloaderTest, BadCertKeepsPreviousViaPoll)
     std::this_thread::sleep_for(20ms);
 
     // Write a corrupt cert file (simulate a partial/bad rotation).
-    std::this_thread::sleep_for(1100ms);   // ensure mtime advances (1s resoluton)
+    std::this_thread::sleep_for(1100ms);   // ensure mtime advances (1s resolution)
     writeFile(cert, "-----BEGIN CERTIFICATE-----\ngarbage\n-----END CERTIFICATE-----\n");
 
     for (int i = 0; i < 200 && reload_fail.load() == 0; ++i)
