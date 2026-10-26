@@ -517,7 +517,7 @@ server.shutdown(30, [&loop] {       // 30s drain deadline
 ```
 
 Drain stops accepting, half-closes connections so peers see EOF, waits for them
-to finish, force-closes stragglers at the deadline, then invokes the copmletion
+to finish, force-closes stragglers at the deadline, then invokes the completion
 callback. Wire this to SIGPIPE/SIGINT via an async-signal-safe flag polled by a
 timer (see `examples/echo/echo_server.cc`).
 

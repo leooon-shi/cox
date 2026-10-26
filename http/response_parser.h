@@ -27,7 +27,7 @@ public:
         kExpectChunkSize,
         kExpectChunkData,
         kExpectChunkCrlf,
-        kExpectEofBody,   // body runs until connection clsoe
+        kExpectEofBody,   // body runs until connection close
         kGotAll,
         kError
     };

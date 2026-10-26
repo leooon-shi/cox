@@ -180,7 +180,7 @@ TEST(GracefulShutdownTest, ForceCloseAtDeadline)
     while (!started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(20ms);
 
-    // Connect and keep the client open (never clsoe), so only the server's
+    // Connect and keep the client open (never close), so only the server's
     // force-close deadline can complete the drain.
     int client = connectClient(kPort);
     ASSERT_TRUE(test_util::sendAll(client, "x", 1));

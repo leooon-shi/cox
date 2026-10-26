@@ -5,8 +5,8 @@ A reactor core (epoll, timerfd, eventfd) with TCP and Unix-domain transports,
 TLS 1.2+/1.3+ (incl, mTLS, SNI, cert hot-reload, OCSP stapling), HTTP/1.1 with
 REST routing and connection pooling, async DNS, flow/overload control,
 structured logging, and graceful shutdown.
-- Design retionale per feature: [`docs/insights/features/`](docs/insights/features/)
-- Status, deffered and discarded work: [`docs/insights/roadmap.md`](docs/insights/roadmap.md)
+- Design rationale per feature: [`docs/insights/features/`](docs/insights/features/)
+- Status, deferred and discarded work: [`docs/insights/roadmap.md`](docs/insights/roadmap.md)
 - User guide: [`docs/user-guide.md`](docs/user-guide.md)
 
 ## Code Style
@@ -33,7 +33,7 @@ To run all test cases:
 ## Build
 
 Requires CMake 3.21+,  a C++20 compiler (clang++ or g++), and OpenSSL. c-ares is
-optional - when present, the async DSN backend is compiled in.
+optional - when present, the async DNS backend is compiled in.
 
 Build configurations are defined in `CMakePresets.json`, so the same commands
 run locally and in CI:
@@ -69,7 +69,7 @@ ctest --preset clang-debug --rerun-failed   # retry just the failures
 ctest --preset clang-debug N                # list without running
 ```
 
-Indivitual GoogleTest binaries still work directly, under the preset's
+Individual GoogleTest binaries still work directly, under the preset's
 directory:
 ```bash
 ./build/clang-debug/bin/sni_test

@@ -73,4 +73,4 @@ private:
     std::unordered_map<std::string, Entry> entries_;
     uint64_t rng_state_;  // xorshift, guarded by mutex_
 };
-}   // namepace flowcontrol
+}   // namespace flowcontrol

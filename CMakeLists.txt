@@ -22,7 +22,7 @@ endif()
 # they were previously declared here but never used, which silently disabled the
 # project's own warning policy.
 #
-# Deliberately warnings-only: -march-native (breaks portable binaries),
+# Deliberately warnings-only: -march=native (breaks portable binaries),
 # -rdynamic (link-time, for backtraces) and -stdlib=libc++ (ABI choice) are NOT
 # included here; add them per-target or via a toolchain file if wanted.
 set(COX_WARNING_FLAGS

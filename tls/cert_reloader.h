@@ -20,7 +20,7 @@ namespace tls
 {
 // CertReloader keeps a TlsContext's certificate material fresh as it rotates on
 // disk (e.g. Kubernetes Secret updates, cert-manager, SPIFFE). It triggers
-// TlsContext::reload() when the mounted cert files chagne, so new connections
+// TlsContext::reload() when the mounted cert files change, so new connections
 // pick up the new certificate without a process restart. Existing connections
 // keep their negotiated session.
 //
