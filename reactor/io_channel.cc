@@ -14,17 +14,14 @@ Channel::Channel(int fd, EventLoop* loop)
 #endif
 }
 
-Channel::~Channel()
-{
-}
+Channel::~Channel() {}
 
 void Channel::tie(const std::shared_ptr<void>& owner) {
     tie_ = owner;
     tied_ = true;
 }
 
-void Channel::handleEvents()
-{
+void Channel::handleEvents() {
     if (tied_) {
         // Promote the owner to keep it alive for the duration of dispatch. If
         // it has already been destroyed, skip dispatch entirely.
@@ -37,24 +34,19 @@ void Channel::handleEvents()
     }
 }
 
-void Channel::handleEventsGuarded()
-{
-    if (revents_ & IO_ERROR && errorCallback_) 
-    {
+void Channel::handleEventsGuarded() {
+    if (revents_ & IO_ERROR && errorCallback_) {
         errorCallback_();
     }
-    if (revents_ & IO_READ && readCallback_)
-    {
+    if (revents_ & IO_READ && readCallback_) {
         readCallback_();
     }
-    if (revents_ & IO_WRITE && writeCallback_)
-    {
+    if (revents_ & IO_WRITE && writeCallback_) {
         writeCallback_();
     }
 }
 
-void Channel::update()
-{
+void Channel::update() {
     assert(loop_ != nullptr);
     assert(fd_ >= 0);
     assert(loop_->isInLoopThread());
@@ -62,12 +54,11 @@ void Channel::update()
     loop_->updateChannel(this);
 }
 
-void Channel::remove()
-{
+void Channel::remove() {
     assert(loop_ != nullptr);
     assert(loop_->isInLoopThread());
 
     loop_->removeChannel(this);
 }
 
-}   // namespace reactor
+}  // namespace reactor

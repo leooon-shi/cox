@@ -8,22 +8,18 @@ namespace reactor {
 EventLoopThread::EventLoopThread(ThreadInitCallback cb, std::string name)
     : init_callback_(std::move(cb)), name_(std::move(name)) {}
 
-EventLoopThread::~EventLoopThread()
-{
+EventLoopThread::~EventLoopThread() {
     exiting_ = true;
-    if (loop_ != nullptr)
-    {
+    if (loop_ != nullptr) {
         // quit() is thread-safe: it wakes the loop via the eventfd.
         loop_->quit();
-        if (thread_.joinable())
-        {
+        if (thread_.joinable()) {
             thread_.join();
         }
     }
 }
 
-EventLoop* EventLoopThread::startLoop()
-{
+EventLoop* EventLoopThread::startLoop() {
     thread_ = std::thread([this] { threadFunc(); });
 
     EventLoop* loop = nullptr;
@@ -36,14 +32,12 @@ EventLoop* EventLoopThread::startLoop()
     return loop;
 }
 
-void EventLoopThread::threadFunc()
-{
+void EventLoopThread::threadFunc() {
     // The EventLoop must be created in *this* thread so its loop_thread_id_
     // matches the running thread.
     EventLoop loop;
 
-    if (init_callback_)
-    {
+    if (init_callback_) {
         init_callback_(&loop);
     }
 
@@ -61,4 +55,4 @@ void EventLoopThread::threadFunc()
     loop_ = nullptr;
 }
 
-}   // namespace reactor
+}  // namespace reactor

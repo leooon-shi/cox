@@ -1,22 +1,21 @@
 #include "timestamp.h"
 
-#include <ctime>    // struct tm, gmtime_r, time_t
 #include <cstdio>   // snprintf
 #include <cstring>  // memset
+#include <ctime>    // struct tm, gmtime_r, time_t
 
 namespace logging {
 
 Timestamp::Timestamp() : microseconds_(0) {}
 
-Timestamp Timestamp::now()
-{
+Timestamp Timestamp::now() {
     struct timeval tv;
-    if (gettimeofday(&tv, nullptr) != 0)
-    {
+    if (gettimeofday(&tv, nullptr) != 0) {
         return Timestamp();
     }
     // Convert seconds and microseconds to microseconds since epoch
-    uint64_t microseconds = static_cast<uint64_t>(tv.tv_sec) * MicroSecondsPerSecond + tv.tv_usec;
+    uint64_t microseconds =
+        static_cast<uint64_t>(tv.tv_sec) * MicroSecondsPerSecond + tv.tv_usec;
     return Timestamp(microseconds);
 }
 
@@ -34,10 +33,10 @@ std::string Timestamp::toString() const {
     auto micros =
         static_cast<unsigned long>(microseconds_ % MicroSecondsPerSecond);
     snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d %02d:%02d:%02d.%06lu",
-             tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-             tm.tm_hour, tm.tm_min, tm.tm_sec, micros);
+             tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour,
+             tm.tm_min, tm.tm_sec, micros);
 
     return std::string(buffer);
 }
 
-} // namespace logging
+}  // namespace logging

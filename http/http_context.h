@@ -4,13 +4,11 @@
 
 #include <cstddef>
 
-namespace buffer
-{
+namespace buffer {
 class Buffer;
 }
 
-namespace http
-{
+namespace http {
 // HttpContext holds the incremental parse state for one connection's inbound
 // byte stream. parseRequest() consumes bytes from the Buffer as they arrive
 // (handling partial reads and pipelined requests); when a full request is
@@ -22,14 +20,13 @@ namespace http
 // cap here.
 class HttpContext {
 public:
-    enum class State
-    {
+    enum class State {
         kExpectRequestLine,
         kExpectHeaders,
-        kExpectBody,        // Content-Length body
-        kExpectChunkSize,   // chunked: size line
-        kExpectChunkData,   // chunked: chunk bytes
-        kExpectChunkCrlf,   // chunked: trailing CRLF after a chunk
+        kExpectBody,       // Content-Length body
+        kExpectChunkSize,  // chunked: size line
+        kExpectChunkData,  // chunked: chunk bytes
+        kExpectChunkCrlf,  // chunked: trailing CRLF after a chunk
         kGotAll,
         kError
     };
@@ -61,4 +58,4 @@ private:
     size_t header_bytes_{0};
     size_t chunk_remaining_{0};
 };
-}   // namespace http
+}  // namespace http

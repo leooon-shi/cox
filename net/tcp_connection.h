@@ -12,13 +12,11 @@
 #include <memory>
 #include <string>
 
-namespace reactor
-{
+namespace reactor {
 class EventLoop;
 }
 
-namespace net
-{
+namespace net {
 class TcpConnection;
 using TcpConnectionPtr = std::shared_ptr<TcpConnection>;
 
@@ -39,8 +37,7 @@ using CloseCallback = std::function<void(const TcpConnectionPtr&)>;
 // by std::shared_ptr and uses shared_from_this() to keep itself alive across
 // asynchronous callbacks (via Channel::tie). One TcpConnection belongs to
 // exactly one EventLoop.
-class TcpConnection : public std::enable_shared_from_this<TcpConnection>
-{
+class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
 public:
     TcpConnection(reactor::EventLoop* loop, std::string name, int sockfd,
                   const InetAddress& local, const InetAddress& peer);
@@ -53,7 +50,8 @@ public:
     const std::string& name() const { return name_; }
 
     // Generic per-connection context slot for higher-level protocols (e.g. an
-    // HTTP parse context). Owned by the connection; set/read on the loop thread.
+    // HTTP parse context). Owned by the connection; set/read on the loop
+    // thread.
     void setContext(std::shared_ptr<void> ctx) { context_ = std::move(ctx); }
     const std::shared_ptr<void>& getContext() const { return context_; }
 
@@ -79,7 +77,8 @@ public:
     // buffer then fills, the advertised TCP window shrinks to zero, and the
     // PEER's writes block -- throttling the sender without dropping data. Use
     // this when the application cannot keep up with an incoming stream.
-    // startRead() resumes reading. Both are thread-safe (marshaled to the loop).
+    // startRead() resumes reading. Both are thread-safe (marshaled to the
+    // loop).
     void stopRead();
     void startRead();
     bool isReading() const { return reading_; }
@@ -97,8 +96,7 @@ public:
     // by bounding how long a slow consumer can hold resources. 0 disables.
     // The timer is armed when output first backs up and cancelled when it
     // drains.
-    void setWriteTimeout(uint32_t write_seconds)
-    {
+    void setWriteTimeout(uint32_t write_seconds) {
         write_seconds_ = write_seconds;
     }
 
@@ -127,11 +125,11 @@ public:
     void setWriteCompleteCallback(WriteCompleteCallback cb) {
         write_complete_callback_ = std::move(cb);
     }
-    
+
     // Set the high-water-mark callback and the threshold (in bytes of queued
     // output) at which it fires. The callback fires on the upward crossing.
-    void setHighWaterMarkCallback(HighWaterMarkCallback cb, size_t high_water_mark)
-    {
+    void setHighWaterMarkCallback(HighWaterMarkCallback cb,
+                                  size_t high_water_mark) {
         high_water_mark_callback_ = std::move(cb);
         high_water_mark_ = high_water_mark;
     }
@@ -155,12 +153,12 @@ private:
     void handleClose();
     void handleError();
 
-    void resetIdleTimer();   //(re)arm the idle timeout on activity
+    void resetIdleTimer();  //(re)arm the idle timeout on activity
     void cancelIdleTimer();
 
-    void armWriteTimer();    // arm when output backs up
-    void cancelWriteTimer(); // cancel when output drains
-    void armMaxAgeTimer();   // arm once at establishment
+    void armWriteTimer();     // arm when output backs up
+    void cancelWriteTimer();  // cancel when output drains
+    void armMaxAgeTimer();    // arm once at establishment
 
     void sendInLoop(const char* data, size_t len);
     void shutdownInLoop();
@@ -188,7 +186,7 @@ private:
     MessageCallback message_callback_;
     WriteCompleteCallback write_complete_callback_;
     HighWaterMarkCallback high_water_mark_callback_;
-    size_t high_water_mark_{64 * 1024 * 1024};   // 64 MB default
+    size_t high_water_mark_{64 * 1024 * 1024};  // 64 MB default
     CloseCallback close_callback_;
 
     // Idle timeout state (accessed only in the loop thread).
@@ -216,4 +214,4 @@ private:
     // Generic per-connection context for higher-level protocols.
     std::shared_ptr<void> context_;
 };
-}   // namespace net
+}  // namespace net

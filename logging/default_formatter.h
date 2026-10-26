@@ -13,4 +13,4 @@ public:
     std::string format(const LogRecord& record) const override;
 };
 
-}   // namespace logging
+}  // namespace logging

@@ -17,4 +17,4 @@ protected:
     std::unordered_map<int, Channel*> channels_;
 };
 
-} // namespace reactor
+}  // namespace reactor

@@ -10,15 +10,13 @@
 using namespace std::chrono_literals;
 using concurrent::ThreadPool;
 
-TEST(ThreadPoolTest, RunsAllTasks)
-{
+TEST(ThreadPoolTest, RunsAllTasks) {
     ThreadPool pool("t1");
     pool.start(4);
 
     std::atomic<int> counter{0};
     constexpr int kTasks = 1000;
-    for (int i = 0; i < kTasks; ++i)
-    {
+    for (int i = 0; i < kTasks; ++i) {
         pool.run([&counter] { counter++; });
     }
     pool.stop();  // drains remaining tasks before joining
@@ -28,16 +26,15 @@ TEST(ThreadPoolTest, RunsAllTasks)
 // A large burst of trivial tasks: workers drain in batches to amortize the
 // mutex (one lock per batch, not per task). Correctness must be unaffected --
 // every task runs exactly once.
-TEST(ThreadPoolTest, RunsLargeBurstOfTrivialTasks)
-{
+TEST(ThreadPoolTest, RunsLargeBurstOfTrivialTasks) {
     ThreadPool pool("burst");
     pool.start(10);
 
     std::atomic<int> counter{0};
     constexpr int kTasks = 500000;
-    for (int i = 0; i < kTasks; ++i)
-    {
-        pool.run([&counter] { counter.fetch_add(1, std::memory_order_relaxed); });
+    for (int i = 0; i < kTasks; ++i) {
+        pool.run(
+            [&counter] { counter.fetch_add(1, std::memory_order_relaxed); });
     }
     pool.stop();  // drains everything before joining
     EXPECT_EQ(counter.load(), kTasks);
@@ -47,24 +44,22 @@ TEST(ThreadPoolTest, RunsLargeBurstOfTrivialTasks)
 // a multi-worker pool should run in parallel, not be hoarded by one worker and
 // run back-to-back. With N slow tasks and >=N workers, wall time stays close to
 // a single task's duration rather than N times it.
-TEST(ThreadPoolTest, SlowTasksStayParallelUnderBatching)
-{
+TEST(ThreadPoolTest, SlowTasksStayParallelUnderBatching) {
     ThreadPool pool("fair");
-    pool.setTakeBatchSize(32);  // large batch; fair-share must still spread work
+    pool.setTakeBatchSize(
+        32);  // large batch; fair-share must still spread work
     pool.start(4);
 
     std::atomic<int> done{0};
     auto start = std::chrono::steady_clock::now();
-    for (int i = 0; i < 4; ++i)
-    {
+    for (int i = 0; i < 4; ++i) {
         pool.run([&done] {
             std::this_thread::sleep_for(100ms);
             done.fetch_add(1, std::memory_order_relaxed);
         });
     }
     // Wait for all four to finish.
-    for (int i = 0; i < 400 && done.load() < 4; ++i)
-    {
+    for (int i = 0; i < 400 && done.load() < 4; ++i) {
         std::this_thread::sleep_for(2ms);
     }
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -77,8 +72,7 @@ TEST(ThreadPoolTest, SlowTasksStayParallelUnderBatching)
     EXPECT_LT(elapsed, 250);
 }
 
-TEST(ThreadPoolTest, TasksRunOnWorkerThreads)
-{
+TEST(ThreadPoolTest, TasksRunOnWorkerThreads) {
     ThreadPool pool("t2");
     pool.start(2);
 
@@ -88,8 +82,7 @@ TEST(ThreadPoolTest, TasksRunOnWorkerThreads)
         worker_tid = std::this_thread::get_id();
         ran = true;
     });
-    for (int i = 0; i < 100 && !ran.load(); ++i)
-    {
+    for (int i = 0; i < 100 && !ran.load(); ++i) {
         std::this_thread::sleep_for(2ms);
     }
     pool.stop();
@@ -97,8 +90,7 @@ TEST(ThreadPoolTest, TasksRunOnWorkerThreads)
     EXPECT_NE(worker_tid, std::this_thread::get_id());
 }
 
-TEST(ThreadPoolTest, ZeroThreadsRunsInline)
-{
+TEST(ThreadPoolTest, ZeroThreadsRunsInline) {
     ThreadPool pool("t3");
     pool.start(0);  // no workers
 
@@ -114,8 +106,7 @@ TEST(ThreadPoolTest, ZeroThreadsRunsInline)
     pool.stop();
 }
 
-TEST(ThreadPoolTest, TryRunRejectsWhenFull)
-{
+TEST(ThreadPoolTest, TryRunRejectsWhenFull) {
     ThreadPool pool("t4");
     pool.setMaxQueueSize(2);
     pool.start(1);
@@ -138,8 +129,7 @@ TEST(ThreadPoolTest, TryRunRejectsWhenFull)
     pool.stop();
 }
 
-TEST(ThreadPoolTest, RunBlocksWhenFullThenProceeds)
-{
+TEST(ThreadPoolTest, RunBlocksWhenFullThenProceeds) {
     ThreadPool pool("t5");
     pool.setMaxQueueSize(1);
     pool.start(1);
@@ -173,20 +163,19 @@ TEST(ThreadPoolTest, RunBlocksWhenFullThenProceeds)
 
     EXPECT_EQ(done.load(), 3);
     // It should have waited a meaningful amount (worker was released at ~50ms).
-    EXPECT_GE(std::chrono::duration_cast<std::chrono::milliseconds>(waited).count(),
-              20);
+    EXPECT_GE(
+        std::chrono::duration_cast<std::chrono::milliseconds>(waited).count(),
+        20);
 }
 
-TEST(ThreadPoolTest, DrainsQueuedTasksOnStop)
-{
+TEST(ThreadPoolTest, DrainsQueuedTasksOnStop) {
     ThreadPool pool("t6");
     pool.start(2);
 
     std::atomic<int> counter{0};
     // Enqueue tasks that each take a little time, then stop immediately.
     constexpr int kTasks = 200;
-    for (int i = 0; i < kTasks; ++i)
-    {
+    for (int i = 0; i < kTasks; ++i) {
         pool.run([&counter] {
             std::this_thread::sleep_for(1ms);
             counter++;
@@ -196,8 +185,7 @@ TEST(ThreadPoolTest, DrainsQueuedTasksOnStop)
     EXPECT_EQ(counter.load(), kTasks);
 }
 
-TEST(ThreadPoolTest, ConcurrentProducers)
-{
+TEST(ThreadPoolTest, ConcurrentProducers) {
     ThreadPool pool("t7");
     pool.start(4);
 
@@ -205,11 +193,9 @@ TEST(ThreadPoolTest, ConcurrentProducers)
     constexpr int kProducers = 4;
     constexpr int kPerProducer = 500;
     std::vector<std::thread> producers;
-    for (int p = 0; p < kProducers; ++p)
-    {
+    for (int p = 0; p < kProducers; ++p) {
         producers.emplace_back([&] {
-            for (int i = 0; i < kPerProducer; ++i)
-            {
+            for (int i = 0; i < kPerProducer; ++i) {
                 pool.run([&counter] { counter++; });
             }
         });

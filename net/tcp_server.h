@@ -10,14 +10,12 @@
 #include <memory>
 #include <string>
 
-namespace reactor
-{
+namespace reactor {
 class EventLoop;
 class EventLoopThreadPool;
-}
+}  // namespace reactor
 
-namespace net
-{
+namespace net {
 class Acceptor;
 
 // TcpServer accepts incoming TCP connections and manages their lifecycle. It
@@ -30,8 +28,7 @@ class Acceptor;
 // EventLoopThreadPool of N io threads ("one loop per thread"). The acceptor
 // always runs on the base loop; each connection is established on its assigned
 // io loop.
-class TcpServer
-{
+class TcpServer {
 public:
     enum class Option { kNoReusePort, kReusePort };
     using ThreadInitCallback = std::function<void(reactor::EventLoop*)>;
@@ -70,62 +67,53 @@ public:
     // Optional per-connection callback invoked at drain start (on the
     // connection's io loop) so the application can initiate an orderly close
     // (e.g. send a final message, disable keep-alive) before half-close.
-    void setDrainCallback(ConnectionCallback cb)
-    {
+    void setDrainCallback(ConnectionCallback cb) {
         drain_callback_ = std::move(cb);
     }
 
     bool isDraining() const { return draining_; }
 
-    void setThreadInitCallback(ThreadInitCallback cb)
-    {
+    void setThreadInitCallback(ThreadInitCallback cb) {
         thread_init_callback_ = std::move(cb);
     }
 
-    void setConnectionCallback(ConnectionCallback cb)
-    {
+    void setConnectionCallback(ConnectionCallback cb) {
         connection_callback_ = std::move(cb);
     }
-    void setMessageCallback(MessageCallback cb)
-    {
+    void setMessageCallback(MessageCallback cb) {
         message_callback_ = std::move(cb);
     }
-    void setWriteCompleteCallback(WriteCompleteCallback cb)
-    {
+    void setWriteCompleteCallback(WriteCompleteCallback cb) {
         write_complete_callback_ = std::move(cb);
     }
 
     // Apply an idle timeout (seconds) to every accepted connection. 0 disables.
     // Defeats slowloris-style attacks that hold connections open with little or
     // no traffic. Set before start() (or before connections arrive).
-    void setIdleTimeout(uint32_t idle_seconds)
-    {
-        idle_seconds_ = idle_seconds;
-    }
+    void setIdleTimeout(uint32_t idle_seconds) { idle_seconds_ = idle_seconds; }
 
     // Apply a write timeout (seconds) to every connection: force-close a slow
     // consumer whose output cannot drain in time. 0 disables
-    void setWriteTimeout(uint32_t write_seconds) { write_seconds_ = write_seconds; }
+    void setWriteTimeout(uint32_t write_seconds) {
+        write_seconds_ = write_seconds;
+    }
 
     // Cap each connection's input buffer (bytes); force-close on exceed to
     // bound read-side memory. 0 = unlimited.
-    void setMaxInputBufferSize(size_t max_bytes)
-    {
+    void setMaxInputBufferSize(size_t max_bytes) {
         max_input_buffer_size_ = max_bytes;
     }
 
     // Cap each connection's lifetime (seconds); recycle after this age.
     // 0 disables.
-    void setMaxConnectionAge(uint32_t max_age_seconds)
-    {
+    void setMaxConnectionAge(uint32_t max_age_seconds) {
         max_age_seconds_ = max_age_seconds;
     }
 
     // Cap the number of concurrent connections. New connections beyond the cap
     // are accepted-then-immediately-closed so the accept queue does not wedge,
     // while bounding fd/memory consumption. 0 (default) means unlimited.
-    void setMaxConnections(size_t max_connections)
-    {
+    void setMaxConnections(size_t max_connections) {
         max_connections_ = max_connections;
     }
 
@@ -137,8 +125,7 @@ public:
     // shedding with a 503-style response, use ConcurrencyLimiter in the message
     // callback where request boundaries are known.
     using OverloadCallback = std::function<void(const InetAddress& peer)>;
-    void setOverloadCallback(OverloadCallback cb)
-    {
+    void setOverloadCallback(OverloadCallback cb) {
         overload_callback_ = std::move(cb);
     }
 
@@ -187,6 +174,6 @@ private:
     size_t max_input_buffer_size_{0};
     uint32_t max_age_seconds_{0};
     size_t max_connections_{0};  // 0 - unlimited
-    ConnectionMap connections_;     // accessed only on base loop
+    ConnectionMap connections_;  // accessed only on base loop
 };
-}   // namespace net
+}  // namespace net

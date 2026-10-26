@@ -8,20 +8,20 @@
 #include <cstdint>
 #include <string>
 
-namespace net
-{
+namespace net {
 // A wrapper around a socket address. Despite the historical name, it can hold
 // an IPv4 (sockaddr_in), IPv6 (sockaddr_in6), or Unix-domain (sockaddr_un)
 // address. The family is discriminated by the sa_family field.
 //
-// This unification (one address type across families, a la folly::SocketAddress)
-// lets Acceptor/Connector/TcpConnection work with IP and Unix sockets without
-// duplicating the connection machinery: a connected Unix stream socket has the
-// same read/write/accept/connect semantics as a TCP socket.
+// This unification (one address type across families, a la
+// folly::SocketAddress) lets Acceptor/Connector/TcpConnection work with IP and
+// Unix sockets without duplicating the connection machinery: a connected Unix
+// stream socket has the same read/write/accept/connect semantics as a TCP
+// socket.
 class InetAddress {
 public:
     // ---- IP constructors ----
-    
+
     // Construct from a port. Binds to the wildcard address (0.0.0.0 for IPv4,
     // :: for IPv6) by default, or to loopback (127.0.0.1 / ::1) when
     // loopback only is true. Set ipv6=true to create an IPv6 address.
@@ -71,13 +71,14 @@ public:
     // Copy a raw address of the given length into this object (used by accept /
     // getpeername / getsockname which fill a sockaddr_storage).
     void setSockAddrStorage(const struct sockaddr_storage& ss, socklen_t len);
+
 private:
     union {
-        sa_family_t storage_family_;   // aliases the family field of all members
+        sa_family_t storage_family_;  // aliases the family field of all members
         struct sockaddr_in addr_;
         struct sockaddr_in6 addr6_;
         struct sockaddr_un addr_un_;
         struct sockaddr_storage storage_;
     };
 };
-}   // namespace net
+}  // namespace net

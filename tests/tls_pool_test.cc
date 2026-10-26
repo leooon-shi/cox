@@ -1,10 +1,10 @@
 // Tests for TLS connection pooling and multi-origin pooling.
 
 #include "connection_pool.h"
-#include "multi_origin_pool.h"
 #include "http_request.h"
 #include "http_response.h"
 #include "http_server.h"
+#include "multi_origin_pool.h"
 
 #include "event_loop.h"
 #include "inet_address.h"
@@ -32,13 +32,11 @@
 using namespace std::chrono_literals;
 using namespace http;
 
-namespace
-{
+namespace {
 struct TestCert {
     std::string cert = "/tmp/cox_pool_tls_cert.pem";
     std::string key = "/tmp/cox_pool_tls_key.pem";
-    TestCert()
-    {
+    TestCert() {
         std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
                           key + " -out " + cert +
                           " -days 1 -subj '/CN=localhost' >/dev/null 2>&1";
@@ -55,8 +53,7 @@ struct TestCert {
     }
 };
 
-HttpRequest getReq(const std::string& path)
-{
+HttpRequest getReq(const std::string& path) {
     HttpRequest r;
     r.setMethod(Method::kGet);
     r.setPath(path);
@@ -68,45 +65,40 @@ HttpRequest getReq(const std::string& path)
 // (keep-alive), so pooled TLS connections can be reused.
 class MiniTlsHttpServer {
 public:
-    MiniTlsHttpServer(reactor::EventLoop* loop, uint16_t port, 
+    MiniTlsHttpServer(reactor::EventLoop* loop, uint16_t port,
                       const std::string& cert, const std::string& key,
                       std::atomic<int>* conns)
         : server_(loop, net::InetAddress("127.0.0.1", port), "mini-tls"),
-          conns_(conns)
-    {
+          conns_(conns) {
         ctx_ = std::make_shared<tls::TlsContext>(tls::Role::kServer);
         ctx_->useCertificateAndKey(cert, key);
         server_.setConnectionCallback(
             [this](const net::TcpConnectionPtr& c) { onConn(c); });
         server_.start();
     }
+
 private:
-    void onConn(const net::TcpConnectionPtr& c)
-    {
-        if (c->connected())
-        {
+    void onConn(const net::TcpConnectionPtr& c) {
+        if (c->connected()) {
             (*conns_)++;
             auto tc = std::make_shared<tls::TlsConnection>(c, ctx_,
                                                            tls::Role::kServer);
-            tc->setMessageCallback(
-                [](const tls::TlsConnectionPtr& t, std::string& msg) {
-                    // Respond once we see the end of request headers.
-                    if (msg.find("\r\n\r\n") != std::string::npos)
-                    {
-                        std::string body = "tls-ok";
-                        std::string resp =
-                            "HTTP/1.1 200 OK\r\nContent-Length: " +
-                            std::to_string(body.size()) +
-                            "\r\nConnection: keep-alive\r\n\r\n" + body;
-                        t->send(resp);
-                    }
-                });
+            tc->setMessageCallback([](const tls::TlsConnectionPtr& t,
+                                      std::string& msg) {
+                // Respond once we see the end of request headers.
+                if (msg.find("\r\n\r\n") != std::string::npos) {
+                    std::string body = "tls-ok";
+                    std::string resp = "HTTP/1.1 200 OK\r\nContent-Length: " +
+                                       std::to_string(body.size()) +
+                                       "\r\nConnection: keep-alive\r\n\r\n" +
+                                       body;
+                    t->send(resp);
+                }
+            });
             std::lock_guard<std::mutex> lock(m_);
             conns_map_[c->name()] = tc;
             tc->start();
-        }
-        else
-        {
+        } else {
             std::lock_guard<std::mutex> lock(m_);
             conns_map_.erase(c->name());
         }
@@ -118,10 +110,9 @@ private:
     std::mutex m_;
     std::map<std::string, tls::TlsConnectionPtr> conns_map_;
 };
-}   // namespace
+}  // namespace
 
-TEST(TlsPoolTest, ReusesTlsConnectionAcrossRequests)
-{
+TEST(TlsPoolTest, ReusesTlsConnectionAcrossRequests) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
     const uint16_t kPort = 55801;
@@ -158,16 +149,18 @@ TEST(TlsPoolTest, ReusesTlsConnectionAcrossRequests)
 
         // Three sequential requests should reuse one TLS connection.
         std::function<void(int)> fire = [&](int n) {
-            if (n == 0) { loop.quit(); return; }
-            pool->request(getReq("/x"), 
-                          [&, n](const HttpResponse& resp, const std::string& err) {
-                              if (err.empty() && resp.statusCode() == 200 &&
-                                  resp.body() == "tls-ok")
-                              {
-                                  completed++;
-                              }
-                              fire(n - 1);
-                           });
+            if (n == 0) {
+                loop.quit();
+                return;
+            }
+            pool->request(getReq("/x"), [&, n](const HttpResponse& resp,
+                                               const std::string& err) {
+                if (err.empty() && resp.statusCode() == 200 &&
+                    resp.body() == "tls-ok") {
+                    completed++;
+                }
+                fire(n - 1);
+            });
         };
         fire(3);
         cli_started = true;
@@ -177,21 +170,19 @@ TEST(TlsPoolTest, ReusesTlsConnectionAcrossRequests)
 
     while (!cli_started.load()) std::this_thread::sleep_for(1ms);
 
-    for (int i = 0; i < 400 && completed.load() < 3; ++i)
-    {
+    for (int i = 0; i < 400 && completed.load() < 3; ++i) {
         std::this_thread::sleep_for(5ms);
     }
 
     EXPECT_EQ(completed.load(), 3);
-    EXPECT_EQ(server_conns.load(), 1);   // handshake amortized over 1 connection
+    EXPECT_EQ(server_conns.load(), 1);  // handshake amortized over 1 connection
 
     client_thread.join();
     srv_loop->quit();
     server_thread.join();
 }
 
-TEST(MultiOriginPoolTest, RoutesToDistinctOrigins)
-{
+TEST(MultiOriginPoolTest, RoutesToDistinctOrigins) {
     const uint16_t kPortA = 55811;
     const uint16_t kPortB = 55812;
 
@@ -209,7 +200,7 @@ TEST(MultiOriginPoolTest, RoutesToDistinctOrigins)
             std::string t = tag;
             server.setHttpHandler([t](const HttpRequest&, HttpResponse* resp) {
                 resp->setStatus(200);
-                resp->setBody(t);   // identify which origin answered.
+                resp->setBody(t);  // identify which origin answered.
             });
             server.start();
             *started = true;
@@ -231,17 +222,17 @@ TEST(MultiOriginPoolTest, RoutesToDistinctOrigins)
     std::thread client_thread([&] {
         reactor::EventLoop loop;
         auto pool = std::make_shared<MultiOriginPool>(&loop);
-        
+
         pool->request("127.0.0.1", kPortA, getReq("/"),
                       [&](const HttpResponse& resp, const std::string& err) {
                           if (err.empty()) body_a = resp.body();
-                          if (++got  == 2) loop.quit();
+                          if (++got == 2) loop.quit();
                       });
 
         pool->request("127.0.0.1", kPortB, getReq("/"),
                       [&](const HttpResponse& resp, const std::string& err) {
                           if (err.empty()) body_b = resp.body();
-                          if (++got  == 2) loop.quit();
+                          if (++got == 2) loop.quit();
                       });
 
         // Two distinct origins -> two sub-pools.
@@ -252,8 +243,7 @@ TEST(MultiOriginPoolTest, RoutesToDistinctOrigins)
     });
 
     while (!cli_started.load()) std::this_thread::sleep_for(1ms);
-    for (int i = 0; i < 400 && got.load() < 2; ++i)
-    {
+    for (int i = 0; i < 400 && got.load() < 2; ++i) {
         std::this_thread::sleep_for(5ms);
     }
 

@@ -7,17 +7,14 @@
 #include <memory>
 #include <string>
 
-namespace buffer
-{
+namespace buffer {
 class Buffer;
 }
-namespace net
-{
+namespace net {
 class TcpConnection;
 }
 
-namespace tls
-{
+namespace tls {
 class TlsConnection;
 using TlsConnectionPtr = std::shared_ptr<TlsConnection>;
 
@@ -32,8 +29,7 @@ using TlsConnectionPtr = std::shared_ptr<TlsConnection>;
 // call start(). The TLS handshake runs first; the onHandshakeDone callback
 // fires when the secure channel is ready, after which send()/onMessage carry
 // application plaintext.
-class TlsConnection : public std::enable_shared_from_this<TlsConnection>
-{
+class TlsConnection : public std::enable_shared_from_this<TlsConnection> {
 public:
     using HandshakeDoneCallback = std::function<void(const TlsConnectionPtr&)>;
     using MessageCallback =
@@ -66,23 +62,20 @@ public:
     std::string protocolVersion() const { return engine_.protocolVersion(); }
     std::string cipherName() const { return engine_.cipherName(); }
     // Server role: hostname the client requested via SNI ("" if none).
-    std::string requestedServerName() const
-    {
+    std::string requestedServerName() const {
         return engine_.requestedServerName();
     }
 
     void setHandshakeDoneCallback(HandshakeDoneCallback cb) {
         handshake_done_callback_ = std::move(cb);
     }
-    void setMessageCallback(MessageCallback cb)
-    {
+    void setMessageCallback(MessageCallback cb) {
         message_callback_ = std::move(cb);
     }
     void setCloseCallback(CloseCallback cb) { close_callback_ = std::move(cb); }
 
-    const std::shared_ptr<net::TcpConnection>& tcpConnection() const
-    { 
-        return conn_; 
+    const std::shared_ptr<net::TcpConnection>& tcpConnection() const {
+        return conn_;
     }
 
 private:
@@ -106,4 +99,4 @@ private:
     MessageCallback message_callback_;
     CloseCallback close_callback_;
 };
-}   // namespace tls
+}  // namespace tls

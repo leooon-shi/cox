@@ -1,21 +1,23 @@
 #include "event_loop.h"
-#include "poller/io_poller.h"
 #include "io_channel.h"
+#include "poller/io_poller.h"
 
 #include <gtest/gtest.h>
-#include "gmock/gmock.h"
-#include <thread>
 #include <atomic>
 #include <chrono>
-#include <vector>
 #include <future>
 #include <stdexcept>
+#include <thread>
+#include <vector>
+#include "gmock/gmock.h"
 
 class MockPoller : public reactor::Poller {
 public:
-    MOCK_METHOD(void, updateChannel, (reactor::Channel* channel), (override));
-    MOCK_METHOD(void, removeChannel, (reactor::Channel* channel), (override));
-    MOCK_METHOD(void, poll, (int timeoutMs, std::vector<reactor::Channel*>& activeChannels), (override));
+    MOCK_METHOD(void, updateChannel, (reactor::Channel * channel), (override));
+    MOCK_METHOD(void, removeChannel, (reactor::Channel * channel), (override));
+    MOCK_METHOD(void, poll,
+                (int timeoutMs, std::vector<reactor::Channel*>& activeChannels),
+                (override));
 };
 
 TEST(EventLoopTest, QuitBeforeLoop) {
@@ -38,9 +40,8 @@ TEST(EventLoopTest, QuitBeforeLoop) {
     }
 
     // Verify that the loop exits immediately
-    SUCCEED(); // if no exceptions or errors occur, the test passes
+    SUCCEED();  // if no exceptions or errors occur, the test passes
 }
-
 
 #if defined(DEBUG)
 TEST(EventLoopTest, AddAndRemoveChannel) {
@@ -50,9 +51,10 @@ TEST(EventLoopTest, AddAndRemoveChannel) {
     MockPoller& poller = static_cast<MockPoller&>(loop.getPoller());
 
     // Create a Channel object with the required constructor arguments
-    int fd = 1; // Example file descriptor
+    int fd = 1;  // Example file descriptor
     {
-        // Using block to avoid EventLoop::~EventLoop() being called before the test completes
+        // Using block to avoid EventLoop::~EventLoop() being called before the
+        // test completes
         reactor::Channel channel(fd, &loop);
 
         // Expect the Poller to update the channel when added
@@ -75,16 +77,14 @@ TEST(EventLoopTest, AddAndRemoveChannel) {
     // Quit the loop to trigger cleanup
     loop.quit();
 }
-#endif // DEBUG
+#endif  // DEBUG
 
 TEST(EventLoopTest, HandlePendingTasks) {
     reactor::EventLoop loop;
     bool taskExecuted = false;
 
     // Schedule a task to run in the loop
-    loop.runInLoop([&]() {
-        taskExecuted = true;
-    });
+    loop.runInLoop([&]() { taskExecuted = true; });
 
     // Run the loop to process pending tasks
     std::thread loopThread([&]() {
@@ -100,8 +100,7 @@ TEST(EventLoopTest, HandlePendingTasks) {
 }
 
 // A task that throws must not tear down the loop; subsequent tasks still run.
-TEST(EventLoopTest, PendingTaskExceptionDoesNotKillLoop)
-{
+TEST(EventLoopTest, PendingTaskExceptionDoesNotKillLoop) {
     reactor::EventLoop loop;
     std::atomic<bool> survivorRan{false};
 
@@ -126,7 +125,7 @@ TEST(EventLoopTest, PollerHandlesEvents) {
     MockPoller& poller = *poller_p;
 
     int fd = 1;
-    
+
     reactor::EventLoop* loopPtr = nullptr;
 
     // Create a Channel object with the required constructor arguments
@@ -136,10 +135,11 @@ TEST(EventLoopTest, PollerHandlesEvents) {
 
     // Expect the Poller to poll for events and return active channels
     EXPECT_CALL(poller, poll(testing::_, testing::_))
-        .WillOnce(::testing::Invoke([&](int timeoutMs, std::vector<reactor::Channel*>& channels) {
-            channels = activeChannels;
-            loopPtr->quit();
-        }));
+        .WillOnce(::testing::Invoke(
+            [&](int timeoutMs, std::vector<reactor::Channel*>& channels) {
+                channels = activeChannels;
+                loopPtr->quit();
+            }));
 
     // Run the loop to process events
     std::thread loopThread([&]() {
@@ -151,16 +151,14 @@ TEST(EventLoopTest, PollerHandlesEvents) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     loopThread.join();
 }
-#endif // DEBUG
+#endif  // DEBUG
 
 TEST(EventLoopTest, TaskScheduling) {
     reactor::EventLoop loop;
     std::atomic<int> counter = {0};
 
     // Schedule a task
-    loop.runInLoop([&]() {
-        counter++;
-    });
+    loop.runInLoop([&]() { counter++; });
 
     // Run the event loop in a separate thread
     std::thread loopThread([&]() {
@@ -168,7 +166,7 @@ TEST(EventLoopTest, TaskScheduling) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         loop.quit();
     });
-    
+
     loop.loop();
     loopThread.join();
 
@@ -183,17 +181,13 @@ TEST(EventLoopTest, Concurrency) {
     // Schedule tasks from multiple threads
     std::thread t1([&]() {
         for (int i = 0; i < 100; ++i) {
-            loop.runInLoop([&]() {
-                counter++;
-            });
+            loop.runInLoop([&]() { counter++; });
         }
     });
 
     std::thread t2([&]() {
         for (int i = 0; i < 100; ++i) {
-            loop.runInLoop([&]() {
-                counter++;
-            });
+            loop.runInLoop([&]() { counter++; });
         }
     });
 
@@ -203,7 +197,6 @@ TEST(EventLoopTest, Concurrency) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         loop.quit();
     });
-
 
     t1.join();
     t2.join();
@@ -223,7 +216,7 @@ TEST(EventLoopTest, QuitBehavior) {
     std::thread loopThread([&]() {
         // Allow the loop to start
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
+
         // Quit the loop
         loop.quit();
     });
@@ -242,9 +235,7 @@ TEST(EventLoopTest, Reentrancy) {
     // Schedule a task that schedules another task
     loop.runInLoop([&]() {
         counter++;
-        loop.runInLoop([&]() {
-            counter++;
-        });
+        loop.runInLoop([&]() { counter++; });
     });
 
     // Run the event loop in a separate thread
@@ -261,9 +252,8 @@ TEST(EventLoopTest, Reentrancy) {
     EXPECT_EQ(counter.load(), 2);
 }
 
-
 TEST(EventLoopBenchmark, TaskExecutionPerformance) {
-    const int numTasks = 100000; // Number of tasks to schedule
+    const int numTasks = 100000;  // Number of tasks to schedule
     std::atomic<int> counter = {0};
 
     // Create the EventLoop in the loop thread
@@ -272,9 +262,7 @@ TEST(EventLoopBenchmark, TaskExecutionPerformance) {
 
         // Schedule a large number of tasks
         for (int i = 0; i < numTasks; ++i) {
-            loop.runInLoop([&]() {
-                counter++;
-            });
+            loop.runInLoop([&]() { counter++; });
         }
 
         // Measure the time taken to execute all tasks
@@ -283,17 +271,20 @@ TEST(EventLoopBenchmark, TaskExecutionPerformance) {
         // Run the event loop
         loop.runInLoop([&]() {
             if (counter.load() == numTasks) {
-                loop.quit(); // Quit the loop once all tasks are executed
+                loop.quit();  // Quit the loop once all tasks are executed
             }
         });
 
         loop.loop();
 
         auto endTime = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            endTime - startTime)
+                            .count();
 
         // Output the benchmark result
-        std::cout << "Executed " << numTasks << " tasks in " << duration << " ms" << std::endl;
+        std::cout << "Executed " << numTasks << " tasks in " << duration
+                  << " ms" << std::endl;
 
         // Verify all tasks were executed
         EXPECT_EQ(counter.load(), numTasks);
@@ -303,8 +294,8 @@ TEST(EventLoopBenchmark, TaskExecutionPerformance) {
 }
 
 TEST(EventLoopBenchmark, ConcurrencyPerformance) {
-    const int numThreads = 4;      // Number of threads submitting tasks
-    const int tasksPerThread = 25000; // Number of tasks per thread
+    const int numThreads = 4;          // Number of threads submitting tasks
+    const int tasksPerThread = 25000;  // Number of tasks per thread
     const int totalTasks = numThreads * tasksPerThread;
 
     std::atomic<int> counter = {0};
@@ -322,7 +313,9 @@ TEST(EventLoopBenchmark, ConcurrencyPerformance) {
         loop.loop();
 
         auto endTime = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            endTime - startTime)
+                            .count();
 
         // Output the benchmark result
         std::cout << "Executed " << totalTasks << " tasks from " << numThreads
@@ -332,7 +325,7 @@ TEST(EventLoopBenchmark, ConcurrencyPerformance) {
         EXPECT_EQ(counter.load(), totalTasks);
     });
 
-    while(!loop_ptr.load()) {
+    while (!loop_ptr.load()) {
         // Wait for the loop thread to initialize the EventLoop
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -342,9 +335,7 @@ TEST(EventLoopBenchmark, ConcurrencyPerformance) {
         workers.emplace_back([&]() {
             reactor::EventLoop* loop = loop_ptr.load();
             for (int j = 0; j < tasksPerThread; ++j) {
-                loop->runInLoop([&]() {
-                    counter++;
-                });
+                loop->runInLoop([&]() { counter++; });
             }
         });
     }
@@ -353,7 +344,7 @@ TEST(EventLoopBenchmark, ConcurrencyPerformance) {
     for (auto& worker : workers) {
         worker.join();
     }
-    loop_ptr.load()->quit(); // Quit the loop to allow it to finish processing
+    loop_ptr.load()->quit();  // Quit the loop to allow it to finish processing
     // Join the loop thread
     loopThread.join();
 }

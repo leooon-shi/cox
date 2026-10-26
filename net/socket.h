@@ -13,8 +13,7 @@ class InetAddress;
 // style of Redis/anet: small functions that do one syscall and report errors
 // via return codes / errno, leaving policy to the caller. Family (AF_INET vs
 // AF_INET6) is passed explicitly so the layer is dual-stack.
-namespace sockets
-{
+namespace sockets {
 // Create a non-blocking, close-on-exec stream socket for the given family.
 // Aborts on failure (allocation of an fd is not expected to fail in practice).
 int createNonBlockingOrDie(sa_family_t family);
@@ -57,7 +56,7 @@ InetAddress getPeerAddr(int sockfd);
 // which can happen with a non-blocking connect to localhost.
 bool isSelfConnect(int sockfd);
 
-}   // namespace sockets
+}  // namespace sockets
 
 // RAII owner of a socket fd. Move-only: an fd has unique ownership semantics.
 // Closes the fd on destruction unless it has been released.
@@ -69,14 +68,12 @@ public:
     Socket(const Socket&) = delete;
     Socket& operator=(const Socket&) = delete;
 
-    Socket(Socket&& other) noexcept : sockfd_(other.sockfd_)
-    {
+    Socket(Socket&& other) noexcept : sockfd_(other.sockfd_) {
         other.sockfd_ = -1;
     }
 
     Socket& operator=(Socket&& other) noexcept {
-        if (this != &other)
-        {
+        if (this != &other) {
             reset();
             sockfd_ = other.sockfd_;
             other.sockfd_ = -1;
@@ -93,20 +90,25 @@ public:
         return fd;
     }
 
-    void bindAddress(const InetAddress& addr) { sockets::bindOrDie(sockfd_, addr); }
+    void bindAddress(const InetAddress& addr) {
+        sockets::bindOrDie(sockfd_, addr);
+    }
     void listen() { sockets::listenOrDie(sockfd_); }
     // Accept into peer_addr; returns accepted fd or -1 (errno set).
-    int accept(InetAddress* peer_addr) { return sockets::accept(sockfd_, peer_addr); }
+    int accept(InetAddress* peer_addr) {
+        return sockets::accept(sockfd_, peer_addr);
+    }
 
     void shutdownWrite() { sockets::shutdownWrite(sockfd_); }
     void setReuseAddr(bool on) { sockets::setReuseAddr(sockfd_, on); }
     void setReusePort(bool on) { sockets::setReusePort(sockfd_, on); }
     void setTcpNoDelay(bool on) { sockets::setTcpNoDelay(sockfd_, on); }
     void setKeepAlive(bool on) { sockets::setKeepAlive(sockfd_, on); }
+
 private:
     void reset();
 
     int sockfd_;
 };
 
-}   // namespace net
+}  // namespace net

@@ -10,8 +10,7 @@ struct ssl_ctx_st;
 typedef struct ssl_ctx_st SSL_CTX;
 struct ssl_st;
 
-namespace tls
-{
+namespace tls {
 // Role of a TLS endpoint.
 enum class Role { kServer, kClient };
 
@@ -24,8 +23,7 @@ using TlsContextPtr = std::shared_ptr<TlsContext>;
 // all connections of a server (or client).
 //
 // TLS 1.2+ is required; TLS 1.3 is preferred and negotiated automatically.
-class TlsContext
-{
+class TlsContext {
 public:
     explicit TlsContext(Role role);
     ~TlsContext();
@@ -103,4 +101,4 @@ private:
     std::map<std::string, TlsContextPtr> sni_contexts_;
 };
 
-}   // namespace tls
+}  // namespace tls

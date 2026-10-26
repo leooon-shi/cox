@@ -2,9 +2,9 @@
 
 #ifdef __linux__
 
-#include "io_poller.h"
 #include <sys/epoll.h>
 #include <vector>
+#include "io_poller.h"
 
 namespace reactor {
 class Channel;
@@ -24,6 +24,6 @@ private:
     std::vector<epoll_event> events_;
 };
 
-} // namespace reactor
+}  // namespace reactor
 
-#endif // __linux__
+#endif  // __linux__

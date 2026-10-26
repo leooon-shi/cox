@@ -12,7 +12,16 @@ class Buffer;
 
 namespace http {
 // Common HTTP methods. kInvalid marks an unparsed/unsupported method.
-enum class Method { kInvalid, kGet, kPost, kPut, kDelete, kHead, kOptions, kPatch };
+enum class Method {
+    kInvalid,
+    kGet,
+    kPost,
+    kPut,
+    kDelete,
+    kHead,
+    kOptions,
+    kPatch
+};
 
 const char* methodToString(Method m);
 Method methodFromString(const std::string& s);
@@ -28,8 +37,7 @@ public:
     void setPath(std::string p) { path_ = std::move(p); }
     const std::string& path() const { return path_; }
 
-    void setQuery(std::string q)
-    {
+    void setQuery(std::string q) {
         query_ = std::move(q);
         query_parsed_ = false;
         query_params_.clear();
@@ -55,7 +63,9 @@ public:
     // Returns the header value or empty string if absent
     std::string header(const std::string& key) const;
     bool hasHeader(const std::string& key) const;
-    const std::map<std::string, std::string>& headers() const { return headers_; }
+    const std::map<std::string, std::string>& headers() const {
+        return headers_;
+    }
 
     void setBody(std::string b) { body_ = std::move(b); }
     void appendBody(const char* data, size_t len) { body_.append(data, len); }
@@ -69,6 +79,7 @@ public:
     void appendTo(buffer::Buffer* buf, const std::string& host = "") const;
 
     void reset();
+
 private:
     Method method_{Method::kInvalid};
     std::string path_;
@@ -82,4 +93,4 @@ private:
     mutable QueryParams query_params_;
     mutable bool query_parsed_{false};
 };
-}   // namespace http
+}  // namespace http

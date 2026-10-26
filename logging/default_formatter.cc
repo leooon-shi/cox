@@ -6,8 +6,7 @@
 
 #include <string>
 
-namespace logging
-{
+namespace logging {
 std::string DefaultFormatter::format(const LogRecord& record) const {
     std::string out;
     out.reserve(64 + record.message.size());
@@ -20,8 +19,7 @@ std::string DefaultFormatter::format(const LogRecord& record) const {
     out += " ";
     out += record.message;
     // Append structured fields as space-separated key=value pairs.
-    for (const auto& [ key, value] : record.fields)
-    {
+    for (const auto& [key, value] : record.fields) {
         out += " ";
         out += key;
         out += "=";
@@ -32,8 +30,7 @@ std::string DefaultFormatter::format(const LogRecord& record) const {
 }
 
 // Factories (kept here since this TU already depends on both formatters).
-std::unique_ptr<Formatter> Formatter::newDefaultFormatter() 
-{
+std::unique_ptr<Formatter> Formatter::newDefaultFormatter() {
     return std::make_unique<DefaultFormatter>();
 }
 
@@ -41,4 +38,4 @@ std::unique_ptr<Formatter> Formatter::newJsonFormatter() {
     return std::make_unique<JsonFormatter>();
 }
 
-}   // namespace logging
+}  // namespace logging

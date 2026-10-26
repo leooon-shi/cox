@@ -7,15 +7,14 @@
 #include <string>
 #include <vector>
 
-namespace logging
-{
+namespace logging {
 // A destination for formatted log lines. The Formatter decides how a record
 // LOOKS; the Sink decides where it GOES. Keeping them separate means "JSON to a
 // rotating file" needs no new class -- it is a JsonFormatter plus a
 // RotatingFileSink.
 //
-// Reference points: spdlog's sink abstraction (pluggable destinations, multi-sink
-// fan-out) and glog's flush-on-fatal behavior.
+// Reference points: spdlog's sink abstraction (pluggable destinations,
+// multi-sink fan-out) and glog's flush-on-fatal behavior.
 //
 // Thread-safety contract: a Logger may be shared across threads, so
 // implementations MUST tolerate concurrent append()/flush(). The synchronous
@@ -38,13 +37,13 @@ public:
 
     static std::unique_ptr<Sink> newFileSink(const std::string& path,
                                              bool append_mode = true);
-    
+
     // Rolls to "<path>.1", "<path>.2", ... once the active file exceeds
     // max_bytes, keeping at most max_files rolled copies.
     static std::unique_ptr<Sink> newRotatingFileSink(const std::string& path,
                                                      size_t max_bytes,
                                                      size_t max_files);
-    
+
     // Fan out every line to several sinks (e.g. human-readable to stdout AND
     // JSON to a file). Failure of one sink does not stop the others.
     static std::unique_ptr<Sink> newMultiSink(
@@ -63,10 +62,11 @@ public:
     std::string text() const;
     size_t flushCount() const;
     void clear();
+
 private:
     mutable std::mutex mutex_;
     std::vector<std::string> lines_;
     size_t flush_count_{0};
 };
 
-}   // namespace logging
+}  // namespace logging

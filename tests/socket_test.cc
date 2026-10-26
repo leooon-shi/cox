@@ -14,13 +14,11 @@ using net::InetAddress;
 using net::Socket;
 namespace sockets = net::sockets;
 
-namespace
-{
+namespace {
 
 // Bind a listening socket to an ephemeral port on loopback and return its
 // actual bound address (so tests don't collide on a fixed port).
-Socket makeListener(bool ipv6, InetAddress* bound_out)
-{
+Socket makeListener(bool ipv6, InetAddress* bound_out) {
     sa_family_t fam = ipv6 ? AF_INET6 : AF_INET;
     Socket listener(sockets::createNonBlockingOrDie(fam));
     listener.setReuseAddr(true);
@@ -32,21 +30,18 @@ Socket makeListener(bool ipv6, InetAddress* bound_out)
 }
 
 // Wait until fd is writable (connect completed) or timeout.
-bool waitWritable(int fd, int timeout_ms)
-{
+bool waitWritable(int fd, int timeout_ms) {
     struct pollfd pfd{fd, POLLOUT, 0};
     return ::poll(&pfd, 1, timeout_ms) > 0 && (pfd.revents & POLLOUT);
 }
 
-bool waitReadable(int fd, int timeout_ms)
-{
+bool waitReadable(int fd, int timeout_ms) {
     struct pollfd pfd{fd, POLLIN, 0};
     return ::poll(&pfd, 1, timeout_ms) > 0 && (pfd.revents & POLLIN);
 }
-}   // namespace
+}  // namespace
 
-TEST(SocketTest, CreateBindListenIpv4)
-{
+TEST(SocketTest, CreateBindListenIpv4) {
     InetAddress bound;
     Socket listener = makeListener(/*ipv6=*/false, &bound);
     EXPECT_GT(listener.fd(), 0);
@@ -54,8 +49,7 @@ TEST(SocketTest, CreateBindListenIpv4)
     EXPECT_GT(bound.port(), 0);
 }
 
-TEST(SocketTest, CreateBindListenIpv6)
-{
+TEST(SocketTest, CreateBindListenIpv6) {
     InetAddress bound;
     Socket listener = makeListener(/*ipv6=*/true, &bound);
     EXPECT_GT(listener.fd(), 0);
@@ -63,8 +57,7 @@ TEST(SocketTest, CreateBindListenIpv6)
     EXPECT_GT(bound.port(), 0);
 }
 
-TEST(SocketTest, ConnectAcceptRoundTripIpv4)
-{
+TEST(SocketTest, ConnectAcceptRoundTripIpv4) {
     InetAddress bound;
     Socket listener = makeListener(/*ipv6=*/false, &bound);
 
@@ -72,8 +65,7 @@ TEST(SocketTest, ConnectAcceptRoundTripIpv4)
     Socket client(sockets::createNonBlockingOrDie(AF_INET));
     int rc = sockets::connect(client.fd(), bound);
     // Non-blocking connect typically returns -1 with EINPROGRESS.
-    if (rc < 0)
-    {
+    if (rc < 0) {
         EXPECT_EQ(errno, EINPROGRESS);
     }
 
@@ -93,8 +85,7 @@ TEST(SocketTest, ConnectAcceptRoundTripIpv4)
     EXPECT_EQ(peer.port(), client_local.port());
 }
 
-TEST(SocketTest, DataTransfer)
-{
+TEST(SocketTest, DataTransfer) {
     InetAddress bound;
     Socket listener = makeListener(/*ipv6=*/false, &bound);
 
@@ -119,8 +110,7 @@ TEST(SocketTest, DataTransfer)
     EXPECT_STREQ(buf, "ping");
 }
 
-TEST(SocketTest, Options)
-{
+TEST(SocketTest, Options) {
     Socket s(sockets::createNonBlockingOrDie(AF_INET));
     // These should not crash or error on a fresh socket.
     s.setReuseAddr(true);
@@ -130,20 +120,18 @@ TEST(SocketTest, Options)
     SUCCEED();
 }
 
-TEST(SocketTest, MoveSemantics)
-{
+TEST(SocketTest, MoveSemantics) {
     Socket a(sockets::createNonBlockingOrDie(AF_INET));
     int fd = a.fd();
     Socket b(std::move(a));
     EXPECT_EQ(b.fd(), fd);
-    EXPECT_EQ(a.fd(), -1);   // moved-from is emptied
+    EXPECT_EQ(a.fd(), -1);  // moved-from is emptied
 }
 
-TEST(SocketTest, Release)
-{
+TEST(SocketTest, Release) {
     Socket s(sockets::createNonBlockingOrDie(AF_INET));
     int fd = s.release();
     EXPECT_GT(fd, 0);
     EXPECT_EQ(s.fd(), -1);
-    sockets::close(fd);   // caller now owns it
+    sockets::close(fd);  // caller now owns it
 }

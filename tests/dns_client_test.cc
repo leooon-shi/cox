@@ -23,16 +23,14 @@
 using namespace std::chrono_literals;
 using namespace http;
 
-namespace
-{
+namespace {
 // Runs an HTTP server on its own EventLoop thread; the test drives a client on
 // a separate loop, mirroring the existing http_client_test style.
 class ServerThread {
 public:
     explicit ServerThread(uint16_t port) : port_(port) {}
 
-    void start(HttpServer::HttpHandler handler)
-    {
+    void start(HttpServer::HttpHandler handler) {
         thread_ = std::thread([this, handler] {
             reactor::EventLoop loop;
             loop_ = &loop;
@@ -46,21 +44,20 @@ public:
         std::this_thread::sleep_for(20ms);  // let the listen socket settle
     }
 
-    void stop()
-    {
+    void stop() {
         if (loop_) loop_->runInLoop([this] { loop_->quit(); });
         if (thread_.joinable()) thread_.join();
     }
+
 private:
     uint16_t port_;
     std::atomic<bool> ready_{false};
     reactor::EventLoop* loop_{nullptr};
     std::thread thread_;
 };
-}   // namespace
+}  // namespace
 
-TEST(DnsClientTest, HttpClientResolvesHostname)
-{
+TEST(DnsClientTest, HttpClientResolvesHostname) {
     const uint16_t kPort = 18131;
     ServerThread server(kPort);
     server.start([](const HttpRequest& req, HttpResponse* resp) {
@@ -91,8 +88,7 @@ TEST(DnsClientTest, HttpClientResolvesHostname)
         loop.loop();
     });
 
-    for (int i = 0; i < 400 && !done.load(); ++i)
-    {
+    for (int i = 0; i < 400 && !done.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
     client_thread.join();
@@ -107,8 +103,7 @@ TEST(DnsClientTest, HttpClientResolvesHostname)
     dns_pool.stop();
 }
 
-TEST(DnsClientTest, HttpClientReportsResolutionFailure)
-{
+TEST(DnsClientTest, HttpClientReportsResolutionFailure) {
     concurrent::ThreadPool dns_pool("dns");
     dns_pool.start(2);
 
@@ -127,8 +122,7 @@ TEST(DnsClientTest, HttpClientReportsResolutionFailure)
         loop.loop();
     });
 
-    for (int i = 0; i < 600 && !done.load(); ++i)
-    {
+    for (int i = 0; i < 600 && !done.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
     client_thread.join();
@@ -138,8 +132,7 @@ TEST(DnsClientTest, HttpClientReportsResolutionFailure)
         << "error: " << error;
 }
 
-TEST(DnsClientTest, PoolQueuesRequestsDuringResolution)
-{
+TEST(DnsClientTest, PoolQueuesRequestsDuringResolution) {
     const uint16_t kPort = 18132;
     ServerThread server(kPort);
     server.start([](const HttpRequest&, HttpResponse* resp) {
@@ -166,19 +159,18 @@ TEST(DnsClientTest, PoolQueuesRequestsDuringResolution)
         HttpRequest req;
         req.setMethod(Method::kGet);
         req.setPath("/");
-        for (int i = 0; i < 3; ++i)
-        {
-            pool.request(req, [&](const HttpResponse& resp,
-                                  const std::string& err) {
-                if (!err.empty() && first_error.empty()) first_error = err;
-                if (resp.statusCode() == 200) ++completed;
-                if (completed.load() == 3)
-                {
-                    resolved_after = pool.resolved();
-                    finished = true;
-                    loop.quit();
-                }
-            });
+        for (int i = 0; i < 3; ++i) {
+            pool.request(req,
+                         [&](const HttpResponse& resp, const std::string& err) {
+                             if (!err.empty() && first_error.empty())
+                                 first_error = err;
+                             if (resp.statusCode() == 200) ++completed;
+                             if (completed.load() == 3) {
+                                 resolved_after = pool.resolved();
+                                 finished = true;
+                                 loop.quit();
+                             }
+                         });
         }
         // Still unresolved right after issuing: all three are parked on DNS.
         queued_before_resolve = !pool.resolved() && pool.queuedRequests() == 3;
@@ -186,8 +178,7 @@ TEST(DnsClientTest, PoolQueuesRequestsDuringResolution)
         loop.loop();
     });
 
-    for (int i = 0; i < 600 && !finished.load(); ++i)
-    {
+    for (int i = 0; i < 600 && !finished.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
     client_thread.join();
@@ -201,8 +192,7 @@ TEST(DnsClientTest, PoolQueuesRequestsDuringResolution)
     dns_pool.stop();
 }
 
-TEST(DnsClientTest, MultiOriginPoolResolvesHostname)
-{
+TEST(DnsClientTest, MultiOriginPoolResolvesHostname) {
     const uint16_t kPort = 18133;
     ServerThread server(kPort);
     server.start([](const HttpRequest& req, HttpResponse* resp) {
@@ -237,8 +227,7 @@ TEST(DnsClientTest, MultiOriginPoolResolvesHostname)
         loop.loop();
     });
 
-    for (int i = 0; i < 400 && !done.load(); ++i)
-    {
+    for (int i = 0; i < 400 && !done.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
     client_thread.join();
@@ -252,8 +241,7 @@ TEST(DnsClientTest, MultiOriginPoolResolvesHostname)
     dns_pool.stop();
 }
 
-TEST(DnsClientTest, NumericOriginIsResolvedImmediately)
-{
+TEST(DnsClientTest, NumericOriginIsResolvedImmediately) {
     concurrent::ThreadPool dns_pool("dns");
     dns_pool.start(1);
 

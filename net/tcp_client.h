@@ -9,19 +9,16 @@
 #include <mutex>
 #include <string>
 
-namespace reactor
-{
+namespace reactor {
 class EventLoop;
 }
 
-namespace net
-{
+namespace net {
 // TcpClient is the active-open counterpart to TcpServer. It uses a Connector to
 // establish an outbound connection and, on success, wraps the socket in a
 // TcpConnection with the application's callbacks. Optional auto-reconnect
 // re-initiates the Connector (with backoff) when the connection drops.
-class TcpClient
-{
+class TcpClient {
 public:
     TcpClient(reactor::EventLoop* loop, const InetAddress& server_addr,
               std::string name);
@@ -48,14 +45,13 @@ public:
     void setConnectionCallback(ConnectionCallback cb) {
         connection_callback_ = std::move(cb);
     }
-    void setMessageCallback(MessageCallback cb)
-    {
+    void setMessageCallback(MessageCallback cb) {
         message_callback_ = std::move(cb);
     }
-    void setWriteCompleteCallback(WriteCompleteCallback cb)
-    {
+    void setWriteCompleteCallback(WriteCompleteCallback cb) {
         write_complete_callback_ = std::move(cb);
     }
+
 private:
     void newConnection(int sockfd);
     void removeConnection(const TcpConnectionPtr& conn);
@@ -68,12 +64,12 @@ private:
     MessageCallback message_callback_;
     WriteCompleteCallback write_complete_callback_;
 
-    std::atomic<bool> retry_{false};    // reconnect on disconnect
-    std::atomic<bool> connect_{true};   // whether connecting is desired
+    std::atomic<bool> retry_{false};   // reconnect on disconnect
+    std::atomic<bool> connect_{true};  // whether connecting is desired
     int next_conn_id_{1};
 
     mutable std::mutex mutex_;
-    TcpConnectionPtr connection_;   // guarded by mutex_
+    TcpConnectionPtr connection_;  // guarded by mutex_
 };
 
-}   // namespace net
+}  // namespace net

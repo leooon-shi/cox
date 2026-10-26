@@ -17,25 +17,21 @@
 using namespace std::chrono_literals;
 using fswatch::FileWatcher;
 
-namespace
-{
-std::string makeTempDir(const char* tag)
-{
+namespace {
+std::string makeTempDir(const char* tag) {
     std::string dir = std::string("/tmp/cox_fswatch_") + tag + "_" +
                       std::to_string(::getpid());
     ::mkdir(dir.c_str(), 0700);
     return dir;
 }
 
-void writeFile(const std::string& path, const std::string& content)
-{
+void writeFile(const std::string& path, const std::string& content) {
     std::ofstream f(path, std::ios::trunc);
     f << content;
 }
 }  // namespace
 
-TEST(FileWatcherTest, DirectoryChangeFiresCallback)
-{
+TEST(FileWatcherTest, DirectoryChangeFiresCallback) {
     const std::string dir = makeTempDir("dir");
     std::atomic<bool> started{false};
     std::atomic<int> fires{0};
@@ -56,8 +52,7 @@ TEST(FileWatcherTest, DirectoryChangeFiresCallback)
     // Create a file in the watched directory -> should fire.
     writeFile(dir + "/a.txt", "hello");
 
-    for (int i = 0; i < 100 && fires.load() == 0; ++i)
-    {
+    for (int i = 0; i < 100 && fires.load() == 0; ++i) {
         std::this_thread::sleep_for(5ms);
     }
     EXPECT_GT(fires.load(), 0);
@@ -68,10 +63,10 @@ TEST(FileWatcherTest, DirectoryChangeFiresCallback)
     ::rmdir(dir.c_str());
 }
 
-TEST(FileWatcherTest, AtomicSymlinkSwapDetected)
-{
+TEST(FileWatcherTest, AtomicSymlinkSwapDetected) {
     // Simulate the Kubernetes ..data atomic swap: create a ".. data" dir, then
-    // rename a new one over it. Watching the parent dir must catch the MOVED_TO.
+    // rename a new one over it. Watching the parent dir must catch the
+    // MOVED_TO.
     const std::string dir = makeTempDir("k8s");
     std::atomic<bool> started{false};
     std::atomic<int> fires{0};
@@ -93,10 +88,9 @@ TEST(FileWatcherTest, AtomicSymlinkSwapDetected)
     std::string tmp = dir + "/..data_tmp";
     std::string data = dir + "/..data";
     ::mkdir(tmp.c_str(), 0700);
-    ::rename(tmp.c_str(), data.c_str());   // atomic swap (IN_MOVED_TO)
+    ::rename(tmp.c_str(), data.c_str());  // atomic swap (IN_MOVED_TO)
 
-    for (int i = 0; i < 100 && fires.load() == 0; ++i)
-    {
+    for (int i = 0; i < 100 && fires.load() == 0; ++i) {
         std::this_thread::sleep_for(5ms);
     }
     EXPECT_GT(fires.load(), 0);

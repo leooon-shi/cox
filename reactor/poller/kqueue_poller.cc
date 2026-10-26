@@ -2,18 +2,17 @@
 #include "io_channel.h"
 #include "logger.h"
 
+#include <err.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <stdexcept>
-#include <fcntl.h>
-#include <err.h>
 
-namespace reactor
-{
+namespace reactor {
 namespace {
-    void setCLOEXEC(int fd) {
-        ::fcntl(fd, F_SETFD, FD_CLOEXEC);
-    }
+void setCLOEXEC(int fd) {
+    ::fcntl(fd, F_SETFD, FD_CLOEXEC);
 }
+}  // namespace
 
 KQueuePoller::KQueuePoller()
 #if defined(__APPLE__) && defined(__MACH__)
@@ -21,9 +20,8 @@ KQueuePoller::KQueuePoller()
 #else
     : kqueueFd_(::kqueuex(KQUEUE_CLOEXEC)),
 #endif
-    events_(64),
-    logger_(std::make_unique<logging::Logger>())
-{
+      events_(64),
+      logger_(std::make_unique<logging::Logger>()) {
     if (kqueueFd_ == -1) {
         throw std::runtime_error("Failed to create kqueue");
     }
@@ -51,15 +49,16 @@ void KQueuePoller::updateChannel(Channel* ch) {
         struct kevent e_read;
 
         if (ev & IO_READ) {
-            // logger_->info("register EVFILT_READ with options EV_ADD|EV_ENABLE to kpoller.");
-            EV_SET(&e_read, fd, EVFILT_READ, EV_ADD | EV_ENABLE | EV_CLEAR, 0, 0, ch);
+            // logger_->info("register EVFILT_READ with options EV_ADD|EV_ENABLE
+            // to kpoller.");
+            EV_SET(&e_read, fd, EVFILT_READ, EV_ADD | EV_ENABLE | EV_CLEAR, 0,
+                   0, ch);
 
             if (::kevent(kqueueFd_, &e_read, 1, nullptr, 0, nullptr) == -1) {
                 logger_->error("update kqueue got error.");
                 err(EXIT_FAILURE, "update kevent failed.");
             }
-        }
-        else if (reg_ev & IO_READ) {
+        } else if (reg_ev & IO_READ) {
             EV_SET(&e_read, fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
 
             if (::kevent(kqueueFd_, &e_read, 1, nullptr, 0, nullptr) == -1) {
@@ -76,8 +75,11 @@ void KQueuePoller::updateChannel(Channel* ch) {
     {
         struct kevent e_write;
         if (ev & IO_WRITE) {
-            logger_->info("register EVFILT_READ with options EV_ADD|EV_ENABLE to kpoller");
-            EV_SET(&e_write, fd, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_CLEAR, 0, 0, ch);
+            logger_->info(
+                "register EVFILT_READ with options EV_ADD|EV_ENABLE to "
+                "kpoller");
+            EV_SET(&e_write, fd, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_CLEAR, 0,
+                   0, ch);
 
             if (::kevent(kqueueFd_, &e_write, 1, nullptr, 0, nullptr) == -1) {
                 logger_->error("update kqueue got error.");
@@ -103,7 +105,7 @@ void KQueuePoller::updateChannel(Channel* ch) {
 
 void KQueuePoller::removeChannel(Channel* ch) {
     const int fd = ch->fd();
-    
+
     std::vector<struct kevent> kev;
 
     struct kevent e1;
@@ -125,10 +127,11 @@ void KQueuePoller::poll(int timeout_ms, std::vector<Channel*>& activeChannels) {
     ts.tv_sec = timeout_ms / 1000;
     ts.tv_nsec = (timeout_ms % 1000) * 1000000;
 
-    int n = ::kevent(kqueueFd_, nullptr, 0, events_.data(), events_.size(), &ts);
+    int n =
+        ::kevent(kqueueFd_, nullptr, 0, events_.data(), events_.size(), &ts);
     if (n < 0) {
         // logger_->error("kevent error.");
-        //TODO Handle error properly, maybe throw an exception or log the error
+        // TODO Handle error properly, maybe throw an exception or log the error
     }
 
     for (int i = 0; i < n; ++i) {
@@ -157,4 +160,4 @@ void KQueuePoller::poll(int timeout_ms, std::vector<Channel*>& activeChannels) {
     }
 }
 
-} // namespace reactor
+}  // namespace reactor

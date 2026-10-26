@@ -29,22 +29,18 @@ using net::TcpConnectionPtr;
 using net::TcpServer;
 namespace sockets = net::sockets;
 
-namespace
-{
+namespace {
 // Blocking helpers for the client side of the tests.
-bool waitReadable(int fd, int ms)
-{
+bool waitReadable(int fd, int ms) {
     struct pollfd pfd{fd, POLLIN, 0};
     return ::poll(&pfd, 1, ms) > 0 && (pfd.revents & POLLIN);
 }
-bool waitWritable(int fd, int ms)
-{
+bool waitWritable(int fd, int ms) {
     struct pollfd pfd{fd, POLLOUT, 0};
     return ::poll(&pfd, 1, ms) > 0 && (pfd.revents & POLLOUT);
 }
 
-int connectClient(uint16_t port)
-{
+int connectClient(uint16_t port) {
     int fd = sockets::createNonBlockingOrDie(AF_INET);
     InetAddress server("127.0.0.1", port);
     sockets::connect(fd, server);
@@ -52,13 +48,12 @@ int connectClient(uint16_t port)
     return fd;
 }
 
-}   // namespace
+}  // namespace
 
-// A handler that "blocks" (sleeps) is offloaded to the pool so it does not stall
-// the io loop; the reply is marshaled back with runInLoop. Two clients are
-// served concurrently even though each handler takes ~100ms.
-TEST(ThreadPoolIntegrationTest, OffloadKeepsLoopResponsive)
-{
+// A handler that "blocks" (sleeps) is offloaded to the pool so it does not
+// stall the io loop; the reply is marshaled back with runInLoop. Two clients
+// are served concurrently even though each handler takes ~100ms.
+TEST(ThreadPoolIntegrationTest, OffloadKeepsLoopResponsive) {
     const uint16_t kPort = 49001;
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -71,20 +66,18 @@ TEST(ThreadPoolIntegrationTest, OffloadKeepsLoopResponsive)
         loop_ptr = &loop;
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "offload");
-        server.setMessageCallback(
-            [&](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
-                std::string req = buf->retrieveAllAsString();
-                // Offload a "blocking" computation to the pool.
-                pool.run([conn, req]() {
-                    std::this_thread::sleep_for(100ms);  // simulate blocking work
-                    std::string resp = "processed:" + req;
-                    // Post the result back to the connection's own loop.
-                    conn->getLoop()->runInLoop(
-                        [conn, resp]() {
-                            conn->send(resp);
-                        });
-                });
+        server.setMessageCallback([&](const TcpConnectionPtr& conn,
+                                      buffer::Buffer* buf) {
+            std::string req = buf->retrieveAllAsString();
+            // Offload a "blocking" computation to the pool.
+            pool.run([conn, req]() {
+                std::this_thread::sleep_for(100ms);  // simulate blocking work
+                std::string resp = "processed:" + req;
+                // Post the result back to the connection's own loop.
+                conn->getLoop()->runInLoop(
+                    [conn, resp]() { conn->send(resp); });
             });
+        });
         server.start();
         started = true;
         loop.loop();
@@ -114,7 +107,7 @@ TEST(ThreadPoolIntegrationTest, OffloadKeepsLoopResponsive)
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                        std::chrono::steady_clock::now() - start)
                        .count();
-    
+
     ASSERT_GT(n1, 0);
     ASSERT_GT(n2, 0);
     EXPECT_EQ(std::string(b1, n1), "processed:a");

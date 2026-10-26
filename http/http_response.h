@@ -4,21 +4,20 @@
 #include <string>
 #include <utility>
 
-namespace buffer{
+namespace buffer {
 class Buffer;
 }
 
-namespace http
-{
+namespace http {
 // An HTTP response the application builds and the server serializes to the
 // wire. Sets Content-Length automatically from the body on serialize.
 class HttpResponse {
 public:
     explicit HttpResponse(bool keep_alive = true) : keep_alive_(keep_alive) {}
-    void setStatus(int code, std::string reason = std::string())
-    {
+    void setStatus(int code, std::string reason = std::string()) {
         status_code_ = code;
-        status_reason_ = reason.empty() ? defaultReason(code) : std::move(reason);
+        status_reason_ =
+            reason.empty() ? defaultReason(code) : std::move(reason);
     }
     int statusCode() const { return status_code_; }
     const std::string& statusReason() const { return status_reason_; }
@@ -31,10 +30,11 @@ public:
         auto it = headers_.find(key);
         return it == headers_.end() ? std::string() : it->second;
     }
-    const std::map<std::string, std::string>& headers() const { return headers_; }
+    const std::map<std::string, std::string>& headers() const {
+        return headers_;
+    }
 
-    void setContentType(const std::string& type)
-    {
+    void setContentType(const std::string& type) {
         addHeader("Content-Type", type);
     }
 
@@ -56,4 +56,4 @@ private:
     std::string body_;
     bool keep_alive_;
 };
-}   // namespace http
+}  // namespace http

@@ -5,26 +5,25 @@
 #include <utility>
 
 namespace logging {
-AsyncSink::AsyncSink(std::unique_ptr<Sink> downstream, size_t max_buffered_lines,
-                     uint32_t flush_interval_ms)
+AsyncSink::AsyncSink(std::unique_ptr<Sink> downstream,
+                     size_t max_buffered_lines, uint32_t flush_interval_ms)
     : downstream_(std::move(downstream)),
-    max_lines_(max_buffered_lines == 0 ? 1 : max_buffered_lines),
-    flush_interval_ms_(flush_interval_ms)
-    {
-        running_ = true;
-        thread_ = std::thread([this] { writerThread(); });
-    }
+      max_lines_(max_buffered_lines == 0 ? 1 : max_buffered_lines),
+      flush_interval_ms_(flush_interval_ms) {
+    running_ = true;
+    thread_ = std::thread([this] { writerThread(); });
+}
 
-AsyncSink::~AsyncSink() { stop(); }
+AsyncSink::~AsyncSink() {
+    stop();
+}
 
-void AsyncSink::append(const std::string& line)
-{
+void AsyncSink::append(const std::string& line) {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!running_) return;
         // Bounded: shed rather than block a (possibly event-loop) producer.
-        if (current_.size() + writing_.size() >= max_lines_)
-        {
+        if (current_.size() + writing_.size() >= max_lines_) {
             dropped_.fetch_add(1);
             return;
         }
@@ -33,11 +32,9 @@ void AsyncSink::append(const std::string& line)
     not_empty_.notify_one();
 }
 
-void AsyncSink::flush()
-{
+void AsyncSink::flush() {
     std::unique_lock<std::mutex> lock(mutex_);
-    if (!running_)
-    {
+    if (!running_) {
         lock.unlock();
         downstream_->flush();
         return;
@@ -53,8 +50,7 @@ void AsyncSink::flush()
     downstream_->flush();
 }
 
-void AsyncSink::stop()
-{
+void AsyncSink::stop() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!running_) return;
@@ -77,16 +73,13 @@ void AsyncSink::stop()
     downstream_->flush();
 }
 
-void AsyncSink::writerThread()
-{
-    while (true)
-    {
+void AsyncSink::writerThread() {
+    while (true) {
         std::vector<std::string> batch;
         uint64_t drops_to_report = 0;
         {
             std::unique_lock<std::mutex> lock(mutex_);
-            if (current_.empty() && running_)
-            {
+            if (current_.empty() && running_) {
                 // Wait for work, but wake periodically so a low-traffic
                 // service still sees its lines promptly.
                 not_empty_.wait_for(
@@ -94,8 +87,7 @@ void AsyncSink::writerThread()
                     [this] { return !current_.empty() || !running_; });
             }
 
-            if (!running_ && current_.empty())
-            {
+            if (!running_ && current_.empty()) {
                 drained_.notify_all();
                 return;
             }
@@ -106,8 +98,7 @@ void AsyncSink::writerThread()
             batch.swap(writing_);
 
             uint64_t total = dropped_.load();
-            if (total > reported_drops_)
-            {
+            if (total > reported_drops_) {
                 drops_to_report = total - reported_drops_;
                 reported_drops_ = total;
             }
@@ -115,11 +106,10 @@ void AsyncSink::writerThread()
 
         for (const auto& line : batch) downstream_->append(line);
         // Make shedding visible in the log itself, not just via the counter.
-        if (drops_to_report > 0)
-        {
-            downstream_->append(
-                "AsyncSink: dropped " + std::to_string(drops_to_report) +
-                " log line(s) -- buffer full");
+        if (drops_to_report > 0) {
+            downstream_->append("AsyncSink: dropped " +
+                                std::to_string(drops_to_report) +
+                                " log line(s) -- buffer full");
         }
 
         if (!batch.empty()) downstream_->flush();
@@ -131,4 +121,4 @@ void AsyncSink::writerThread()
     }
 }
 
-}   // namespace logging
+}  // namespace logging

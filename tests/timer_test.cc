@@ -8,15 +8,12 @@
 #include <thread>
 
 using namespace std::chrono_literals;
-namespace
-{
+namespace {
 // Helper: run a loop in its own thread, execute `setup` inside the loop thread
 // once it has started, and stop the loop after `run_for`.
-class LoopFixture
-{
+class LoopFixture {
 public:
-    LoopFixture()
-    {
+    LoopFixture() {
         thread_ = std::thread([this] {
             reactor::EventLoop loop;
             loop_ = &loop;
@@ -24,27 +21,22 @@ public:
             loop.loop();
             loop_ = nullptr;
         });
-        while (!started_.load())
-        {
+        while (!started_.load()) {
             std::this_thread::sleep_for(1ms);
         }
     }
-    ~LoopFixture()
-    {
-        if (loop_)
-        {
+    ~LoopFixture() {
+        if (loop_) {
             loop_->quit();
         }
-        if (thread_.joinable())
-        {
+        if (thread_.joinable()) {
             thread_.join();
         }
     }
 
     reactor::EventLoop* loop() { return loop_; }
 
-    void quit()
-    {
+    void quit() {
         if (loop_) loop_->quit();
     }
 
@@ -53,33 +45,29 @@ private:
     std::atomic<bool> started_{false};
     reactor::EventLoop* loop_{nullptr};
 };
-} // namespace
+}  // namespace
 
-
-TEST(TimerTest, RunAfterFiresOnce)
-{
+TEST(TimerTest, RunAfterFiresOnce) {
     LoopFixture fx;
     std::atomic<int> count{0};
-    
+
     fx.loop()->runAfter(50, [&] { count++; });
 
     std::this_thread::sleep_for(200ms);
     EXPECT_EQ(count.load(), 1);
 }
 
-TEST(TimerTest, RunAfterDoesNotFireEarly)
-{
+TEST(TimerTest, RunAfterDoesNotFireEarly) {
     LoopFixture fx;
     std::atomic<int> count{0};
 
     fx.loop()->runAfter(300, [&] { count++; });
 
     std::this_thread::sleep_for(100ms);
-    EXPECT_EQ(count.load(), 0);   // not yet elapsed
+    EXPECT_EQ(count.load(), 0);  // not yet elapsed
 }
 
-TEST(TimerTest, RunEveryFiresRepeatedly)
-{
+TEST(TimerTest, RunEveryFiresRepeatedly) {
     LoopFixture fx;
     std::atomic<int> count{0};
 
@@ -87,13 +75,12 @@ TEST(TimerTest, RunEveryFiresRepeatedly)
 
     std::this_thread::sleep_for(280ms);  // expect ~5 ticks
     int observed = count.load();
-    
+
     EXPECT_GE(observed, 3);
     EXPECT_LE(observed, 7);
 }
 
-TEST(TimerTest, MultipleTimersFireInOrder)
-{
+TEST(TimerTest, MultipleTimersFireInOrder) {
     LoopFixture fx;
     std::vector<int> order;
     std::mutex m;
@@ -117,8 +104,7 @@ TEST(TimerTest, MultipleTimersFireInOrder)
     EXPECT_EQ(order[2], 3);
 }
 
-TEST(TimerTest, CancelPreventsFiring)
-{
+TEST(TimerTest, CancelPreventsFiring) {
     // Schedule and cancel from within the loop thread so the TimerId is valid.
     std::atomic<int> count{0};
     std::atomic<bool> started{false};
@@ -146,15 +132,12 @@ TEST(TimerTest, CancelPreventsFiring)
     EXPECT_EQ(count.load(), 0);
 }
 
-TEST(TimerTest, CrossThreadRunAfter)
-{
+TEST(TimerTest, CrossThreadRunAfter) {
     LoopFixture fx;
     std::atomic<int> count{0};
 
     // Called from the test thread (not the loop thread) -> marshalled in.
-    std::thread scheduler([&] {
-        fx.loop()->runAfter(50, [&] { count++; });
-    });
+    std::thread scheduler([&] { fx.loop()->runAfter(50, [&] { count++; }); });
     scheduler.join();
 
     std::this_thread::sleep_for(200ms);

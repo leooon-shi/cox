@@ -6,18 +6,15 @@
 #include <memory>
 #include <string>
 
-namespace reactor
-{
+namespace reactor {
 class EventLoop;
 }
 
-namespace fswatch
-{
+namespace fswatch {
 class FileWatcher;
 }
 
-namespace tls
-{
+namespace tls {
 // CertReloader keeps a TlsContext's certificate material fresh as it rotates on
 // disk (e.g. Kubernetes Secret updates, cert-manager, SPIFFE). It triggers
 // TlsContext::reload() when the mounted cert files change, so new connections
@@ -36,7 +33,7 @@ public:
     // Fired (on the loop thread) after a reload attempt. `ok` is the result of
     // TlsContext::reload(). Optional; useful for logging/metrics.
     using ReloadCallback = std::function<void(bool ok)>;
-    
+
     // dir_to_watch: the directory containing the cert files (for K8s, the
     // Secret mount dir). Watching the directory catches the atomic swap.
     CertReloader(reactor::EventLoop* loop, TlsContextPtr ctx);
@@ -45,7 +42,9 @@ public:
     CertReloader(const CertReloader&) = delete;
     CertReloader& operator=(const CertReloader&) = delete;
 
-    void setReloadCallback(ReloadCallback cb) { reload_callback_ = std::move(cb); }
+    void setReloadCallback(ReloadCallback cb) {
+        reload_callback_ = std::move(cb);
+    }
 
     // Start inotify-based reloading: watch `dir_to_watch` and reload on change.
     // Returns true if the watch was established.
@@ -72,4 +71,4 @@ private:
     bool polling_{false};
 };
 
-}   // namespace tls
+}  // namespace tls

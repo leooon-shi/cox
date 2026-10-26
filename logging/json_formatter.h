@@ -10,12 +10,11 @@ namespace logging {
 // aggregation (ELK, Loki, CloudWatch):
 //   {"ts":"...", "level":"INFO", "tid":"123", "msg":"...", "key1":"val1"}
 
-class JsonFormatter final : public Formatter
-{
+class JsonFormatter final : public Formatter {
 public:
     std::string format(const LogRecord& record) const override;
 
 private:
     static void appendEscaped(std::string& out, const std::string& s);
 };
-}   // namespace logging
+}  // namespace logging

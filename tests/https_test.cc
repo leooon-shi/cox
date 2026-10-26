@@ -26,8 +26,7 @@
 using namespace std::chrono_literals;
 using namespace http;
 
-namespace
-{
+namespace {
 struct TestCert {
     std::string cert = "/tmp/cox_https_cert.pem";
     std::string key = "/tmp/cox_https_key.pem";
@@ -38,15 +37,20 @@ struct TestCert {
         // See note in sni_test.cc: the valid() probe below is the real check.
         (void)test_util::runCmd(cmd);
     }
-    ~TestCert() { std::remove(cert.c_str()); std::remove(key.c_str()); }
+    ~TestCert() {
+        std::remove(cert.c_str());
+        std::remove(key.c_str());
+    }
 
-    bool valid() const { std::ifstream c(cert), k(key); return c.good() && k.good(); }
+    bool valid() const {
+        std::ifstream c(cert), k(key);
+        return c.good() && k.good();
+    }
 };
 
-}   // namespace
+}  // namespace
 
-TEST(HttpsTest, ServerAndClientEndToEnd)
-{
+TEST(HttpsTest, ServerAndClientEndToEnd) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
     const uint16_t kPort = 55901;
@@ -87,21 +91,22 @@ TEST(HttpsTest, ServerAndClientEndToEnd)
         ctx->setVerifyPeer(false);  // self-signed test cert
         auto client = std::make_shared<HttpClient>(
             &loop, net::InetAddress("127.0.0.1", kPort), ctx, "localhost");
-        client->get("/data", [&](const HttpResponse& resp,
-                                 const std::string& err) {
-            if (err.empty())
-            {
-                status = resp.statusCode(); body = resp.body();
-            }
-            got = true;
-            loop.quit();
-        });
+        client->get("/data",
+                    [&](const HttpResponse& resp, const std::string& err) {
+                        if (err.empty()) {
+                            status = resp.statusCode();
+                            body = resp.body();
+                        }
+                        got = true;
+                        loop.quit();
+                    });
         cli_started = true;
         loop.loop();
     });
 
     while (!cli_started.load()) std::this_thread::sleep_for(1ms);
-    for (int i = 0; i < 300 && !got.load(); ++i) std::this_thread::sleep_for(5ms);
+    for (int i = 0; i < 300 && !got.load(); ++i)
+        std::this_thread::sleep_for(5ms);
 
     EXPECT_TRUE(got.load());
     EXPECT_EQ(status, 200);

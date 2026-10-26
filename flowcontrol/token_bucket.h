@@ -4,8 +4,7 @@
 #include <cstdint>
 #include <mutex>
 
-namespace flowcontrol
-{
+namespace flowcontrol {
 // A thread-safe token-bucket rate limiter, modeled after client-go's
 // flowcontrol.RateLimiter (which wraps golang.org/x/time/rate).
 //
@@ -16,8 +15,7 @@ namespace flowcontrol
 //
 // Refill is lazy (computed on access from elapsed time), so there is no
 // background timer. All methods are safe to call from multiple threads.
-class TokenBucket
-{
+class TokenBucket {
 public:
     using Clock = std::chrono::steady_clock;
 
@@ -26,19 +24,22 @@ public:
     TokenBucket(double qps, double burst);
 
     // Try to consume one token without waiting. Returns true if a token was
-    // available (event admitted), false otherwise (should be rejected/deferred).
+    // available (event admitted), false otherwise (should be
+    // rejected/deferred).
     bool tryAcquire();
 
     // Try to consume n tokens without waiting.
     bool tryAcquireN(double n);
 
-    // Current available tokens (after lazy refill). Primarily for tests/metrics.
+    // Current available tokens (after lazy refill). Primarily for
+    // tests/metrics.
     double availableTokens();
 
     double qps() const { return qps_; }
     double burst() const { return burst_; }
+
 private:
-    void refillLocked(Clock::time_point now);   // caller holds mutex_
+    void refillLocked(Clock::time_point now);  // caller holds mutex_
 
     const double qps_;
     const double burst_;
@@ -47,4 +48,4 @@ private:
     std::mutex mutex_;
 };
 
-} // namespace flowcontrol
+}  // namespace flowcontrol

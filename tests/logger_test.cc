@@ -19,34 +19,30 @@
 using namespace logging;
 using namespace std::chrono_literals;
 
-namespace
-{
+namespace {
 // Build a Logger writing into a MemorySink we can inspect. Output goes through
 // the real Formatter + Sink path -- no stdout redirection.
 struct Harness {
     std::shared_ptr<MemorySink> sink{std::make_shared<MemorySink>()};
     std::unique_ptr<Logger> log;
 
-    Harness(LogLevel level, std::unique_ptr<Formatter> fmt)
-    {
+    Harness(LogLevel level, std::unique_ptr<Formatter> fmt) {
         log = std::make_unique<Logger>(level, std::move(fmt), sink);
     }
     std::string text() const { return sink->text(); }
 };
 
-Harness makeDefault(LogLevel level = LogLevel::Info)
-{
+Harness makeDefault(LogLevel level = LogLevel::Info) {
     return Harness(level, Formatter::newDefaultFormatter());
 }
 
 Harness makeJson(LogLevel level = LogLevel::Info) {
     return Harness(level, Formatter::newJsonFormatter());
 }
-}   // namespace
+}  // namespace
 
-TEST(LoggerTest, LevelFilteringDropsBelowThreshold)
-{
-    auto h = makeDefault(LogLevel::Warning);    // only Warning+ emitted
+TEST(LoggerTest, LevelFilteringDropsBelowThreshold) {
+    auto h = makeDefault(LogLevel::Warning);  // only Warning+ emitted
     h.log->debug("dbg");
     h.log->info("inf");
     h.log->warning("warn");
@@ -59,18 +55,16 @@ TEST(LoggerTest, LevelFilteringDropsBelowThreshold)
     EXPECT_NE(out.find("err"), std::string::npos);
 }
 
-TEST(LoggerTest, DefaultFormatterHumanReadable)
-{
+TEST(LoggerTest, DefaultFormatterHumanReadable) {
     auto h = makeDefault();
     h.log->info("hello");
     std::string out = h.text();
     EXPECT_NE(out.find("INFO"), std::string::npos);
     EXPECT_NE(out.find("hello"), std::string::npos);
-    EXPECT_EQ(out.find("\"msg\""), std::string::npos);    // not JSON
+    EXPECT_EQ(out.find("\"msg\""), std::string::npos);  // not JSON
 }
 
-TEST(LoggerTest, JsonFormatterEmitsJson)
-{
+TEST(LoggerTest, JsonFormatterEmitsJson) {
     auto h = makeJson();
     h.log->info("hello");
     std::string out = h.text();
@@ -79,8 +73,7 @@ TEST(LoggerTest, JsonFormatterEmitsJson)
     EXPECT_NE(out.find("\"ts\":"), std::string::npos);
 }
 
-TEST(LoggerTest, StructuredFieldsDefault)
-{
+TEST(LoggerTest, StructuredFieldsDefault) {
     auto h = makeDefault();
     h.log->info("request done",
                 {{"method", "GET"}, {"path", "/users"}, {"status", "200"}});
@@ -90,8 +83,7 @@ TEST(LoggerTest, StructuredFieldsDefault)
     EXPECT_NE(out.find("status=200"), std::string::npos);
 }
 
-TEST(LoggerTest, StructuredFieldsJson)
-{
+TEST(LoggerTest, StructuredFieldsJson) {
     auto h = makeJson();
     h.log->info("request done", {{"method", "GET"}, {"status", "200"}});
     std::string out = h.text();
@@ -99,20 +91,21 @@ TEST(LoggerTest, StructuredFieldsJson)
     EXPECT_NE(out.find("\"status\":\"200\""), std::string::npos);
 }
 
-TEST(JsonFormatterTest, EscapesSpecialCharacters)
-{
+TEST(JsonFormatterTest, EscapesSpecialCharacters) {
     JsonFormatter fmt;
-    LogRecord rec{LogLevel::Info, Timestamp::now(), "1",
-                  "quote\" back\\slash\nnewline", {}};
+    LogRecord rec{LogLevel::Info,
+                  Timestamp::now(),
+                  "1",
+                  "quote\" back\\slash\nnewline",
+                  {}};
     std::string out = fmt.format(rec);
     EXPECT_NE(out.find("\\\""), std::string::npos);
     EXPECT_NE(out.find("\\\\"), std::string::npos);
     EXPECT_NE(out.find("\\n"), std::string::npos);
-    EXPECT_EQ(out.find('\n'), std::string::npos);    // no raw newline
+    EXPECT_EQ(out.find('\n'), std::string::npos);  // no raw newline
 }
 
-TEST(LoggerTest, LevelToString)
-{
+TEST(LoggerTest, LevelToString) {
     EXPECT_STREQ(toString(LogLevel::Debug), "DEBUG");
     EXPECT_STREQ(toString(LogLevel::Info), "INFO");
     EXPECT_STREQ(toString(LogLevel::Warning), "WARNING");
@@ -122,8 +115,7 @@ TEST(LoggerTest, LevelToString)
 
 // ---- Sinks ----
 
-TEST(SinkTest, LoggerWritesOneLinePerRecord)
-{
+TEST(SinkTest, LoggerWritesOneLinePerRecord) {
     auto h = makeDefault();
     h.log->info("a");
     h.log->info("b");
@@ -131,8 +123,7 @@ TEST(SinkTest, LoggerWritesOneLinePerRecord)
     EXPECT_EQ(h.sink->lines().size(), 3u);
 }
 
-TEST(SinkTest, FormatterEmitsNoTrailingNewLine)
-{
+TEST(SinkTest, FormatterEmitsNoTrailingNewLine) {
     // The sink owns the line terminator, so formatters must not add one.
     auto h = makeDefault();
     h.log->info("hello");
@@ -140,8 +131,7 @@ TEST(SinkTest, FormatterEmitsNoTrailingNewLine)
     EXPECT_EQ(h.sink->lines()[0].find('\n'), std::string::npos);
 }
 
-TEST(SinkTest, FatalFlushesImmediately)
-{
+TEST(SinkTest, FatalFlushesImmediately) {
     auto h = makeDefault();
     h.log->info("not flushed");
     size_t before = h.sink->flushCount();
@@ -150,8 +140,7 @@ TEST(SinkTest, FatalFlushesImmediately)
         << "Fatal must flush so the line survives a crash";
 }
 
-TEST(SinkTest, FlushLevelIsConfigurable)
-{
+TEST(SinkTest, FlushLevelIsConfigurable) {
     auto h = makeDefault();
     h.log->setFlushLevel(LogLevel::Error);
     size_t before = h.sink->flushCount();
@@ -161,8 +150,7 @@ TEST(SinkTest, FlushLevelIsConfigurable)
     EXPECT_GT(h.sink->flushCount(), before);
 }
 
-TEST(SinkTest, SetSinkRedirectsOutput)
-{
+TEST(SinkTest, SetSinkRedirectsOutput) {
     auto h = makeDefault();
     h.log->info("to first");
 
@@ -175,8 +163,7 @@ TEST(SinkTest, SetSinkRedirectsOutput)
     EXPECT_NE(second->text().find("to second"), std::string::npos);
 }
 
-TEST(SinkTest, FileSinkWritesLines)
-{
+TEST(SinkTest, FileSinkWritesLines) {
     std::string path = "/tmp/cox_sink_test.log";
     std::remove(path.c_str());
     {
@@ -185,7 +172,7 @@ TEST(SinkTest, FileSinkWritesLines)
                    std::shared_ptr<Sink>(std::move(sink)));
         log.info("line one");
         log.info("line two");
-    }   // dtor flushes and closes
+    }  // dtor flushes and closes
 
     std::FILE* fp = std::fopen(path.c_str(), "re");
     ASSERT_NE(fp, nullptr);
@@ -201,11 +188,9 @@ TEST(SinkTest, FileSinkWritesLines)
     EXPECT_EQ(std::count(content.begin(), content.end(), '\n'), 2);
 }
 
-TEST(SinkTest, RotatingFileSinkRollsAndBoundsFileCount)
-{
+TEST(SinkTest, RotatingFileSinkRollsAndBoundsFileCount) {
     std::string path = "/tmp/cox_rotate_test.log";
-    for (int i = 0; i <= 5; ++i)
-    {
+    for (int i = 0; i <= 5; ++i) {
         std::remove((i == 0 ? path : path + "." + std::to_string(i)).c_str());
     }
     {
@@ -214,31 +199,31 @@ TEST(SinkTest, RotatingFileSinkRollsAndBoundsFileCount)
                                               /*max_files=*/2);
         Logger log(LogLevel::Info, Formatter::newDefaultFormatter(),
                    std::shared_ptr<Sink>(std::move(sink)));
-        for (int i = 0; i < 30; ++i)
-        {
+        for (int i = 0; i < 30; ++i) {
             log.info("rotating line number " + std::to_string(i));
         }
     }
-    
+
     auto exists = [](const std::string& p) {
         std::FILE* f = std::fopen(p.c_str(), "re");
-        if (f) { std::fclose(f); return true; }
+        if (f) {
+            std::fclose(f);
+            return true;
+        }
         return false;
     };
 
-    EXPECT_TRUE(exists(path));            // an active file
-    EXPECT_TRUE(exists(path + ".1"));     // rolled
+    EXPECT_TRUE(exists(path));         // an active file
+    EXPECT_TRUE(exists(path + ".1"));  // rolled
     // max_files=2 means .3 must never appear, however many rotations occurred.
     EXPECT_FALSE(exists(path + ".3"));
 
-    for (int i = 0; i <= 5; ++i)
-    {
+    for (int i = 0; i <= 5; ++i) {
         std::remove((i == 0 ? path : path + "." + std::to_string(i)).c_str());
     }
 }
 
-TEST(SinkTest, MultiSinkFansOut)
-{
+TEST(SinkTest, MultiSinkFansOut) {
     auto a = std::make_shared<MemorySink>();
     auto b = std::make_shared<MemorySink>();
     std::vector<std::unique_ptr<Sink>> subs;
@@ -262,8 +247,7 @@ TEST(SinkTest, MultiSinkFansOut)
 
 // ---- AsyncSink ----
 
-TEST(AsyncSinkTest, DeliversAllLinesToDownstream)
-{
+TEST(AsyncSinkTest, DeliversAllLinesToDownstream) {
     auto captured = std::make_shared<MemorySink>();
     struct Forward final : Sink {
         std::shared_ptr<MemorySink> to;
@@ -280,15 +264,14 @@ TEST(AsyncSinkTest, DeliversAllLinesToDownstream)
         for (int i = 0; i < kLines; ++i) log.info("msg " + std::to_string(i));
         async->flush();
         EXPECT_EQ(async->droppedCount(), 0u);
-    }   // stop() drains the remainder
+    }  // stop() drains the remainder
 
     EXPECT_EQ(captured->lines().size(), static_cast<size_t>(kLines));
     EXPECT_NE(captured->text().find("msg 0"), std::string::npos);
     EXPECT_NE(captured->text().find("msg 499"), std::string::npos);
 }
 
-TEST(AsyncSinkTest, DropsAndCountsWhenBufferFull)
-{
+TEST(AsyncSinkTest, DropsAndCountsWhenBufferFull) {
     // A downstream that stalls, so the bounded buffer necessarily overflows.
     struct SlowSink final : Sink {
         void append(const std::string&) override {
@@ -299,8 +282,7 @@ TEST(AsyncSinkTest, DropsAndCountsWhenBufferFull)
 
     auto async = std::make_unique<AsyncSink>(std::make_unique<SlowSink>(),
                                              /*max_buffered_lines=*/8);
-    for (int i = 0; i < 2000; ++i)
-    {
+    for (int i = 0; i < 2000; ++i) {
         async->append("line " + std::to_string(i));
     }
     // The point: a slow/blocked destination must never block the producer, and
@@ -309,8 +291,7 @@ TEST(AsyncSinkTest, DropsAndCountsWhenBufferFull)
     async->stop();
 }
 
-TEST(AsyncSinkTest, ProducerDoesNotBlockOnSlowSink)
-{
+TEST(AsyncSinkTest, ProducerDoesNotBlockOnSlowSink) {
     struct SlowSink final : Sink {
         void append(const std::string&) override {
             std::this_thread::sleep_for(5ms);
@@ -318,24 +299,23 @@ TEST(AsyncSinkTest, ProducerDoesNotBlockOnSlowSink)
         void flush() override {}
     };
 
-    auto async = std::make_unique<AsyncSink>(std::make_unique<SlowSink>(), 4096);
+    auto async =
+        std::make_unique<AsyncSink>(std::make_unique<SlowSink>(), 4096);
     auto start = std::chrono::steady_clock::now();
-    for (int i = 0; i < 200; ++i)
-    {
+    for (int i = 0; i < 200; ++i) {
         async->append("x");
     }
     auto elapsed = std::chrono::steady_clock::now() - start;
-    
+
     // 200 synchronous 5ms writes would be ~1s; the async path must be far
     // faster since it only appends to a buffer.
-    EXPECT_LT(std::chrono::duration_cast<std::chrono::milliseconds>(elapsed)
-                  .count(),
-              300);
+    EXPECT_LT(
+        std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count(),
+        300);
     async->stop();
 }
 
-TEST(AsyncSinkTest, StopDrainsPendingLines)
-{
+TEST(AsyncSinkTest, StopDrainsPendingLines) {
     auto captured = std::make_shared<MemorySink>();
     struct Forward final : Sink {
         std::shared_ptr<MemorySink> to;
@@ -347,7 +327,7 @@ TEST(AsyncSinkTest, StopDrainsPendingLines)
     auto async = std::make_unique<AsyncSink>(
         std::make_unique<Forward>(captured), 4096, /*flush_interval_ms=*/10000);
     for (int i = 0; i < 50; ++i) async->append("pending " + std::to_string(i));
-    async->stop();   // must not lose anything still queued.
+    async->stop();  // must not lose anything still queued.
 
     EXPECT_EQ(captured->lines().size(), 50u);
 }

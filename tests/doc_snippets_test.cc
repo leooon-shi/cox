@@ -31,8 +31,7 @@
 #include <vector>
 
 // --- docs: query string / form body snippet (user-guide section 8) ---
-TEST(DocSnippets, QueryAndFormAccessors)
-{
+TEST(DocSnippets, QueryAndFormAccessors) {
     http::HttpRequest req;
     req.setQuery("q=hello+world&page=2");
 
@@ -50,8 +49,7 @@ TEST(DocSnippets, QueryAndFormAccessors)
 }
 
 // --- docs claim: '+' is a space in queries but NOT in path segments ---
-TEST(DocSnippets, PlusIsSpaceInQueryButNotInPath)
-{
+TEST(DocSnippets, PlusIsSpaceInQueryButNotInPath) {
     http::HttpRequest req;
     req.setQuery("q=a+b");
     EXPECT_EQ(req.queryParam("q"), "a b");
@@ -59,31 +57,30 @@ TEST(DocSnippets, PlusIsSpaceInQueryButNotInPath)
     http::Router router;
     std::string tag;
 
-    router.get("/tags/{tag}", [&](const http::HttpRequest&,
-                                  const http::PathParams& p,
-                                  http::HttpResponse* resp) {
-        tag = p.at("tag");
-        resp->setStatus(200);
-    });
+    router.get("/tags/{tag}",
+               [&](const http::HttpRequest&, const http::PathParams& p,
+                   http::HttpResponse* resp) {
+                   tag = p.at("tag");
+                   resp->setStatus(200);
+               });
 
     http::HttpRequest path_req;
     path_req.setMethod(http::Method::kGet);
     path_req.setPath("/tags/c++");
     http::HttpResponse resp;
     ASSERT_TRUE(router.route(path_req, &resp));
-    EXPECT_EQ(tag, "c++");    // '+' preserved in a path.
+    EXPECT_EQ(tag, "c++");  // '+' preserved in a path.
 }
 
 // --- docs claim: router returns 404 for no path, 405 for wrong method ---
-TEST(DocSnippets, Router404Vs405)
-{
+TEST(DocSnippets, Router404Vs405) {
     http::Router router;
-    router.get("/users/{id}", [](const http::HttpRequest&,
-                                 const http::PathParams& p,
-                                 http::HttpResponse* resp) {
-        resp->setStatus(200);
-        resp->setBody("user " + p.at("id"));
-    });
+    router.get("/users/{id}",
+               [](const http::HttpRequest&, const http::PathParams& p,
+                  http::HttpResponse* resp) {
+                   resp->setStatus(200);
+                   resp->setBody("user " + p.at("id"));
+               });
 
     http::HttpRequest ok;
     ok.setMethod(http::Method::kGet);
@@ -108,8 +105,7 @@ TEST(DocSnippets, Router404Vs405)
 }
 
 // --- docs: server/router/client/pool construction forms all exist ---
-TEST(DocSnippets, DocumentedConstructionForms)
-{
+TEST(DocSnippets, DocumentedConstructionForms) {
     reactor::EventLoop loop;
     concurrent::ThreadPool dns_pool("dns");
     dns_pool.start(1);
@@ -126,10 +122,10 @@ TEST(DocSnippets, DocumentedConstructionForms)
         resp->setBody(R"({"status":"ok"})");
     });
 
-    server.setHttpHandler([&router](const http::HttpRequest& req,
-                                    http::HttpResponse* resp) {
-        router.route(req, resp);
-    });
+    server.setHttpHandler(
+        [&router](const http::HttpRequest& req, http::HttpResponse* resp) {
+            router.route(req, resp);
+        });
 
     server.setKeepAliveTimeout(60);
     server.setMaxBodySize(1 << 20);
@@ -143,10 +139,11 @@ TEST(DocSnippets, DocumentedConstructionForms)
     http::ConnectionPool pool(&loop, net::InetAddress("127.0.0.1", 18150));
     pool.setMaxConnections(8);
     pool.setIdleTimeout(60);
-    EXPECT_TRUE(pool.resolved());   // numeric origin: resolved immediately
+    EXPECT_TRUE(pool.resolved());  // numeric origin: resolved immediately
 
     http::ConnectionPool named(&loop, "localhost", 18150, &resolver);
-    EXPECT_FALSE(named.resolved());   // hostname: not resolved until first request.
+    EXPECT_FALSE(
+        named.resolved());  // hostname: not resolved until first request.
 
     http::MultiOriginPool multi(&loop);
     multi.setResolver(&resolver);
@@ -154,12 +151,11 @@ TEST(DocSnippets, DocumentedConstructionForms)
     EXPECT_EQ(multi.originCount(), 0u);
 
     dns_pool.stop();
-    loop.quit();   // ~EventLoop asserts the loop was quit, even if never run.
+    loop.quit();  // ~EventLoop asserts the loop was quit, even if never run.
 }
 
 // --- docs (logging.md): formatters and structured fields are wired ---
-TEST(DocSnippets, LoggingFormattersAndFields)
-{
+TEST(DocSnippets, LoggingFormattersAndFields) {
     logging::Logger log;
     log.setLevel(logging::LogLevel::Debug);
     log.info("message");
@@ -174,20 +170,20 @@ TEST(DocSnippets, LoggingFormattersAndFields)
 }
 
 // ---- docs (user-guide 16, logging.md): sinks and async sink ---
-TEST(DocSnippets, LoggingSinksAndAsync)
-{
+TEST(DocSnippets, LoggingSinksAndAsync) {
     // JSON formatter + rotating file sink, exactly as documented.
     auto rot = logging::Sink::newRotatingFileSink("/tmp/cox_doc_snip.log",
-                                                 64 << 20, 5);
+                                                  64 << 20, 5);
     logging::Logger jlog(logging::LogLevel::Info,
                          logging::Formatter::newJsonFormatter(),
                          std::shared_ptr<logging::Sink>(std::move(rot)));
     jlog.info("to rotating file");
 
     // Async wrapper keeps file I/O off the calling (possibly loop) thread.
-    auto sink = std::make_shared<logging::AsyncSink>(
-        logging::Sink::newRotatingFileSink("/tmp/cox_doc_snip.log", 64 << 20, 5));
-    
+    auto sink =
+        std::make_shared<logging::AsyncSink>(logging::Sink::newRotatingFileSink(
+            "/tmp/cox_doc_snip.log", 64 << 20, 5));
+
     logging::Logger log;
     log.setSink(sink);
     log.setFlushLevel(logging::LogLevel::Error);
@@ -210,16 +206,16 @@ TEST(DocSnippets, LoggingSinksAndAsync)
 }
 
 // --- docs (tls.md, user-guide 6): SNI registration and lookup ---
-TEST(DocSnippets, TlsSniRegistration)
-{
+TEST(DocSnippets, TlsSniRegistration) {
     const std::string cert = "/tmp/cox_doc_sni_cert.pem";
     const std::string key = "/tmp/cox_doc_sni_key.pem";
-    ASSERT_EQ(std::system(("openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
-                           key + " -out " + cert +
-                           " -days 1 -subj '/CN=localhost' -addext "
-                           "'subjectAltName=DNS:localhost' >/dev/null 2>&1")
-                              .c_str()),
-              0);
+    ASSERT_EQ(
+        std::system(("openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
+                     key + " -out " + cert +
+                     " -days 1 -subj '/CN=localhost' -addext "
+                     "'subjectAltName=DNS:localhost' >/dev/null 2>&1")
+                        .c_str()),
+        0);
     auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kServer);
     ctx->useCertificateAndKey(cert, key);
 
@@ -239,8 +235,7 @@ TEST(DocSnippets, TlsSniRegistration)
 }
 
 // --- docs (tls.md, user-guide 6): OCSP stapler API + fail-open ---
-TEST(DocSnippets, OcspStaplerApi)
-{
+TEST(DocSnippets, OcspStaplerApi) {
     tls::OcspStapler stapler("/tmp/cox_no_cert.pem", "/tmp/cox_no_issuer.pem");
     stapler.setResponderUrl("http://127.0.0.1:1");  // documented override
 
@@ -256,22 +251,22 @@ TEST(DocSnippets, OcspStaplerApi)
     // (fail-open: handshakes then simply carry no staple).
     const std::string cert = "/tmp/cox_doc_ocsp_cert.pem";
     const std::string key = "/tmp/cox_doc_ocsp_key.pem";
-    ASSERT_EQ(std::system(("openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
-                           key + " -out " + cert +
-                           " -days 1 -subj '/CN=localhost' >/dev/null 2>&1")
-                              .c_str()),
-              0);
+    ASSERT_EQ(
+        std::system(("openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
+                     key + " -out " + cert +
+                     " -days 1 -subj '/CN=localhost' >/dev/null 2>&1")
+                        .c_str()),
+        0);
     auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kServer);
     ctx->useCertificateAndKey(cert, key);
-    stapler.attachTo(*ctx);   // must not throw
+    stapler.attachTo(*ctx);  // must not throw
 
     std::remove(cert.c_str());
     std::remove(key.c_str());
 }
 
 // --- docs (user-guide 6): the documented OCSP refresh-timer pattern ---
-TEST(DocSnippets, OcspRefreshTimerPattern)
-{
+TEST(DocSnippets, OcspRefreshTimerPattern) {
     reactor::EventLoop loop;
     concurrent::ThreadPool pool("ocsp");
     pool.start(1);
@@ -283,9 +278,8 @@ TEST(DocSnippets, OcspRefreshTimerPattern)
     // the BLOCKING refresh on a worker thread, never on the loop thread.
     bool timer_ran = false;
     loop.runAfter(1, [&] {
-        int64_t left = stapler.secondsUntilExpiry();   // -1 = no expiry hint
-        if (left >= 0 && left < 7200)
-        {
+        int64_t left = stapler.secondsUntilExpiry();  // -1 = no expiry hint
+        if (left >= 0 && left < 7200) {
             pool.run([&stapler] { stapler.refresh(); });
         }
         timer_ran = true;

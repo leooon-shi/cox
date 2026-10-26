@@ -6,25 +6,22 @@
 #include <cstdint>
 #include <functional>
 
-namespace reactor
-{
+namespace reactor {
 // A single scheduled timer. Owns its callback and knows when it should next
 // fire. Repeating timers re-arm themselves relative to the moment they expire.
 
-class Timer
-{
+class Timer {
 public:
     using TimerCallback = std::function<void()>;
 
     Timer(TimerCallback cb, logging::Timestamp when, uint64_t interval_ms)
         : callback_(std::move(cb)),
-        expiration_(when),
-        interval_ms_(interval_ms),
-        repeat_(interval_ms > 0),
-        sequence_(++s_num_created_) {}
+          expiration_(when),
+          interval_ms_(interval_ms),
+          repeat_(interval_ms > 0),
+          sequence_(++s_num_created_) {}
 
-    void run() const
-    {
+    void run() const {
         if (callback_) callback_();
     }
 
@@ -34,14 +31,10 @@ public:
 
     // Advance the expiration by one interval from `now`. Only valid for
     // repeating timers; one-shot timers become invalid (never re-armed).
-    void restart(logging::Timestamp now)
-    {
-        if (repeat_)
-        {
+    void restart(logging::Timestamp now) {
+        if (repeat_) {
             expiration_ = logging::addMilliseconds(now, interval_ms_);
-        }
-        else
-        {
+        } else {
             expiration_ = logging::Timestamp::invalid();
         }
     }
@@ -70,5 +63,4 @@ private:
     Timer* timer_;
     uint64_t sequence_;
 };
-} // namespace reactor
-
+}  // namespace reactor

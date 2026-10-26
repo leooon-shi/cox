@@ -19,8 +19,7 @@ using net::TcpClient;
 using net::TcpConnectionPtr;
 using net::TcpServer;
 
-namespace
-{
+namespace {
 
 // Run an echo server on its own EventLoop thread. Caller quits via the returned
 // loop pointer.
@@ -29,8 +28,7 @@ struct EchoServerThread {
     std::atomic<bool> started{false};
     reactor::EventLoop* loop{nullptr};
 
-    EchoServerThread(uint16_t port)
-    {
+    EchoServerThread(uint16_t port) {
         thread = std::thread([this, port] {
             reactor::EventLoop lp;
             loop = &lp;
@@ -53,10 +51,9 @@ struct EchoServerThread {
         if (thread.joinable()) thread.join();
     }
 };
-}   // namespace
+}  // namespace
 
-TEST(TcpClientTest, ConnectAndEcho)
-{
+TEST(TcpClientTest, ConnectAndEcho) {
     const uint16_t kPort = 47001;
     EchoServerThread server(kPort);
 
@@ -71,10 +68,9 @@ TEST(TcpClientTest, ConnectAndEcho)
         cli_loop = &loop;
         InetAddress server_addr("127.0.0.1", kPort);
         TcpClient client(&loop, server_addr, "echo-cli");
-        
+
         client.setConnectionCallback([&](const TcpConnectionPtr& conn) {
-            if(conn->connected())
-            { 
+            if (conn->connected()) {
                 connected = true;
                 conn->send("ping-from-client");
             }
@@ -91,8 +87,7 @@ TEST(TcpClientTest, ConnectAndEcho)
     });
     while (!cli_started.load()) std::this_thread::sleep_for(1ms);
 
-    for (int i = 0; i < 200 && !got_reply.load(); ++i)
-    {
+    for (int i = 0; i < 200 && !got_reply.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
 
@@ -105,8 +100,7 @@ TEST(TcpClientTest, ConnectAndEcho)
     server.stop();
 }
 
-TEST(TcpClientTest, RetryUntilServerAvailable)
-{
+TEST(TcpClientTest, RetryUntilServerAvailable) {
     const uint16_t kPort = 47002;
 
     // Start the client first, pointing at a port with no server yet.
@@ -121,7 +115,7 @@ TEST(TcpClientTest, RetryUntilServerAvailable)
         TcpClient client(&loop, server_addr, "retry-cli");
         client.enableRetry();
         client.setConnectionCallback([&](const TcpConnectionPtr& conn) {
-            if(conn->connected()) connected = true;
+            if (conn->connected()) connected = true;
         });
         client.connect();
         cli_started = true;
@@ -136,8 +130,7 @@ TEST(TcpClientTest, RetryUntilServerAvailable)
     // Now bring the server up; the client's retry should eventually connect.
     EchoServerThread server(kPort);
 
-    for (int i = 0; i < 400 && !connected.load(); ++i)
-    {
+    for (int i = 0; i < 400 && !connected.load(); ++i) {
         std::this_thread::sleep_for(10ms);
     }
     EXPECT_TRUE(connected.load());

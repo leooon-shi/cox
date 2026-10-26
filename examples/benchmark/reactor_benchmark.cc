@@ -1,10 +1,10 @@
 #include "event_loop.h"
 
+#include <chrono>
 #include <iostream>
+#include <memory>
 #include <thread>
 #include <vector>
-#include <chrono>
-#include <memory>
 
 void benchmarkTaskScheduling(reactor::EventLoop* loop, int numTasks) {
     auto start = std::chrono::high_resolution_clock::now();
@@ -20,11 +20,13 @@ void benchmarkTaskScheduling(reactor::EventLoop* loop, int numTasks) {
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
-    
-    std::cout << "Scheduled " << numTasks << " tasks in " << elapsed.count() << " seconds." << std::endl;
+
+    std::cout << "Scheduled " << numTasks << " tasks in " << elapsed.count()
+              << " seconds." << std::endl;
 }
 
-void benchmarkConcurrency(reactor::EventLoop* loop, int numThreads, int numTasksPerThread) {
+void benchmarkConcurrency(reactor::EventLoop* loop, int numThreads,
+                          int numTasksPerThread) {
     auto start = std::chrono::high_resolution_clock::now();
 
     std::vector<std::thread> threads;
@@ -47,8 +49,9 @@ void benchmarkConcurrency(reactor::EventLoop* loop, int numThreads, int numTasks
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
 
-    std::cout << "Executed " << (numThreads * numTasksPerThread) << " tasks across " << numThreads
-              << " threads in " << elapsed.count() << " seconds." << std::endl;
+    std::cout << "Executed " << (numThreads * numTasksPerThread)
+              << " tasks across " << numThreads << " threads in "
+              << elapsed.count() << " seconds." << std::endl;
 }
 
 int main() {
@@ -66,28 +69,33 @@ int main() {
 
     return 0;
 }
-// Note: The above benchmarks are designed to measure the performance of task scheduling and concurrency
-// in the reactor pattern. The actual performance may vary based on system load, hardware, and other factors.
-// Ensure to run this code in an environment where the reactor pattern is implemented correctly.
-// The reactor pattern is typically used in event-driven programming to handle I/O events efficiently.
-// The benchmarks simulate lightweight tasks to measure the overhead of scheduling and concurrency.
-// Adjust the number of tasks and threads based on your system's capabilities to avoid overwhelming it.
-// The reactor pattern is commonly used in network servers, GUI applications, and other event-driven systems.
-// Make sure to include necessary headers and link against the appropriate libraries for your environment.
-// This code is a simple demonstration of how to benchmark task scheduling and concurrency
-// using the reactor pattern. It is not intended for production use.
-// Ensure to handle exceptions and errors appropriately in a real-world application.
-// The reactor pattern allows for efficient handling of multiple I/O events without blocking.
-// This benchmark focuses on the performance of scheduling tasks in an event loop
-// and the ability to handle concurrent tasks from multiple threads.
-// The reactor pattern is a design pattern that provides a way to handle events in a non-blocking manner.
-// It is widely used in network programming, GUI applications, and other event-driven systems.
-// The benchmarks are designed to measure the overhead of scheduling tasks in an event loop
-// and the performance of handling concurrent tasks from multiple threads.
-// The reactor pattern is a powerful tool for building scalable and responsive applications.
-// The benchmarks simulate lightweight tasks to measure the overhead of scheduling and concurrency.
+// Note: The above benchmarks are designed to measure the performance of task
+// scheduling and concurrency in the reactor pattern. The actual performance may
+// vary based on system load, hardware, and other factors. Ensure to run this
+// code in an environment where the reactor pattern is implemented correctly.
+// The reactor pattern is typically used in event-driven programming to handle
+// I/O events efficiently. The benchmarks simulate lightweight tasks to measure
+// the overhead of scheduling and concurrency. Adjust the number of tasks and
+// threads based on your system's capabilities to avoid overwhelming it. The
+// reactor pattern is commonly used in network servers, GUI applications, and
+// other event-driven systems. Make sure to include necessary headers and link
+// against the appropriate libraries for your environment. This code is a simple
+// demonstration of how to benchmark task scheduling and concurrency using the
+// reactor pattern. It is not intended for production use. Ensure to handle
+// exceptions and errors appropriately in a real-world application. The reactor
+// pattern allows for efficient handling of multiple I/O events without
+// blocking. This benchmark focuses on the performance of scheduling tasks in an
+// event loop and the ability to handle concurrent tasks from multiple threads.
+// The reactor pattern is a design pattern that provides a way to handle events
+// in a non-blocking manner. It is widely used in network programming, GUI
+// applications, and other event-driven systems. The benchmarks are designed to
+// measure the overhead of scheduling tasks in an event loop and the performance
+// of handling concurrent tasks from multiple threads. The reactor pattern is a
+// powerful tool for building scalable and responsive applications. The
+// benchmarks simulate lightweight tasks to measure the overhead of scheduling
+// and concurrency.
 
-//output example:
+// output example:
 
 // Scheduled 10000000 tasks in 5.96368 seconds.
 // Executed 80000000 tasks across 32 threads in 62.6889 seconds.
@@ -124,4 +132,3 @@ int main() {
 
 // Scheduled 10000000 tasks in 0.780274 seconds.
 // Executed 10000000 tasks across 4 threads in 3.8772 seconds.
-

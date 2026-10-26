@@ -14,8 +14,7 @@ namespace reactor {
 class EventLoop;
 }
 
-namespace http
-{
+namespace http {
 class ConnectionPool;
 
 // A simple HTTP/1.1 client for one origin, supporting keep-alive connection
@@ -35,7 +34,7 @@ public:
     // HTTPS/mTLS client: tls_ctx is a client-role TlsContext.
     HttpClient(reactor::EventLoop* loop, const net::InetAddress& server,
                tls::TlsContextPtr tls_ctx, std::string host_header = "");
-    
+
     // Hostname clients: `host` is resolved via `resolver` (which must outlive
     // the client) before connecting, so callers need to resolve themselves.
     // The host header defaults to `host`.
@@ -56,4 +55,4 @@ private:
     std::shared_ptr<ConnectionPool> pool_;
 };
 
-}   // namespace http
+}  // namespace http

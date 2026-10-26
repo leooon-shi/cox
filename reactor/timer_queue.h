@@ -10,8 +10,7 @@
 #include <utility>
 #include <vector>
 
-namespace reactor
-{
+namespace reactor {
 
 class EventLoop;
 class Channel;
@@ -33,7 +32,8 @@ public:
     // Schedule `cb` to run at absolute time `when`. If interval_ms > 0 the
     // timer repeats every interval_ms milliseconds. Must be called in the
     // loop thread.
-    TimerId addTimer(TimerCallback cb, logging::Timestamp when, uint64_t interval_ms);
+    TimerId addTimer(TimerCallback cb, logging::Timestamp when,
+                     uint64_t interval_ms);
 
     // Cancel a previously scheduled timer. Must be called in the loop thread.
     void cancel(TimerId id);
@@ -68,4 +68,4 @@ private:
     bool calling_expired_callbacks_{false};
 };
 
-} // namespace reactor
+}  // namespace reactor

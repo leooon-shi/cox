@@ -1,8 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <memory>
-#include <cstdint>
 
 #include "io_event.h"
 
@@ -20,16 +20,37 @@ public:
     int events() const { return events_; }
     void setRevents(int revents) { revents_ = revents; }
 
-    void enableRead() { events_ |= IO_READ; update();}
-    void disableRead() { events_ &= ~IO_READ; update();}
+    void enableRead() {
+        events_ |= IO_READ;
+        update();
+    }
+    void disableRead() {
+        events_ &= ~IO_READ;
+        update();
+    }
 
-    void enableWrite() { events_ |= IO_WRITE; update();}
-    void disableWrite() { events_ &= ~IO_WRITE; update();}
+    void enableWrite() {
+        events_ |= IO_WRITE;
+        update();
+    }
+    void disableWrite() {
+        events_ &= ~IO_WRITE;
+        update();
+    }
 
-    void enableError() { events_ |= IO_ERROR; update();}
-    void disableError() { events_ &= ~IO_ERROR; update();}
+    void enableError() {
+        events_ |= IO_ERROR;
+        update();
+    }
+    void disableError() {
+        events_ &= ~IO_ERROR;
+        update();
+    }
 
-    void disableAll() { events_ = IO_NONE; update();}
+    void disableAll() {
+        events_ = IO_NONE;
+        update();
+    }
 
     bool isReading() const { return events_ & IO_READ; }
     bool isWriting() const { return events_ & IO_WRITE; }
@@ -64,4 +85,4 @@ private:
     Callback errorCallback_;
     Callback closeCallback_;
 };
-}   // namespace reactor
+}  // namespace reactor

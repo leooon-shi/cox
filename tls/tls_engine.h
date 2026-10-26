@@ -11,8 +11,7 @@ typedef struct ssl_st SSL;
 struct bio_st;
 typedef struct bio_st BIO;
 
-namespace tls
-{
+namespace tls {
 // TlsEngine drives a single TLS connection's OpenSSL state machine using memory
 // BIOs, with NO knowledge of sockets or event loops. This isolates the tricky
 // TLS logic so it can be unit-tested by piping the two engines' network output
@@ -28,8 +27,7 @@ namespace tls
 //      feedEncrypted().
 //   2. once established, writePlaintext()/readPlaintext() for app data, always
 //      flushing takeEncrypted() to the network and feeding inbound bytes.
-class TlsEngine
-{
+class TlsEngine {
 public:
     enum class Status { kOk, kWantIo, kClosed, kError };
 
@@ -50,11 +48,12 @@ public:
     size_t feedEncrypted(const char* data, size_t len);
 
     // Take encrypted bytes the engine wants to send to the network. Appends to
-    // `out`. Returns bytes produced this call. Call in a loop until it returns 0.
+    // `out`. Returns bytes produced this call. Call in a loop until it returns
+    // 0.
     size_t takeEncrypted(std::string& out);
 
-    // Advance the handshake. Returns kOk when the handshake just completed or is
-    // complete, kWantIo when more network I/O is needed, kError on failure.
+    // Advance the handshake. Returns kOk when the handshake just completed or
+    // is complete, kWantIo when more network I/O is needed, kError on failure.
     Status handshake();
     bool handshakeDone() const;
 
@@ -83,6 +82,7 @@ public:
     SSL* nativeHandle() const { return ssl_; }
 
     std::string lastError() const { return last_error_; }
+
 private:
     Status mapError(int ret);
     void init(const TlsContext& ctx, Role role,
@@ -95,4 +95,4 @@ private:
     // and never needed afterwards, so it is deliberately NOT stored.
     std::string last_error_;
 };
-}   // namespace tls
+}  // namespace tls

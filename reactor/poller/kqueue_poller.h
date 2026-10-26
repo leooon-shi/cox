@@ -1,14 +1,15 @@
 #pragma once
 
-#if defined(__APPLE__) && defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+#if defined(__APPLE__) && defined(__MACH__) || defined(__FreeBSD__) || \
+    defined(__OpenBSD__) || defined(__NetBSD__)
 
-#include "poller/io_poller.h"
 #include <sys/event.h>
-#include <vector>
 #include <map>
+#include <vector>
+#include "poller/io_poller.h"
 
 namespace logging {
-    class Logger;
+class Logger;
 }
 
 namespace reactor {
@@ -22,6 +23,7 @@ public:
     void updateChannel(Channel* channel) override;
     void removeChannel(Channel* channel) override;
     void poll(int timeoutMs, std::vector<Channel*>& activeChannels) override;
+
 private:
     void update(int operation, Channel* channel);
 
@@ -30,6 +32,6 @@ private:
     std::vector<struct kevent> events_;
     std::map<int, short> registeredEvents;
 };
-}   // namespace reactor
+}  // namespace reactor
 
-#endif // BSD / macOS
+#endif  // BSD / macOS

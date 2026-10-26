@@ -7,16 +7,9 @@
 #include <utility>
 #include <vector>
 
-namespace logging
-{
+namespace logging {
 
-enum class LogLevel : std::int8_t {
-    Debug,
-    Info,
-    Warning,
-    Error,
-    Fatal
-};
+enum class LogLevel : std::int8_t { Debug, Info, Warning, Error, Fatal };
 
 const char* toString(LogLevel level);
 
@@ -32,8 +25,8 @@ using LogFields = std::vector<LogField>;
 struct LogRecord {
     LogLevel level;
     Timestamp timestamp;
-    std::string tid;       // thread id string
+    std::string tid;  // thread id string
     std::string message;
-    LogFields fields;      // structured context (may be empty)
+    LogFields fields;  // structured context (may be empty)
 };
-}   // namespace logging
+}  // namespace logging

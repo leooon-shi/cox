@@ -24,17 +24,14 @@ using net::TcpClient;
 using net::TcpConnectionPtr;
 using net::TcpServer;
 
-namespace
-{
-std::string uniquePath(const char* tag)
-{
+namespace {
+std::string uniquePath(const char* tag) {
     return std::string("/tmp/cox_uds_") + tag + "_" +
            std::to_string(::getpid()) + ".sock";
 }
-}   // namespace
+}  // namespace
 
-TEST(UnixSocketTest, EchoOverUnixDomain)
-{
+TEST(UnixSocketTest, EchoOverUnixDomain) {
     const std::string path = uniquePath("echo");
     ::unlink(path.c_str());
 
@@ -70,8 +67,7 @@ TEST(UnixSocketTest, EchoOverUnixDomain)
         InetAddress addr = InetAddress::unixDomain(path);
         TcpClient client(&loop, addr, "uds-cli");
         client.setConnectionCallback([&](const TcpConnectionPtr& conn) {
-            if (conn->connected())
-            {
+            if (conn->connected()) {
                 connected = true;
                 conn->send("hello over unix socket");
             }
@@ -88,8 +84,7 @@ TEST(UnixSocketTest, EchoOverUnixDomain)
     });
 
     while (!cli_started.load()) std::this_thread::sleep_for(1ms);
-    for (int i = 0; i < 200 && !got_reply.load(); ++i)
-    {
+    for (int i = 0; i < 200 && !got_reply.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
 
@@ -104,8 +99,7 @@ TEST(UnixSocketTest, EchoOverUnixDomain)
     ::unlink(path.c_str());
 }
 
-TEST(UnixSocketTest, RetryUntilServerAvailable)
-{
+TEST(UnixSocketTest, RetryUntilServerAvailable) {
     const std::string path = uniquePath("retry");
     ::unlink(path.c_str());  // ensure the path does not exist yet.
 
@@ -124,8 +118,7 @@ TEST(UnixSocketTest, RetryUntilServerAvailable)
         TcpClient client(&loop, addr, "uds-retry-cli");
         client.enableRetry();
         client.setConnectionCallback([&](const TcpConnectionPtr& conn) {
-            if (conn->connected())
-            {
+            if (conn->connected()) {
                 connected = true;
                 conn->send("late hello");
             }
@@ -166,8 +159,7 @@ TEST(UnixSocketTest, RetryUntilServerAvailable)
     while (!srv_started.load()) std::this_thread::sleep_for(1ms);
 
     // The client's retry should eventually connect and complete the round-trip.
-    for (int i = 0; i < 400 && !got_reply.load(); ++i)
-    {
+    for (int i = 0; i < 400 && !got_reply.load(); ++i) {
         std::this_thread::sleep_for(10ms);
     }
 
@@ -181,8 +173,7 @@ TEST(UnixSocketTest, RetryUntilServerAvailable)
     ::unlink(path.c_str());
 }
 
-TEST(UnixSocketTest, MultipleClientsOverUnixDomain)
-{
+TEST(UnixSocketTest, MultipleClientsOverUnixDomain) {
     const std::string path = uniquePath("multi");
     ::unlink(path.c_str());
 
@@ -216,8 +207,7 @@ TEST(UnixSocketTest, MultipleClientsOverUnixDomain)
     std::vector<reactor::EventLoop*> client_loops(kNumClients, nullptr);
     std::atomic<int> replies{0};
 
-    for (int i = 0; i < kNumClients; ++i)
-    {
+    for (int i = 0; i < kNumClients; ++i) {
         client_threads.emplace_back([&, i] {
             reactor::EventLoop loop;
             client_loops[i] = &loop;
@@ -236,16 +226,14 @@ TEST(UnixSocketTest, MultipleClientsOverUnixDomain)
         });
     }
 
-    for (int i = 0; i < 200 && replies.load() < kNumClients; ++i)
-    {
+    for (int i = 0; i < 200 && replies.load() < kNumClients; ++i) {
         std::this_thread::sleep_for(5ms);
     }
 
     EXPECT_EQ(accepted.load(), kNumClients);
     EXPECT_EQ(replies.load(), kNumClients);
 
-    for (int i = 0; i < kNumClients; ++i)
-    {
+    for (int i = 0; i < kNumClients; ++i) {
         while (!client_loops[i]) std::this_thread::sleep_for(1ms);
         client_loops[i]->quit();
         client_threads[i].join();

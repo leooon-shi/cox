@@ -6,8 +6,7 @@
 #include <mutex>
 #include <string>
 
-namespace tls
-{
+namespace tls {
 class TlsContext;
 
 // OCSP stapling (RFC 6961 / RFC 6066 "status_request"): the SERVER fetches a
@@ -35,9 +34,9 @@ class TlsContext;
 // already tolerate a missing staple.
 class OcspStapler {
 public:
-    // `cert_path` is the server certificate (leaf); `issuer_path` is the CA that
-    // signed it, needed to build the OCSP request. The responder URL is taken
-    // from the certificate's AIA extension unless overridden.
+    // `cert_path` is the server certificate (leaf); `issuer_path` is the CA
+    // that signed it, needed to build the OCSP request. The responder URL is
+    // taken from the certificate's AIA extension unless overridden.
     OcspStapler(std::string cert_path, std::string issuer_path);
     ~OcspStapler();
 
@@ -51,9 +50,9 @@ public:
     // The URL that will be used: the override if set, else the cert's AIA.
     std::string responderUrl() const;
 
-    // Fetch a fresh response from the responder over HTTP and cache it if valid.
-    // BLOCKING: call from a worker thread or a timer, never from an event loop.
-    // Returns true when a valid response was cached.
+    // Fetch a fresh response from the responder over HTTP and cache it if
+    // valid. BLOCKING: call from a worker thread or a timer, never from an
+    // event loop. Returns true when a valid response was cached.
     bool refresh();
 
     // Load a DER-encoded response from a file instead of fetching it. This is
@@ -90,8 +89,8 @@ private:
     std::string responder_url_;
 
     mutable std::mutex mutex_;
-    std::string response_der_;   // Cached DER, guarded by mutex_
+    std::string response_der_;  // Cached DER, guarded by mutex_
     int64_t next_update_epoch_{0};
 };
 
-} // namespace tls
+}  // namespace tls

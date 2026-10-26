@@ -6,13 +6,11 @@
 #include <map>
 #include <string>
 
-namespace buffer
-{
+namespace buffer {
 class Buffer;
 }
 
-namespace http
-{
+namespace http {
 // Incremental parser for HTTP/1.1 responses (client side). Mirrors the request
 // parser but expects a status line ("HTTP/1.1 200 OK") instead of a request
 // line. Handles Content-Length and chunked bodies. For responses without a
@@ -27,7 +25,7 @@ public:
         kExpectChunkSize,
         kExpectChunkData,
         kExpectChunkCrlf,
-        kExpectEofBody,   // body runs until connection close
+        kExpectEofBody,  // body runs until connection close
         kGotAll,
         kError
     };
@@ -49,7 +47,7 @@ public:
 private:
     bool parseStatusLine(const char* begin, const char* end);
 
-    State state_{ State::kExpectStatusLine };
+    State state_{State::kExpectStatusLine};
     HttpResponse response_;
     std::map<std::string, std::string> lower_headers_;  // for framing lookups
     size_t content_length_{0};
@@ -60,4 +58,4 @@ private:
     std::string body_accum_;
 };
 
-}   // namespace http
+}  // namespace http

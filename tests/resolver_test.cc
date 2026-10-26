@@ -20,8 +20,7 @@
 using namespace std::chrono_literals;
 using namespace net;
 
-TEST(ResolverTest, ThreadPoolResolvesLocalhost)
-{
+TEST(ResolverTest, ThreadPoolResolvesLocalhost) {
     concurrent::ThreadPool pool("dns");
     pool.start(2);
 
@@ -48,8 +47,7 @@ TEST(ResolverTest, ThreadPoolResolvesLocalhost)
     });
 
     while (!started.load()) std::this_thread::sleep_for(1ms);
-    for (int i = 0; i < 200 && !done.load(); ++i)
-    {
+    for (int i = 0; i < 200 && !done.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
 
@@ -63,8 +61,7 @@ TEST(ResolverTest, ThreadPoolResolvesLocalhost)
     pool.stop();
 }
 
-TEST(ResolverTest, ThreadPoolResolvesNumericIp)
-{
+TEST(ResolverTest, ThreadPoolResolvesNumericIp) {
     concurrent::ThreadPool pool("dns");
     pool.start(2);
 
@@ -88,8 +85,7 @@ TEST(ResolverTest, ThreadPoolResolvesNumericIp)
     });
 
     while (!started.load()) std::this_thread::sleep_for(1ms);
-    for (int i = 0; i < 200 && !done.load(); ++i)
-    {
+    for (int i = 0; i < 200 && !done.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
 
@@ -101,8 +97,7 @@ TEST(ResolverTest, ThreadPoolResolvesNumericIp)
     pool.stop();
 }
 
-TEST(ResolverTest, ThreadPoolReportsErrorForBogusHost)
-{
+TEST(ResolverTest, ThreadPoolReportsErrorForBogusHost) {
     concurrent::ThreadPool pool("dns");
     pool.start(2);
 
@@ -126,8 +121,7 @@ TEST(ResolverTest, ThreadPoolReportsErrorForBogusHost)
     });
 
     while (!started.load()) std::this_thread::sleep_for(1ms);
-    for (int i = 0; i < 400 && !done.load(); ++i)
-    {
+    for (int i = 0; i < 400 && !done.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
 
@@ -139,8 +133,7 @@ TEST(ResolverTest, ThreadPoolReportsErrorForBogusHost)
 }
 
 #ifdef COX_HAVE_CARES
-TEST(ResolverTest, CaresResolvesLocalhost)
-{
+TEST(ResolverTest, CaresResolvesLocalhost) {
     std::atomic<bool> started{false}, done{false};
     std::string ip, err;
     reactor::EventLoop* loop_ptr = nullptr;
@@ -161,8 +154,7 @@ TEST(ResolverTest, CaresResolvesLocalhost)
     });
 
     while (!started.load()) std::this_thread::sleep_for(1ms);
-    for (int i = 0; i < 400 && !done.load(); ++i)
-    {
+    for (int i = 0; i < 400 && !done.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
 

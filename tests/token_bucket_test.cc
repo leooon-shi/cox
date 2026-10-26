@@ -8,20 +8,17 @@
 using namespace std::chrono_literals;
 using flowcontrol::TokenBucket;
 
-TEST(TokenBucketTest, StartsFullUpToBurst)
-{
+TEST(TokenBucketTest, StartsFullUpToBurst) {
     TokenBucket tb(/*qps=*/10, /*burst=*/5);
     // Should admit exactly `burst` events immediately.
-    for (int i = 0; i < 5; ++i)
-    {
+    for (int i = 0; i < 5; ++i) {
         EXPECT_TRUE(tb.tryAcquire()) << "at i=" << i;
     }
     // 6th is rejected (bucket empty, no time elapsed to refill).
     EXPECT_FALSE(tb.tryAcquire());
 }
 
-TEST(TokenBucketTest, RefillsOverTime)
-{
+TEST(TokenBucketTest, RefillsOverTime) {
     TokenBucket tb(/*qps=*/100, /*burst=*/1);
     EXPECT_TRUE(tb.tryAcquire());   // consume the one token
     EXPECT_FALSE(tb.tryAcquire());  // empty
@@ -31,8 +28,7 @@ TEST(TokenBucketTest, RefillsOverTime)
     EXPECT_TRUE(tb.tryAcquire());
 }
 
-TEST(TokenBucketTest, DoesNotExceedBurst)
-{
+TEST(TokenBucketTest, DoesNotExceedBurst) {
     TokenBucket tb(/*qps=*/1000, /*burst=*/3);
     // Wait long enough that unbounded refill would far exceed burst.
     std::this_thread::sleep_for(50ms);
@@ -44,8 +40,7 @@ TEST(TokenBucketTest, DoesNotExceedBurst)
     EXPECT_FALSE(tb.tryAcquire());
 }
 
-TEST(TokenBucketTest, AcquireN)
-{
+TEST(TokenBucketTest, AcquireN) {
     TokenBucket tb(/*qps=*/10, /*burst=*/10);
     EXPECT_TRUE(tb.tryAcquireN(7));
     EXPECT_FALSE(tb.tryAcquireN(4));  // only 3 left
@@ -53,14 +48,12 @@ TEST(TokenBucketTest, AcquireN)
     EXPECT_FALSE(tb.tryAcquireN(1));
 }
 
-TEST(TokenBucketTest, AverageRateIsBounded)
-{
+TEST(TokenBucketTest, AverageRateIsBounded) {
     // Over a window, admitted count should be roughly qps*seconds + burst.
     TokenBucket tb(/*qps=*/200, /*burst=*/10);
     int admitted = 0;
     auto start = std::chrono::steady_clock::now();
-    while( std::chrono::steady_clock::now() - start < 100ms)
-    {
+    while (std::chrono::steady_clock::now() - start < 100ms) {
         if (tb.tryAcquire()) admitted++;
         std::this_thread::sleep_for(200us);
     }

@@ -10,18 +10,15 @@
 
 using namespace http;
 
-namespace
-{
-buffer::Buffer bufOf(const std::string& s)
-{
+namespace {
+buffer::Buffer bufOf(const std::string& s) {
     buffer::Buffer b;
     b.append(s);
     return b;
 }
-}   // namespace
+}  // namespace
 
-TEST(HttpParserTest, SimpleGet)
-{
+TEST(HttpParserTest, SimpleGet) {
     HttpContext ctx;
     auto buf = bufOf("GET /hello?x=1 HTTP/1.1\r\nHost: localhost\r\n\r\n");
     ASSERT_TRUE(ctx.parseRequest(&buf));
@@ -34,19 +31,17 @@ TEST(HttpParserTest, SimpleGet)
     EXPECT_TRUE(ctx.request().keepAlive());
 }
 
-TEST(HttpParserTest, PostWithContentLength)
-{
+TEST(HttpParserTest, PostWithContentLength) {
     HttpContext ctx;
-    auto buf = bufOf(
-        "POST /submit HTTP/1.1\r\nContent-Length: 11\r\n\r\nhello world");
+    auto buf =
+        bufOf("POST /submit HTTP/1.1\r\nContent-Length: 11\r\n\r\nhello world");
     ASSERT_TRUE(ctx.parseRequest(&buf));
     ASSERT_TRUE(ctx.gotAll());
     EXPECT_EQ(ctx.request().method(), Method::kPost);
     EXPECT_EQ(ctx.request().body(), "hello world");
 }
 
-TEST(HttpParserTest, PartialThenComplete)
-{
+TEST(HttpParserTest, PartialThenComplete) {
     HttpContext ctx;
     // Feed the request in two pieces to exercise incremental parsing.
     auto buf = bufOf("GET / HTTP/1.1\r\nHo");
@@ -58,8 +53,7 @@ TEST(HttpParserTest, PartialThenComplete)
     EXPECT_EQ(ctx.request().header("host"), "x");
 }
 
-TEST(HttpParserTest, ChunkedBody)
-{
+TEST(HttpParserTest, ChunkedBody) {
     HttpContext ctx;
     // "Wiki" + "pedia" in two chunks.
     auto buf = bufOf(
@@ -70,24 +64,21 @@ TEST(HttpParserTest, ChunkedBody)
     EXPECT_EQ(ctx.request().body(), "Wikipedia");
 }
 
-TEST(HttpParserTest, MalformedMethodErrors)
-{
+TEST(HttpParserTest, MalformedMethodErrors) {
     HttpContext ctx;
     auto buf = bufOf("FROBNICATE / HTTP/1.1\r\n\r\n");
     EXPECT_FALSE(ctx.parseRequest(&buf));
     EXPECT_TRUE(ctx.hasError());
 }
 
-TEST(HttpParserTest, BadVersionErrors)
-{
+TEST(HttpParserTest, BadVersionErrors) {
     HttpContext ctx;
     auto buf = bufOf("GET / HTTP/9.9\r\n\r\n");
     EXPECT_FALSE(ctx.parseRequest(&buf));
     EXPECT_TRUE(ctx.hasError());
 }
 
-TEST(HttpParserTest, KeepAliveHttp10OptIn)
-{
+TEST(HttpParserTest, KeepAliveHttp10OptIn) {
     HttpContext ctx;
     auto buf = bufOf("GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n");
     ASSERT_TRUE(ctx.parseRequest(&buf));
@@ -100,8 +91,7 @@ TEST(HttpParserTest, KeepAliveHttp10OptIn)
     EXPECT_FALSE(ctx2.request().keepAlive());  // 1.0 defaults to close
 }
 
-TEST(HttpResponseTest, SerializesStatusHeadersBody)
-{
+TEST(HttpResponseTest, SerializesStatusHeadersBody) {
     HttpResponse resp(/*keep_alive=*/true);
     resp.setStatus(200);
     resp.setContentType("text/plain");
@@ -118,8 +108,7 @@ TEST(HttpResponseTest, SerializesStatusHeadersBody)
     EXPECT_NE(s.find("\r\n\r\nhi"), std::string::npos);
 }
 
-TEST(HttpResponseTest, NotFoundReason)
-{
+TEST(HttpResponseTest, NotFoundReason) {
     HttpResponse resp;
     resp.setStatus(404);
     buffer::Buffer out;

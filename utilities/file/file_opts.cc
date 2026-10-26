@@ -1,11 +1,10 @@
 #include "file_opts.h"
 
-
-#include <unistd.h>
 #include <fcntl.h>
 #include <sys/eventfd.h>
-#include <stdexcept>
+#include <unistd.h>
 #include <cstring>
+#include <stdexcept>
 #include <string>
 
 namespace file_opts {
@@ -16,8 +15,7 @@ void setNonBlocking(int fd) {
 
 int createEventfd() {
     int fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-    if (fd < 0)
-    {
+    if (fd < 0) {
         throw std::runtime_error("eventfd() failed: " +
                                  std::string(std::strerror(errno)));
     }
@@ -26,22 +24,21 @@ int createEventfd() {
 std::pair<int, int> createNonBlockingPipe() {
     int fds[2];
     if (::pipe(fds) != 0) {
-        throw std::runtime_error("pipe() failed: " + std::string(std::strerror(errno)));
+        throw std::runtime_error("pipe() failed: " +
+                                 std::string(std::strerror(errno)));
     }
-    
+
     setNonBlocking(fds[0]);
     setNonBlocking(fds[1]);
-    
+
     return {fds[0], fds[1]};
 }
 
-
-void closePipe(int read_fd, int write_fd)
-{
+void closePipe(int read_fd, int write_fd) {
     if (read_fd >= 0) {
         [[maybe_unused]] int ret = ::close(read_fd);
     }
-    
+
     if (write_fd >= 0 && write_fd != read_fd) {
         [[maybe_unused]] int ret = ::close(write_fd);
     }

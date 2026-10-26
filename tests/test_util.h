@@ -19,15 +19,12 @@
 #include <cstdlib>
 #include <string>
 
-namespace test_util
-{
+namespace test_util {
 // Write the whole buffer. Returns true only if every byte was accepted.
-inline bool sendAll(int fd, const void* data, size_t len)
-{
+inline bool sendAll(int fd, const void* data, size_t len) {
     const char* p = static_cast<const char*>(data);
     size_t sent = 0;
-    while (sent < len)
-    {
+    while (sent < len) {
         ssize_t n = ::write(fd, p + sent, len - sent);
         if (n <= 0) return false;
         sent += static_cast<size_t>(n);
@@ -35,23 +32,19 @@ inline bool sendAll(int fd, const void* data, size_t len)
     return true;
 }
 
-inline bool sendAll(int fd, const std::string& s)
-{
+inline bool sendAll(int fd, const std::string& s) {
     return sendAll(fd, s.data(), s.size());
 }
 
 // Read whatever is currently available. Returns the byte count (0 or -1 is not
 // an error here -- callers use this to drain, not to assert content).
-inline ssize_t drainSome(int fd, char* buf, size_t len)
-{
+inline ssize_t drainSome(int fd, char* buf, size_t len) {
     return ::read(fd, buf, len);
 }
 
 // Run a shell command, returning its exit status (0 == success).
-inline int runCmd(const std::string& cmd)
-{
+inline int runCmd(const std::string& cmd) {
     return std::system(cmd.c_str());
 }
 
-}   // namespace test_util
-
+}  // namespace test_util

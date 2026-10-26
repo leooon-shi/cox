@@ -3,16 +3,16 @@
 #include "TimerHeap.h"
 #include "TimerStatsReporter.h"
 
+#include <chrono>
 #include <iostream>
 #include <thread>
-#include <chrono>
 
 using namespace std::chrono;
 
 int main() {
     TimerStatsReporter reporter;
     TimerHeap heap(&reporter);
-    JitterBackoff backoff(100, 1600); // base: 100ms, cap: 1600ms
+    JitterBackoff backoff(100, 1600);  // base: 100ms, cap: 1600ms
 
     CancellationSource cancelSource = CancellationSource::create();
     CancellationToken token = cancelSource.token();
@@ -30,11 +30,16 @@ int main() {
         uint64_t delay = backoff.next();
         auto execTime = TimerHeap::Clock::now() + milliseconds(delay);
 
-        heap.addTimer(execTime, [i, delay]() {
-            std::cout << "Timer " << i << " fired after " << delay << "ms\n";
-        }, token);
+        heap.addTimer(
+            execTime,
+            [i, delay]() {
+                std::cout << "Timer " << i << " fired after " << delay
+                          << "ms\n";
+            },
+            token);
 
-        std::this_thread::sleep_for(50ms); // simulate short delay between scheduling
+        std::this_thread::sleep_for(
+            50ms);  // simulate short delay between scheduling
     }
 
     // Simulate cancel trigger after some time

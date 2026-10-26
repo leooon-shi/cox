@@ -2,10 +2,8 @@
 
 #include <csignal>
 
-namespace net
-{
-namespace
-{
+namespace net {
+namespace {
 // Runs once at static init or first call: install SIG_IGN for SIGPIPE.
 struct IgnoreSigPipe {
     IgnoreSigPipe() { ::signal(SIGPIPE, SIG_IGN); }
@@ -13,7 +11,7 @@ struct IgnoreSigPipe {
 
 IgnoreSigPipe g_ignore_sigpipe;
 
-} // namespace
+}  // namespace
 
 void initNetRuntime() {
     // Touching the global ensures the constructor has run even if the linker
@@ -21,4 +19,4 @@ void initNetRuntime() {
     (void)&g_ignore_sigpipe;
     ::signal(SIGPIPE, SIG_IGN);
 }
-}   // namespace net
+}  // namespace net

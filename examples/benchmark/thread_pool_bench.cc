@@ -28,12 +28,11 @@
 using namespace std::chrono;
 using concurrent::ThreadPool;
 
-namespace
-{
+namespace {
 // Describe the build/runtime environment so a results table is interpretable on
 // its own -- benchmark numbers are machine-, compiler- and build-dependent, and
 // a table with no provenance is a table you cannot trust or compare against.
-std::string compilerId(){
+std::string compilerId() {
 #if defined(__clang__)
     return "clang++ " __clang_version__;
 #elif defined(__GNUC__)
@@ -51,8 +50,7 @@ std::string buildType() {
 #endif
 }
 
-void printEnv()
-{
+void printEnv() {
     const unsigned hw = std::thread::hardware_concurrency();
     std::time_t now = std::time(nullptr);
     char ts[32] = {};
@@ -65,8 +63,7 @@ void printEnv()
     std::cout << "C++ std:     " << __cplusplus << "\n";
     std::cout << "hw threads:  "
               << (hw ? std::to_string(hw) : std::string("unknown")) << "\n";
-    if (buildType().rfind("Debug", 0) == 0)
-    {
+    if (buildType().rfind("Debug", 0) == 0) {
         std::cout << "WARNING:     Debug build (-O0) -- numbers are not "
                      "representative; use a Release build.\n";
     }
@@ -83,8 +80,7 @@ void printEnv()
 // batching actually pays off -- and the regime a real "burst of 100M tasks"
 // workload is in.
 double runOnce(int num_threads, size_t batch_size, int num_tasks,
-               int num_producers)
-{
+               int num_producers) {
     std::atomic<int64_t> counter{0};
 
     ThreadPool pool("bench");
@@ -93,10 +89,10 @@ double runOnce(int num_threads, size_t batch_size, int num_tasks,
     pool.start(num_threads);
 
     auto producer = [&](int tasks) {
-        for (int i = 0; i < tasks; ++i)
-        {
-            pool.run(
-                [&counter] { counter.fetch_add(1, std::memory_order_relaxed); });
+        for (int i = 0; i < tasks; ++i) {
+            pool.run([&counter] {
+                counter.fetch_add(1, std::memory_order_relaxed);
+            });
         }
     };
 
@@ -106,16 +102,15 @@ double runOnce(int num_threads, size_t batch_size, int num_tasks,
     const int per_producer = num_tasks / num_producers;
     const int remainder = num_tasks % num_producers;
 
-    for (int p = 0; p < num_producers; ++p)
-    {
-        producers.emplace_back(producer, per_producer + (p < remainder ? 1 : 0));
+    for (int p = 0; p < num_producers; ++p) {
+        producers.emplace_back(producer,
+                               per_producer + (p < remainder ? 1 : 0));
     }
     for (auto& t : producers) t.join();
     pool.stop();  // drains all queued tasks before joining
     auto t1 = steady_clock::now();
 
-    if (counter.load() != num_tasks)
-    {
+    if (counter.load() != num_tasks) {
         std::cerr << "ERROR: ran " << counter.load() << " of " << num_tasks
                   << " tasks\n";
         std::exit(1);
@@ -124,10 +119,9 @@ double runOnce(int num_threads, size_t batch_size, int num_tasks,
     return duration_cast<duration<double>>(t1 - t0).count();
 }
 
-} // namespace
+}  // namespace
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
     // thread_pool_bench [threads] [num_tasks] [producers]
     const int threads = argc > 1 ? std::atoi(argv[1]) : 10;
     const int num_tasks = argc > 2 ? std::atoi(argv[2]) : 10'000'000;
@@ -144,8 +138,7 @@ int main(int argc, char** argv)
 
     const std::vector<size_t> batch_sizes = {1, 2, 4, 8, 16, 32, 64, 128};
     double baseline_s = 0.0;  // batch-1 is the one-lock-per-task reference
-    for (size_t batch : batch_sizes)
-    {
+    for (size_t batch : batch_sizes) {
         double s = runOnce(threads, batch, num_tasks, producers);
         if (batch == 1) baseline_s = s;
         double tasks_per_s = static_cast<double>(num_tasks) / s;

@@ -12,8 +12,7 @@
 #include <thread>
 #include <vector>
 
-namespace logging
-{
+namespace logging {
 
 // AsyncSink moves file I/O off the calling thread. This is the one piece of the
 // logging module that the reactor genuinely needs: a synchronous write() on an
@@ -72,12 +71,12 @@ private:
     std::condition_variable not_empty_;
     std::condition_variable drained_;
 
-    std::vector<std::string> current_;   // Producers append here
-    std::vector<std::string> writing_;   // Writer drains this (swapped in)
+    std::vector<std::string> current_;  // Producers append here
+    std::vector<std::string> writing_;  // Writer drains this (swapped in)
     std::atomic<uint64_t> dropped_{0};
-    uint64_t reported_drops_{0};         // Already announced in the log
+    uint64_t reported_drops_{0};  // Already announced in the log
     bool running_{false};
     std::thread thread_;
 };
 
-}   // namespace logging
+}  // namespace logging

@@ -3,7 +3,7 @@
 
 #if defined(__linux__)
 #include "poller/epoll_poller.h"
-#elif defined (__APPLE__) || defined(__FreeBSD__)
+#elif defined(__APPLE__) || defined(__FreeBSD__)
 #include "poller/kqueue_poller.h"
 #else
 #error "Unsupported OS"
@@ -17,4 +17,4 @@ std::unique_ptr<Poller> PollerFactory::create() {
     return std::make_unique<KQueuePoller>();
 #endif
 }
-}   // namespace reactor
+}  // namespace reactor

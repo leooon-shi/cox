@@ -11,13 +11,11 @@
 #include <memory>
 #include <string>
 
-namespace reactor
-{
+namespace reactor {
 class EventLoop;
 }
 
-namespace http
-{
+namespace http {
 // An HTTP/1.1 connection pool to a single origin (host:port), optionally over
 // TLS. It maintains a set of reusable keep-alive connections, dispatches
 // requests over idle ones (opening new connections up to a cap), returns
@@ -76,6 +74,7 @@ public:
     // True once the origin address is known (immediately for numeric origins,
     // after successful DNS resolution for hostname origins).
     bool resolved() const;
+
 private:
     class Impl;
     std::shared_ptr<Impl> impl_;
@@ -84,4 +83,4 @@ private:
     uint32_t idle_timeout_s_{60};
 };
 
-}   // namespace http
+}  // namespace http

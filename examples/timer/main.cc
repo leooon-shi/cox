@@ -1,7 +1,6 @@
 #include <iostream>
 
-int main()
-{
+int main() {
     std::cout << "hello echo" << std::endl;
     return 0;
 }

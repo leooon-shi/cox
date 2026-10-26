@@ -11,13 +11,11 @@
 #include <memory>
 #include <string>
 
-namespace reactor
-{
+namespace reactor {
 class EventLoop;
 }
 
-namespace http
-{
+namespace http {
 // HttpServer is an HTTP/1.1 server built on net::TcpServer, optionally
 // TLS-terminating (HTTPS). It gives each connection an HttpContext parser,
 // dispatches each fully-parsed request to a user handler, serializes the
@@ -25,8 +23,7 @@ namespace http
 //
 // For HTTPS, construct with a server-role TlsContext; each accepted connection
 // is wrapped in TLS and the handshake completes before requests are parsed.
-class HttpServer
-{
+class HttpServer {
 public:
     using HttpHandler =
         std::function<void(const HttpRequest& req, HttpResponse* resp)>;
@@ -43,12 +40,13 @@ public:
 
     using ConnectionObserver =
         std::function<void(const net::TcpConnectionPtr&)>;
-    void setConnectionObserver(ConnectionObserver obs)
-    {
+    void setConnectionObserver(ConnectionObserver obs) {
         connection_observer_ = std::move(obs);
     }
 
-    void setKeepAliveTimeout(uint32_t seconds) { server_.setIdleTimeout(seconds); }
+    void setKeepAliveTimeout(uint32_t seconds) {
+        server_.setIdleTimeout(seconds);
+    }
     void setMaxBodySize(size_t bytes) { server_.setMaxInputBufferSize(bytes); }
 
     net::TcpServer& tcpServer() { return server_; }
@@ -65,7 +63,7 @@ private:
     void processInput(const std::string& conn_name, buffer::Buffer* in,
                       const std::function<void(const std::string&)>& send,
                       const std::function<void()>& close);
-    tls::TlsContextPtr tls_ctx_;   // null for plaintext
+    tls::TlsContextPtr tls_ctx_;  // null for plaintext
     HttpHandler handler_;
     ConnectionObserver connection_observer_;
 
@@ -81,4 +79,4 @@ private:
     // callbacks see a valid map.
     net::TcpServer server_;
 };
-}   // namespace http
+}  // namespace http

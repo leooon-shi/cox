@@ -11,12 +11,12 @@
 // registered as Channels, so no worker threads are used ("make everything an
 // fd"). Falls back is unnecessary: callers pick this or ThreadPoolResolver.
 
-struct ares_channeldata;    // opaque
+struct ares_channeldata;  // opaque
 
 namespace reactor {
 class EventLoop;
 class Channel;
-}
+}  // namespace reactor
 
 namespace net {
 class CaresResolver : public Resolver {
@@ -30,4 +30,4 @@ private:
     class Impl;
     std::shared_ptr<Impl> impl_;
 };
-}   // namespace net
+}  // namespace net

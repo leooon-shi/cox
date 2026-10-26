@@ -2,8 +2,8 @@
 // a client engine drive a full handshake and exchange application data by
 // piping each other's encrypted output back and forth in memory.
 
-#include "tls_context.h"
 #include "tls_engine.h"
+#include "tls_context.h"
 
 #include "test_util.h"
 
@@ -18,8 +18,7 @@ using tls::Role;
 using tls::TlsContext;
 using tls::TlsEngine;
 
-namespace
-{
+namespace {
 
 // Generate an ephemeral self-signed cert+key pair for the test, returning the
 // two temp file paths. Uses the openssl CLI (available in the build env).
@@ -27,19 +26,18 @@ struct TestCert {
     std::string cert_path;
     std::string key_path;
 
-    TestCert()
-    {
+    TestCert() {
         cert_path = "/tmp/cox_tls_test_cert.pem";
         key_path = "/tmp/cox_tls_test_key.pem";
         std::string cmd =
             "openssl req -x509 -newkey rsa:2048 -nodes "
-            "-keyout " + key_path + " -out " + cert_path +
+            "-keyout " +
+            key_path + " -out " + cert_path +
             " -days 1 -subj '/CN=localhost' >/dev/null 2>&1";
         // See note in sni_test.cc: valid() below is the real check.
         (void)test_util::runCmd(cmd);
     }
-    ~TestCert()
-    {
+    ~TestCert() {
         std::remove(cert_path.c_str());
         std::remove(key_path.c_str());
     }
@@ -50,12 +48,10 @@ struct TestCert {
 };
 
 // Pump the pending encrypted output of `from` into `to`. Returns bytes moved.
-size_t pump(TlsEngine& from, TlsEngine& to)
-{
+size_t pump(TlsEngine& from, TlsEngine& to) {
     std::string enc;
     from.takeEncrypted(enc);
-    if (!enc.empty())
-    {
+    if (!enc.empty()) {
         to.feedEncrypted(enc.data(), enc.size());
     }
     return enc.size();
@@ -63,26 +59,22 @@ size_t pump(TlsEngine& from, TlsEngine& to)
 
 // Drive both engines' handshakes to completion by shuttling bytes until both
 // report done (or a bounded number of rounds elapses).
-bool driveHandshake(TlsEngine& client, TlsEngine& server)
-{
-    for (int round = 0; round < 20; ++round)
-    {
+bool driveHandshake(TlsEngine& client, TlsEngine& server) {
+    for (int round = 0; round < 20; ++round) {
         client.handshake();
         pump(client, server);
         server.handshake();
         pump(server, client);
-        if (client.handshakeDone() && server.handshakeDone())
-        {
+        if (client.handshakeDone() && server.handshakeDone()) {
             return true;
         }
     }
     return client.handshakeDone() && server.handshakeDone();
 }
 
-}   // namespace
+}  // namespace
 
-TEST(TlsEngineTest, HandshakeCompletes)
-{
+TEST(TlsEngineTest, HandshakeCompletes) {
     TestCert cert;
     ASSERT_TRUE(cert.valid()) << "failed to generate test cert";
 
@@ -105,8 +97,7 @@ TEST(TlsEngineTest, HandshakeCompletes)
     EXPECT_FALSE(client.cipherName().empty());
 }
 
-TEST(TlsEngineTest, EncryptedDataRoundTrip)
-{
+TEST(TlsEngineTest, EncryptedDataRoundTrip) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
 
@@ -142,8 +133,7 @@ TEST(TlsEngineTest, EncryptedDataRoundTrip)
     EXPECT_EQ(got, reply);
 }
 
-TEST(TlsEngineTest, LargeDataRoundTrip)
-{
+TEST(TlsEngineTest, LargeDataRoundTrip) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
 
@@ -160,8 +150,7 @@ TEST(TlsEngineTest, LargeDataRoundTrip)
     std::string big(100000, 'z');
     size_t offset = 0;
     std::string received;
-    while (offset < big.size())
-    {
+    while (offset < big.size()) {
         size_t consumed = 0;
         auto st = client.writePlaintext(big.data() + offset,
                                         big.size() - offset, &consumed);
@@ -183,8 +172,7 @@ TEST(TlsEngineTest, LargeDataRoundTrip)
     EXPECT_EQ(received, big);
 }
 
-TEST(TlsEngineTest, VerificationFailsWithoutTrust)
-{
+TEST(TlsEngineTest, VerificationFailsWithoutTrust) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
 
@@ -200,5 +188,4 @@ TEST(TlsEngineTest, VerificationFailsWithoutTrust)
     // untrusted self-signed certificate.
     bool done = driveHandshake(client, server);
     EXPECT_FALSE(done);
-
 }

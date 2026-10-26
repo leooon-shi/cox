@@ -1,8 +1,8 @@
 // End-to-end HTTP/1.1 server test over real sockets, using a raw client.
 
+#include "http_server.h"
 #include "http_request.h"
 #include "http_response.h"
-#include "http_server.h"
 
 #include "event_loop.h"
 #include "inet_address.h"
@@ -25,39 +25,32 @@ using namespace std::chrono_literals;
 using namespace http;
 namespace sockets = net::sockets;
 
-namespace
-{
-bool waitReadable(int fd, int ms)
-{
+namespace {
+bool waitReadable(int fd, int ms) {
     struct pollfd pfd{fd, POLLIN, 0};
     return ::poll(&pfd, 1, ms) > 0 && (pfd.revents & POLLIN);
 }
-bool waitWritable(int fd, int ms)
-{
+bool waitWritable(int fd, int ms) {
     struct pollfd pfd{fd, POLLOUT, 0};
     return ::poll(&pfd, 1, ms) > 0 && (pfd.revents & POLLOUT);
 }
-int connectClient(uint16_t port)
-{
+int connectClient(uint16_t port) {
     int fd = sockets::createNonBlockingOrDie(AF_INET);
     net::InetAddress server("127.0.0.1", port);
     sockets::connect(fd, server);
     waitWritable(fd, 1000);
     return fd;
 }
-std::string readAll(int fd, int ms)
-{
+std::string readAll(int fd, int ms) {
     std::string out;
     char buf[4096];
     // Read until we have headers + body or timeout.
-    for (int i = 0; i < 20; ++i)
-    {
+    for (int i = 0; i < 20; ++i) {
         if (!waitReadable(fd, ms)) break;
         ssize_t n = ::read(fd, buf, sizeof(buf));
         if (n <= 0) break;
         out.append(buf, n);
-        if (out.find("\r\n\r\n") != std::string::npos)
-        {
+        if (out.find("\r\n\r\n") != std::string::npos) {
             // crude: assume small body arrives together
             std::this_thread::sleep_for(10ms);
             while (waitReadable(fd, 10)) {
@@ -70,10 +63,9 @@ std::string readAll(int fd, int ms)
     }
     return out;
 }
-}   // namespace
+}  // namespace
 
-TEST(HttpServerTest, GetRequestResponse)
-{
+TEST(HttpServerTest, GetRequestResponse) {
     const uint16_t kPort = 55501;
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -109,8 +101,7 @@ TEST(HttpServerTest, GetRequestResponse)
     server_thread.join();
 }
 
-TEST(HttpServerTest, KeepAliveTwoRequests)
-{
+TEST(HttpServerTest, KeepAliveTwoRequests) {
     const uint16_t kPort = 55502;
     std::atomic<bool> started{false};
     std::atomic<int> request_count{0};
@@ -153,8 +144,7 @@ TEST(HttpServerTest, KeepAliveTwoRequests)
     server_thread.join();
 }
 
-TEST(HttpServerTest, PostEcho)
-{
+TEST(HttpServerTest, PostEcho) {
     const uint16_t kPort = 55503;
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -165,7 +155,7 @@ TEST(HttpServerTest, PostEcho)
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "http");
         server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp) {
             resp->setStatus(200);
-            resp->setBody(req.body());   // echo the posted body
+            resp->setBody(req.body());  // echo the posted body
         });
         server.start();
         started = true;

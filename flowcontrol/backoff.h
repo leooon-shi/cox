@@ -6,9 +6,8 @@
 #include <string>
 #include <unordered_map>
 
-namespace flowcontrol
-{
-// Per-key exponential backoff with jitter, modeled after client-go's 
+namespace flowcontrol {
+// Per-key exponential backoff with jitter, modeled after client-go's
 // flowcontrol.Backoff. Each key (e.g. a server address, a client id) has its
 // own backoff state that grows exponentially on repeated failures and resets
 // after a period of success/inactivity.
@@ -25,8 +24,7 @@ namespace flowcontrol
 //   bo.reset(key);                  // clear backoff for the key
 //
 // All methods are thread-safe.
-class Backoff
-{
+class Backoff {
 public:
     using Clock = std::chrono::steady_clock;
     using Duration = std::chrono::milliseconds;
@@ -73,4 +71,4 @@ private:
     std::unordered_map<std::string, Entry> entries_;
     uint64_t rng_state_;  // xorshift, guarded by mutex_
 };
-}   // namespace flowcontrol
+}  // namespace flowcontrol

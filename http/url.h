@@ -3,8 +3,7 @@
 #include <map>
 #include <string>
 
-namespace http
-{
+namespace http {
 // Decoded query/form parameters. Keys and values are percent-decoded.
 using QueryParams = std::map<std::string, std::string>;
 
@@ -22,4 +21,4 @@ std::string urlEncode(const std::string& in);
 // Parse a query string ("a=1&b=2&flag") into decoded key/value pairs. A key
 // without '=' maps to an empty value. Later duplicates overwrite earlier ones.
 QueryParams parseQuery(const std::string& query);
-}   // namespace http
+}  // namespace http

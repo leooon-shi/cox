@@ -12,34 +12,27 @@
 #include <string>
 #include <utility>
 
-namespace http
-{
-namespace
-{
-logging::Logger& log()
-{
+namespace http {
+namespace {
+logging::Logger& log() {
     static logging::Logger logger;
     return logger;
 }
-}   // namespace
+}  // namespace
 
 // Per-connection state. For TLS, holds the TlsConnection and a reassembly
 // buffer for decrypted plaintext; always holds the HTTP parse context.
-struct HttpServer::PerConn
-{
+struct HttpServer::PerConn {
     HttpContext ctx;
-    tls::TlsConnectionPtr tls;      // null for plaintext
-    buffer::Buffer in;              // reassembled plaintext (TLS path)
+    tls::TlsConnectionPtr tls;  // null for plaintext
+    buffer::Buffer in;          // reassembled plaintext (TLS path)
 };
 
-HttpServer::HttpServer(reactor::EventLoop* loop, const net::InetAddress& addr, 
+HttpServer::HttpServer(reactor::EventLoop* loop, const net::InetAddress& addr,
                        std::string name)
-    : server_(loop, addr, std::move(name))
-{
+    : server_(loop, addr, std::move(name)) {
     server_.setConnectionCallback(
-        [this](const net::TcpConnectionPtr& c) { 
-            onConnection(c); 
-        });
+        [this](const net::TcpConnectionPtr& c) { onConnection(c); });
 
     server_.setMessageCallback(
         [this](const net::TcpConnectionPtr& c, buffer::Buffer* b) {
@@ -49,14 +42,11 @@ HttpServer::HttpServer(reactor::EventLoop* loop, const net::InetAddress& addr,
     server_.setIdleTimeout(60);
 }
 
-HttpServer::HttpServer(reactor::EventLoop* loop, const net::InetAddress& addr, 
+HttpServer::HttpServer(reactor::EventLoop* loop, const net::InetAddress& addr,
                        std::string name, tls::TlsContextPtr tls_ctx)
-    : tls_ctx_(std::move(tls_ctx)), server_(loop, addr, std::move(name))
-{
+    : tls_ctx_(std::move(tls_ctx)), server_(loop, addr, std::move(name)) {
     server_.setConnectionCallback(
-        [this](const net::TcpConnectionPtr& c) { 
-            onConnection(c); 
-        });
+        [this](const net::TcpConnectionPtr& c) { onConnection(c); });
 
     server_.setMessageCallback(
         [this](const net::TcpConnectionPtr& c, buffer::Buffer* b) {
@@ -68,21 +58,17 @@ HttpServer::HttpServer(reactor::EventLoop* loop, const net::InetAddress& addr,
 
 HttpServer::~HttpServer() = default;
 
-void HttpServer::start() 
-{ 
-    server_.start(); 
+void HttpServer::start() {
+    server_.start();
 }
 
-void HttpServer::onConnection(const net::TcpConnectionPtr& conn)
-{
-    if (conn->connected())
-    {
+void HttpServer::onConnection(const net::TcpConnectionPtr& conn) {
+    if (conn->connected()) {
         auto pc = std::make_shared<PerConn>();
-        if (tls_ctx_)
-        {
+        if (tls_ctx_) {
             // Wrap in server-side TLS; feed decrypted plaintext to the parser.
-            auto tc = std::make_shared<tls::TlsConnection>(
-                conn, tls_ctx_, tls::Role::kServer);
+            auto tc = std::make_shared<tls::TlsConnection>(conn, tls_ctx_,
+                                                           tls::Role::kServer);
             pc->tls = tc;
             std::string name = conn->name();
             tc->setMessageCallback(
@@ -94,7 +80,7 @@ void HttpServer::onConnection(const net::TcpConnectionPtr& conn)
                     pcp->in.append(pt);
                     auto self_tls = pcp->tls;
                     processInput(
-                        name, &pcp->in, 
+                        name, &pcp->in,
                         [self_tls](const std::string& data) {
                             self_tls->send(data);
                         },
@@ -102,62 +88,51 @@ void HttpServer::onConnection(const net::TcpConnectionPtr& conn)
                 });
             conns_[conn->name()] = pc;
             tc->start();
-        }
-        else
-        {
+        } else {
             conns_[conn->name()] = pc;
         }
-    }
-    else
-    {
+    } else {
         conns_.erase(conn->name());
     }
     if (connection_observer_) connection_observer_(conn);
 }
 
 void HttpServer::onPlainMessage(const net::TcpConnectionPtr& conn,
-                                buffer::Buffer* buf)
-{
+                                buffer::Buffer* buf) {
     if (tls_ctx_) return;  // TLS path handles bytes via TlsConnection
     std::string name = conn->name();
     net::TcpConnectionPtr c = conn;
     processInput(
-        name, buf,
-        [c](const std::string& data) { c->send(data); },
+        name, buf, [c](const std::string& data) { c->send(data); },
         [c]() { c->shutdown(); });
 }
 
 void HttpServer::processInput(
     const std::string& conn_name, buffer::Buffer* in,
     const std::function<void(const std::string&)>& send,
-    const std::function<void()>& close )
-{
+    const std::function<void()>& close) {
     auto it = conns_.find(conn_name);
     if (it == conns_.end()) return;
 
     HttpContext& ctx = it->second->ctx;
 
-    if (!ctx.parseRequest(in))
-    {
+    if (!ctx.parseRequest(in)) {
         log().debug("malformed request on " + conn_name + "; sending 400");
-        send("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n"
-             "Connection: close\r\n\r\n");
+        send(
+            "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n"
+            "Connection: close\r\n\r\n");
         close();
         return;
     }
 
-    while (ctx.gotAll())
-    {
+    while (ctx.gotAll()) {
         const HttpRequest& req = ctx.request();
         const bool keep_alive = req.keepAlive();
 
         HttpResponse resp(keep_alive);
-        if (handler_)
-        {
+        if (handler_) {
             handler_(req, &resp);
-        }
-        else
-        {
+        } else {
             resp.setStatus(404);
             resp.setBody("No handler");
         }
@@ -168,23 +143,22 @@ void HttpServer::processInput(
         send(out.retrieveAllAsString());
 
         ctx.reset();
-        if (!keep_alive)
-        {
+        if (!keep_alive) {
             close();
             break;
         }
 
         // Parse a possibly-pipelined next request already buffered.
-        if (!ctx.parseRequest(in))
-        {
+        if (!ctx.parseRequest(in)) {
             log().debug("malformed pipelined request on " + conn_name +
                         "; sending 400");
-            send("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n"
-                 "Connection: close\r\n\r\n");
+            send(
+                "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n"
+                "Connection: close\r\n\r\n");
             close();
             return;
         }
     }
 }
 
-}   // namespace http
+}  // namespace http

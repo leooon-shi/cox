@@ -8,14 +8,12 @@
 #include <functional>
 #include <memory>
 
-namespace reactor
-{
+namespace reactor {
 class EventLoop;
 class Channel;
-}
+}  // namespace reactor
 
-namespace net 
-{
+namespace net {
 // Connector is the active-open side of the Acceptor-Connector pattern. It
 // performs a non-blocking connect to a remote address, handling the
 // asynchronous completion (writable => check SO_ERROR), self-connect
@@ -34,8 +32,7 @@ public:
     Connector(const Connector&) = delete;
     Connector& operator=(const Connector&) = delete;
 
-    void setNewConnectionCallback(NewConnectionCallback cb)
-    {
+    void setNewConnectionCallback(NewConnectionCallback cb) {
         new_connection_callback_ = std::move(cb);
     }
 
@@ -82,4 +79,4 @@ private:
 };
 
 using ConnectorPtr = std::shared_ptr<Connector>;
-}   // namespace net
+}  // namespace net

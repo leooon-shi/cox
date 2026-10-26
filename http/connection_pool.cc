@@ -17,21 +17,17 @@
 #include <utility>
 #include <vector>
 
-namespace http
-{
-namespace
-{
-logging::Logger& log()
-{
+namespace http {
+namespace {
+logging::Logger& log() {
     static logging::Logger logger;
     return logger;
 }
-} // namespace
+}  // namespace
 
 // One pooled connection: a TcpClient/connection (optionally wrapped in TLS)
 // plus its parser and the callback for the request currently in flight.
-class PooledConn : public std::enable_shared_from_this<PooledConn>
-{
+class PooledConn : public std::enable_shared_from_this<PooledConn> {
 public:
     using ResponseCallback = ConnectionPool::ResponseCallback;
 
@@ -40,7 +36,7 @@ public:
         : client_(loop, origin, "pool-conn"),
           host_(std::move(host)),
           tls_ctx_(std::move(tls_ctx)) {}
-    
+
     bool busy() const { return busy_; }
     bool connected() const { return ready_; }
     logging::Timestamp lastUsed() const { return last_used_; }
@@ -49,11 +45,11 @@ public:
     std::function<void(const std::shared_ptr<PooledConn>&)> on_free;
     std::function<void(const std::shared_ptr<PooledConn>&)> on_closed;
 
-    void init()
-    {
+    void init() {
         // WEAK, not strong: this object OWNs client_, so capturing a
         // shared_ptr to self in client_'s callbacks creates a reference cycle
-        // (PooledConn -> TcpClient -> callback -> PooledConn) and the connection
+        // (PooledConn -> TcpClient -> callback -> PooledConn) and the
+        // connection
         // - along with its 1KB input/output Buffers - can never be freed.
         // LeakSanitizer found this as a set of indirect leaks with no direct
         // leak, which is the signature of a cycle. Lock the weak_ptr per event:
@@ -61,16 +57,13 @@ public:
         // already dropped this connection there is nothing to do.
         std::weak_ptr<PooledConn> weak = weak_from_this();
         client_.setConnectionCallback([weak](const net::TcpConnectionPtr& c) {
-            if (auto self = weak.lock())
-            {
+            if (auto self = weak.lock()) {
                 self->onConnection(c);
             }
         });
         client_.setMessageCallback(
-            [weak](const net::TcpConnectionPtr& c, buffer::Buffer* b)
-            {
-                if (auto self = weak.lock())
-                {
+            [weak](const net::TcpConnectionPtr& c, buffer::Buffer* b) {
+                if (auto self = weak.lock()) {
                     self->onTcpMessage(c, b);
                 }
             });
@@ -78,8 +71,7 @@ public:
 
     void connect() { client_.connect(); }
 
-    void start(const HttpRequest& req, ResponseCallback cb)
-    {
+    void start(const HttpRequest& req, ResponseCallback cb) {
         busy_ = true;
         done_ = false;
         parser_.reset();
@@ -89,44 +81,33 @@ public:
         buffer::Buffer out;
         r.appendTo(&out, host_);
         std::string wire = out.retrieveAllAsString();
-        if (tls_conn_)
-        {
+        if (tls_conn_) {
             tls_conn_->send(wire);
-        }
-        else if (conn_)
-        {
+        } else if (conn_) {
             conn_->send(wire);
         }
     }
 
-    void close()
-    {
-        if (tls_conn_)
-        {
+    void close() {
+        if (tls_conn_) {
             tls_conn_->shutdown();
-        }
-        else if (conn_)
-        {
+        } else if (conn_) {
             conn_->shutdown();
         }
     }
 
 private:
-    ResponseCallback takeCallback()
-    {
+    ResponseCallback takeCallback() {
         ResponseCallback cb = std::move(callback_);
         callback_ = nullptr;
         return cb;
     }
 
-    void onConnection(const net::TcpConnectionPtr& c)
-    {
-        if (c->connected())
-        {
+    void onConnection(const net::TcpConnectionPtr& c) {
+        if (c->connected()) {
             conn_ = c;
             last_used_ = logging::Timestamp::now();
-            if (tls_ctx_)
-            {
+            if (tls_ctx_) {
                 // Wrap in TLS; ready only after the handshake completes.
                 // host_ is passed as SNI so a multi-domain origin serves the
                 // right certificate (and so the cert is checked against the
@@ -158,16 +139,14 @@ private:
             ready_ = false;
             conn_.reset();
             tls_conn_.reset();
-            if (busy_ && !done_)
-            {
+            if (busy_ && !done_) {
                 busy_ = false;
                 done_ = true;
                 ResponseCallback cb = takeCallback();
                 parser_.onEof();
-                if (parser_.gotAll())
-                {
+                if (parser_.gotAll()) {
                     if (cb) cb(parser_.response(), "");
-                } else if (cb) { 
+                } else if (cb) {
                     cb(HttpResponse(), "connection closed before response");
                 }
             }
@@ -176,32 +155,27 @@ private:
     }
 
     // Plaintext (non-TLS) inbound bytes arrive as a Buffer.
-    void onTcpMessage(const net::TcpConnectionPtr& c, buffer::Buffer* buf)
-    {
+    void onTcpMessage(const net::TcpConnectionPtr& c, buffer::Buffer* buf) {
         if (tls_conn_) return;  // TLS path handles bytes via TlsConnection
         consume(buf);
         (void)c;
     }
 
     // TLS inbound plaintext arrives as a string; feed it to a Buffer to parse.
-    void onPlaintext(std::string& pt)
-    {
+    void onPlaintext(std::string& pt) {
         in_buf_.append(pt);
         consume(&in_buf_);
     }
 
     // Common: run the parser over `buf` and handle a completed response.
-    void consume(buffer::Buffer* buf)
-    {
-        if (!parser_.parse(buf))
-        {
+    void consume(buffer::Buffer* buf) {
+        if (!parser_.parse(buf)) {
             ResponseCallback cb = takeCallback();
             if (cb) cb(HttpResponse(), "malformed response");
             close();
             return;
         }
-        if (parser_.gotAll())
-        {
+        if (parser_.gotAll()) {
             HttpResponse resp = parser_.response();
             std::string conn_hdr = resp.header("Connection");
             for (auto& ch : conn_hdr) ch = static_cast<char>(::tolower(ch));
@@ -213,8 +187,7 @@ private:
             last_used_ = logging::Timestamp::now();
 
             ResponseCallback cb = takeCallback();
-            if (server_keep_alive)
-            {
+            if (server_keep_alive) {
                 if (on_free) on_free(shared_from_this());
             } else {
                 close();
@@ -225,10 +198,10 @@ private:
 
     net::TcpClient client_;
     std::string host_;
-    tls::TlsContextPtr tls_ctx_;                // null for plaintext
+    tls::TlsContextPtr tls_ctx_;  // null for plaintext
     net::TcpConnectionPtr conn_;
-    tls::TlsConnectionPtr tls_conn_;            // set when TLS
-    buffer::Buffer in_buf_;                     // reassembles TLS plaintext
+    tls::TlsConnectionPtr tls_conn_;  // set when TLS
+    buffer::Buffer in_buf_;           // reassembles TLS plaintext
     ResponseParser parser_;
     ResponseCallback callback_;
     logging::Timestamp last_used_;
@@ -289,19 +262,16 @@ public:
 
     // Cancel the eviction timer so the loop stops holding this callback.
     void stopEviction() {
-        if (eviction_timer_armed_)
-        {
+        if (eviction_timer_armed_) {
             loop_->cancel(eviction_timer_);
             eviction_timer_armed_ = false;
         }
     }
 
-    void request(const HttpRequest& req, ResponseCallback cb)
-    {
+    void request(const HttpRequest& req, ResponseCallback cb) {
         loop_->assertInLoopThread();
         // Hostname origin not yet resolved: park the request behind DNS.
-        if (!resolved_)
-        {
+        if (!resolved_) {
             waiting_on_dns_.push_back(Pending{req, std::move(cb)});
             startResolveOnce();
             return;
@@ -311,38 +281,37 @@ public:
 
     size_t idleCount() const { return idle_.size(); }
     size_t busyCount() const { return busy_.size(); }
-    size_t total() const { return idle_.size() + busy_.size() + connecting_.size(); }
+    size_t total() const {
+        return idle_.size() + busy_.size() + connecting_.size();
+    }
     size_t queued() const { return queue_.size() + waiting_on_dns_.size(); }
+
 private:
     using ConnPtr = std::shared_ptr<PooledConn>;
 
     // Kick off DNS once; subsequent requests just queue behind it.
-    void startResolveOnce()
-    {
+    void startResolveOnce() {
         if (resolving_) return;
         resolving_ = true;
         auto self = shared_from_this();
-        resolver_->resolve(dns_host_, dns_port_,
-                           [self](const net::InetAddress& addr,
-                                  const std::string& err) {
-                               self->onResolved(addr, err);
-                           });
+        resolver_->resolve(
+            dns_host_, dns_port_,
+            [self](const net::InetAddress& addr, const std::string& err) {
+                self->onResolved(addr, err);
+            });
     }
 
     // Resolver callbacks arrive on the loop thread.
-    void onResolved(const net::InetAddress& addr, const std::string& err)
-    {
+    void onResolved(const net::InetAddress& addr, const std::string& err) {
         loop_->assertInLoopThread();
         resolving_ = false;
         std::deque<Pending> waiting = std::move(waiting_on_dns_);
         waiting_on_dns_.clear();
 
-        if (!err.empty())
-        {
+        if (!err.empty()) {
             // Fail every parked request; a later request retries resolution.
             log().error("DNS resolution failed for " + dns_host_ + ": " + err);
-            for (auto& p : waiting)
-            {
+            for (auto& p : waiting) {
                 if (p.cb) p.cb(HttpResponse(), "DNS resolution failed: " + err);
             }
             return;
@@ -350,18 +319,15 @@ private:
 
         origin_ = addr;
         resolved_ = true;
-        for (auto& p : waiting)
-        {
+        for (auto& p : waiting) {
             dispatch(p.req, std::move(p.cb));
         }
     }
 
     // Dispatch with a known origin address: reuse, open, or queue.
-    void dispatch(const HttpRequest& req, ResponseCallback cb)
-    {
+    void dispatch(const HttpRequest& req, ResponseCallback cb) {
         // Reuse an idle connection if available.
-        if (!idle_.empty())
-        {
+        if (!idle_.empty()) {
             auto c = idle_.back();
             idle_.pop_back();
             busy_.push_back(c);
@@ -370,9 +336,9 @@ private:
         }
 
         // Open a new connection if under the cap.
-        if (total() < *max_connections_)
-        {
-            auto c = std::make_shared<PooledConn>(loop_, origin_, host_, tls_ctx_);
+        if (total() < *max_connections_) {
+            auto c =
+                std::make_shared<PooledConn>(loop_, origin_, host_, tls_ctx_);
             wireCallbacks(c);
             c->init();
             connecting_.push_back(c);
@@ -384,8 +350,7 @@ private:
         queue_.push_back(Pending{req, std::move(cb)});
     }
 
-    void wireCallbacks(const ConnPtr& c)
-    {
+    void wireCallbacks(const ConnPtr& c) {
         // WEAK: Impl owns the connections (idle_/busy_/connecting_), so handing
         // each connection a strong ref back to Impl is a cycle -- neither side
         // is ever freed. This was the root of the pool's leak: LeakSanitizer
@@ -394,7 +359,7 @@ private:
         // delete.
         std::weak_ptr<Impl> weak = weak_from_this();
         c->on_ready = [weak](const ConnPtr& conn) {
-            if(auto self = weak.lock()) self->onReady(conn);
+            if (auto self = weak.lock()) self->onReady(conn);
         };
         c->on_free = [weak](const ConnPtr& conn) {
             if (auto self = weak.lock()) self->onFree(conn);
@@ -404,24 +369,20 @@ private:
         };
     }
 
-    void removeFrom(std::vector<ConnPtr>& v, const ConnPtr& c)
-    {
-        for (auto it = v.begin(); it != v.end(); ++it)
-        {
-            if (*it == c) { 
+    void removeFrom(std::vector<ConnPtr>& v, const ConnPtr& c) {
+        for (auto it = v.begin(); it != v.end(); ++it) {
+            if (*it == c) {
                 v.erase(it);
                 return;
             }
         }
     }
 
-    void onReady(const ConnPtr& c)
-    {
+    void onReady(const ConnPtr& c) {
         loop_->assertInLoopThread();
         removeFrom(connecting_, c);
         auto it = pending_.find(c.get());
-        if (it != pending_.end())
-        {
+        if (it != pending_.end()) {
             busy_.push_back(c);
             Pending p = std::move(it->second);
             pending_.erase(it);
@@ -431,13 +392,11 @@ private:
         }
     }
 
-    void onFree(const ConnPtr& c)
-    {
+    void onFree(const ConnPtr& c) {
         loop_->assertInLoopThread();
         removeFrom(busy_, c);
         // Serve a queued request on this now-free connection, else idle it.
-        if (!queue_.empty())
-        {
+        if (!queue_.empty()) {
             Pending p = std::move(queue_.front());
             queue_.pop_front();
             busy_.push_back(c);
@@ -447,19 +406,18 @@ private:
         }
     }
 
-    void onClosed(const ConnPtr& c)
-    {
+    void onClosed(const ConnPtr& c) {
         loop_->assertInLoopThread();
         removeFrom(idle_, c);
         removeFrom(busy_, c);
         removeFrom(connecting_, c);
         pending_.erase(c.get());
         // If there are queued requests and capacity, open a replacement.
-        if (!queue_.empty() && total() < *max_connections_)
-        {
+        if (!queue_.empty() && total() < *max_connections_) {
             Pending p = std::move(queue_.front());
             queue_.pop_front();
-            auto nc = std::make_shared<PooledConn>(loop_, origin_, host_, tls_ctx_);
+            auto nc =
+                std::make_shared<PooledConn>(loop_, origin_, host_, tls_ctx_);
             wireCallbacks(nc);
             nc->init();
             connecting_.push_back(nc);
@@ -468,26 +426,22 @@ private:
         }
     }
 
-    void evictIdle()
-    {
+    void evictIdle() {
         loop_->assertInLoopThread();
         auto now = logging::Timestamp::now();
         std::vector<ConnPtr> to_close;
-        for (auto& c : idle_)
-        {
-            uint64_t idle_ms =
-                (now.microSecondsSinceEpoch() - 
-                 c->lastUsed().microSecondsSinceEpoch()) / 1000;
-            if (idle_ms > static_cast<uint64_t>(*idle_timeout_s_) * 1000)
-            {
+        for (auto& c : idle_) {
+            uint64_t idle_ms = (now.microSecondsSinceEpoch() -
+                                c->lastUsed().microSecondsSinceEpoch()) /
+                               1000;
+            if (idle_ms > static_cast<uint64_t>(*idle_timeout_s_) * 1000) {
                 to_close.push_back(c);
             }
         }
 
-        for (auto& c : to_close)
-        {
+        for (auto& c : to_close) {
             removeFrom(idle_, c);
-            c->close(); // onClosed will fully remove it.
+            c->close();  // onClosed will fully remove it.
         }
     }
 
@@ -501,8 +455,8 @@ private:
     std::vector<ConnPtr> idle_;
     std::vector<ConnPtr> busy_;
     std::vector<ConnPtr> connecting_;
-    std::map<PooledConn*, Pending> pending_;   // connecting -> its request
-    std::deque<Pending> queue_;                // waiting for a free connection
+    std::map<PooledConn*, Pending> pending_;  // connecting -> its request
+    std::deque<Pending> queue_;               // waiting for a free connection
 
     // DNS state (hostname origins only). resolved_ is true from construction
     // for numeric origins, so those pay nothing for this path.
@@ -511,7 +465,7 @@ private:
     std::string dns_host_;
     uint16_t dns_port_{0};
     net::Resolver* resolver_{nullptr};
-    std::deque<Pending> waiting_on_dns_;   // parked until the name resolves
+    std::deque<Pending> waiting_on_dns_;  // parked until the name resolves
 
     reactor::TimerId eviction_timer_{};
     bool eviction_timer_armed_{false};
@@ -523,7 +477,7 @@ ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
                                const net::InetAddress& origin,
                                std::string host_header) {
     impl_ = std::make_shared<Impl>(loop, origin, std::move(host_header),
-                                   /*tls_ctx*/nullptr, &max_connections_,
+                                   /*tls_ctx*/ nullptr, &max_connections_,
                                    &idle_timeout_s_);
     impl_->startEviction();
 }
@@ -561,13 +515,12 @@ ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
     impl_->startEviction();
 }
 ConnectionPool::~ConnectionPool() {
-    // Stop the eviction timer so the loop drops its reference to Impl; otherwise
-    // the pool outlives the ConnectionPool facade.
+    // Stop the eviction timer so the loop drops its reference to Impl;
+    // otherwise the pool outlives the ConnectionPool facade.
     if (impl_) impl_->stopEviction();
 }
 
-void ConnectionPool::request(const HttpRequest& req,
-                                   ResponseCallback cb) {
+void ConnectionPool::request(const HttpRequest& req, ResponseCallback cb) {
     impl_->request(req, std::move(cb));
 }
 
@@ -595,4 +548,4 @@ bool ConnectionPool::resolved() const {
     return impl_->resolved();
 }
 
-} // namespace Http
+}  // namespace http

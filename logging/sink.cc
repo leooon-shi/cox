@@ -6,17 +6,14 @@
 #include <utility>
 #include <vector>
 
-namespace logging
-{
-namespace
-{
+namespace logging {
+namespace {
 // ---- stdout ----
 
 // Writes to stdout via a FILE*. Uses the C stdio layer rather than std::cout so
 // buffering and flushing are explicit and cheap.
 
-class StdoutSink final : public Sink 
-{
+class StdoutSink final : public Sink {
 public:
     void append(const std::string& line) override {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -28,23 +25,21 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         std::fflush(stdout);
     }
+
 private:
     std::mutex mutex_;
 };
-
 
 // ---- plain file ----
 
 class FileSink final : public Sink {
 public:
-    FileSink(const std::string& path, bool append_mode)
-    {
+    FileSink(const std::string& path, bool append_mode) {
         fp_ = std::fopen(path.c_str(), append_mode ? "ae" : "we");
     }
 
     ~FileSink() override {
-        if (fp_)
-        {
+        if (fp_) {
             std::fflush(fp_);
             std::fclose(fp_);
         }
@@ -52,7 +47,7 @@ public:
 
     void append(const std::string& line) override {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (!fp_) return; // open failed; drop rather than crash
+        if (!fp_) return;  // open failed; drop rather than crash
 
         std::fwrite(line.data(), 1, line.size(), fp_);
         std::fputc('\n', fp_);
@@ -78,9 +73,8 @@ public:
     RotatingFileSink(const std::string& path, size_t max_bytes,
                      size_t max_files)
         : path_(path),
-        max_bytes_(max_bytes == 0 ? 1 : max_bytes),
-        max_files_(max_files)
-    {
+          max_bytes_(max_bytes == 0 ? 1 : max_bytes),
+          max_files_(max_files) {
         open();
     }
 
@@ -92,8 +86,7 @@ public:
 
         // Rotate BEFORE writing when this line would exceed the cap, so the
         // limit is never overshot by more than one line.
-        if (written_ + line.size() + 1 > max_bytes_ && written_ > 0)
-        {
+        if (written_ + line.size() + 1 > max_bytes_ && written_ > 0) {
             rotate();
         }
 
@@ -106,6 +99,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         if (fp_) std::fflush(fp_);
     }
+
 private:
     void open() {
         fp_ = std::fopen(path_.c_str(), "ae");
@@ -118,8 +112,7 @@ private:
     }
 
     void close() {
-        if (fp_)
-        {
+        if (fp_) {
             std::fflush(fp_);
             std::fclose(fp_);
             fp_ = nullptr;
@@ -130,11 +123,9 @@ private:
         return base + "." + std::to_string(n);
     }
 
-    void rotate()
-    {
+    void rotate() {
         close();
-        if (max_files_ == 0)
-        {
+        if (max_files_ == 0) {
             // No history kept: just truncate.
             std::FILE* t = std::fopen(path_.c_str(), "we");
             if (t) std::fclose(t);
@@ -145,8 +136,7 @@ private:
         // Drop the oldest, then shift each rolled file up by one.
 
         std::remove(rolled(path_, max_files_).c_str());
-        for (size_t i = max_files_; i > 1; --i)
-        {
+        for (size_t i = max_files_; i > 1; --i) {
             std::rename(rolled(path_, i - 1).c_str(), rolled(path_, i).c_str());
         }
         std::rename(path_.c_str(), rolled(path_, 1).c_str());
@@ -160,7 +150,6 @@ private:
     std::FILE* fp_{nullptr};
     size_t written_{0};
 };
-
 
 // ---- fan-out ----
 
@@ -178,20 +167,20 @@ public:
     void flush() override {
         for (auto& s : sinks_) s->flush();
     }
+
 private:
     // Each downstream sink does its own locking, so no mutex is needed here.
     std::vector<std::unique_ptr<Sink>> sinks_;
 };
 
-}   // namespace
+}  // namespace
 
 std::unique_ptr<Sink> Sink::newStdoutSink() {
     return std::make_unique<StdoutSink>();
 }
 
-std::unique_ptr<Sink> Sink::newFileSink(const std::string& path, 
-                                        bool append_mode)
-{
+std::unique_ptr<Sink> Sink::newFileSink(const std::string& path,
+                                        bool append_mode) {
     return std::make_unique<FileSink>(path, append_mode);
 }
 
@@ -202,8 +191,7 @@ std::unique_ptr<Sink> Sink::newRotatingFileSink(const std::string& path,
 }
 
 std::unique_ptr<Sink> Sink::newMultiSink(
-    std::vector<std::unique_ptr<Sink>> sinks)
-{
+    std::vector<std::unique_ptr<Sink>> sinks) {
     return std::make_unique<MultiSink>(std::move(sinks));
 }
 
@@ -218,8 +206,7 @@ void MemorySink::flush() {
     ++flush_count_;
 }
 
-std::vector<std::string> MemorySink::lines() const
-{
+std::vector<std::string> MemorySink::lines() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return lines_;
 }
@@ -227,8 +214,7 @@ std::vector<std::string> MemorySink::lines() const
 std::string MemorySink::text() const {
     std::lock_guard<std::mutex> lock(mutex_);
     std::string out;
-    for (const auto& l : lines_)
-    {
+    for (const auto& l : lines_) {
         if (!out.empty()) out += "\n";
         out += l;
     }
@@ -246,4 +232,4 @@ void MemorySink::clear() {
     flush_count_ = 0;
 }
 
-}   // namespace logging
+}  // namespace logging

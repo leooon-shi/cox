@@ -20,61 +20,54 @@ using tls::TlsContext;
 using tls::TlsContextPtr;
 using tls::TlsEngine;
 
-namespace
-{
+namespace {
 // A self-signed cert for a specific CN, so we can prove WHICH cert was served.
-struct NamedCert
-{
+struct NamedCert {
     std::string cn;
     std::string cert_path;
     std::string key_path;
 
     explicit NamedCert(const std::string& common_name, const std::string& tag)
         : cn(common_name) {
-          cert_path = "/tmp/cox_sni_" + tag + "_cert.pem";
-          key_path = "/tmp/cox_sni_" + tag + "_key.pem";
-          // subjectAltName is required for modern hostname verification; CN alone
-          // is no longer honored by OpenSSL's X509_check_host.
-          std::string cmd=
-              "openssl req -x509 -newkey rsa:2048 -nodes -keyout " + key_path +
-              " -out " + cert_path + " -days 1 -subj '/CN=" + common_name +
-              "' -addext 'subjectAltName=DNS:" + common_name + "'"
-              " >/dev/null 2>&1";
-          // Status intentionally unchecked here: valid() below verifies the
-          // files actually appeared, which is the condition that matters.
-          (void)test_util::runCmd(cmd);
-        }
-    ~NamedCert()
-    {
+        cert_path = "/tmp/cox_sni_" + tag + "_cert.pem";
+        key_path = "/tmp/cox_sni_" + tag + "_key.pem";
+        // subjectAltName is required for modern hostname verification; CN alone
+        // is no longer honored by OpenSSL's X509_check_host.
+        std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
+                          key_path + " -out " + cert_path +
+                          " -days 1 -subj '/CN=" + common_name +
+                          "' -addext 'subjectAltName=DNS:" + common_name +
+                          "'"
+                          " >/dev/null 2>&1";
+        // Status intentionally unchecked here: valid() below verifies the
+        // files actually appeared, which is the condition that matters.
+        (void)test_util::runCmd(cmd);
+    }
+    ~NamedCert() {
         std::remove(cert_path.c_str());
         std::remove(key_path.c_str());
     }
-    bool valid() const
-    {
+    bool valid() const {
         std::ifstream c(cert_path), k(key_path);
         return c.good() && k.good();
     }
 };
 
-TlsContextPtr makeServerCtx(const NamedCert& cert)
-{
+TlsContextPtr makeServerCtx(const NamedCert& cert) {
     auto ctx = std::make_shared<TlsContext>(Role::kServer);
     ctx->useCertificateAndKey(cert.cert_path, cert.key_path);
     return ctx;
 }
 
-size_t pump(TlsEngine& from, TlsEngine& to)
-{
+size_t pump(TlsEngine& from, TlsEngine& to) {
     std::string enc;
     from.takeEncrypted(enc);
     if (!enc.empty()) to.feedEncrypted(enc.data(), enc.size());
     return enc.size();
 }
 
-bool driveHandshake(TlsEngine& client, TlsEngine& server)
-{
-    for (int round = 0; round < 20; ++round)
-    {
+bool driveHandshake(TlsEngine& client, TlsEngine& server) {
+    for (int round = 0; round < 20; ++round) {
         client.handshake();
         pump(client, server);
         server.handshake();
@@ -84,13 +77,11 @@ bool driveHandshake(TlsEngine& client, TlsEngine& server)
 
     return client.handshakeDone() && server.handshakeDone();
 }
-}   // namespace
-
+}  // namespace
 
 // ---- registry / matching (no handshake) ----
 
-TEST(SniTest, ExactHostnameLookup)
-{
+TEST(SniTest, ExactHostnameLookup) {
     NamedCert base("default.test", "base"), a("a.example.com", "a");
     ASSERT_TRUE(base.valid() && a.valid());
 
@@ -102,8 +93,7 @@ TEST(SniTest, ExactHostnameLookup)
     EXPECT_EQ(def->findSniContext("other.example.com"), nullptr);
 }
 
-TEST(SniTest, LookupIsCaseInsensitive)
-{
+TEST(SniTest, LookupIsCaseInsensitive) {
     NamedCert base("default.test", "base2"), a("a.example.com", "a2");
     ASSERT_TRUE(base.valid() && a.valid());
 
@@ -116,8 +106,7 @@ TEST(SniTest, LookupIsCaseInsensitive)
     EXPECT_NE(def->findSniContext("A.EXAMPLE.COM"), nullptr);
 }
 
-TEST(SniTest, WildcardMatchesOneLabelOnly)
-{
+TEST(SniTest, WildcardMatchesOneLabelOnly) {
     NamedCert base("default.test", "base3"), w("wild.test", "wild");
     ASSERT_TRUE(base.valid() && w.valid());
 
@@ -132,8 +121,7 @@ TEST(SniTest, WildcardMatchesOneLabelOnly)
     EXPECT_EQ(def->findSniContext("a.b.example.com"), nullptr);
 }
 
-TEST(SniTest, ExactMatchWinsOverWildcard)
-{
+TEST(SniTest, ExactMatchWinsOverWildcard) {
     NamedCert base("default.test", "base4"), wild("wild.test", "w4"),
         exact("api.example.com", "e4");
     ASSERT_TRUE(base.valid() && wild.valid() && exact.valid());
@@ -149,8 +137,7 @@ TEST(SniTest, ExactMatchWinsOverWildcard)
     EXPECT_EQ(def->findSniContext("other.example.com"), wild_ctx.get());
 }
 
-TEST(SniTest, ClientRoleRejectsRegistration)
-{
+TEST(SniTest, ClientRoleRejectsRegistration) {
     NamedCert c("client.test", "cli");
     ASSERT_TRUE(c.valid());
 
@@ -163,8 +150,7 @@ TEST(SniTest, ClientRoleRejectsRegistration)
 
 // ---- end-to-end handshake selection ----
 
-TEST(SniTest, ServerSeesRequestedHostname)
-{
+TEST(SniTest, ServerSeesRequestedHostname) {
     NamedCert base("default.test", "h1");
     ASSERT_TRUE(base.valid());
     auto server_ctx = makeServerCtx(base);
@@ -181,8 +167,7 @@ TEST(SniTest, ServerSeesRequestedHostname)
     EXPECT_EQ(server.requestedServerName(), "requested.example.com");
 }
 
-TEST(SniTest, NoSniWhenHostnameOmitted)
-{
+TEST(SniTest, NoSniWhenHostnameOmitted) {
     NamedCert base("default.test", "h2");
     ASSERT_TRUE(base.valid());
     auto server_ctx = makeServerCtx(base);
@@ -196,8 +181,7 @@ TEST(SniTest, NoSniWhenHostnameOmitted)
     EXPECT_EQ(server.requestedServerName(), "");
 }
 
-TEST(SniTest, IpLiteralIsNotSentAsSni)
-{
+TEST(SniTest, IpLiteralIsNotSentAsSni) {
     NamedCert base("default.test", "h3");
     ASSERT_TRUE(base.valid());
     auto server_ctx = makeServerCtx(base);
@@ -212,8 +196,7 @@ TEST(SniTest, IpLiteralIsNotSentAsSni)
     EXPECT_EQ(server.requestedServerName(), "");
 }
 
-TEST(SniTest, SelectsPerHostCertificateAndVerifies)
-{
+TEST(SniTest, SelectsPerHostCertificateAndVerifies) {
     NamedCert def_cert("default.test", "sel_def");
     NamedCert a_cert("alpha.example.com", "sel_a");
     NamedCert b_cert("beta.example.com", "sel_b");
@@ -254,8 +237,7 @@ TEST(SniTest, SelectsPerHostCertificateAndVerifies)
     }
 }
 
-TEST(SniTest, WrongCertificateFailsVerification)
-{
+TEST(SniTest, WrongCertificateFailsVerification) {
     NamedCert def_cert("default.test", "wrong_def");
     NamedCert a_cert("alpha.example.com", "wrong_a");
     NamedCert b_cert("beta.example.com", "wrong_b");
@@ -276,8 +258,7 @@ TEST(SniTest, WrongCertificateFailsVerification)
     EXPECT_FALSE(driveHandshake(client, server));
 }
 
-TEST(SniTest, UnknownHostnameFallsBackToDefaultCert)
-{
+TEST(SniTest, UnknownHostnameFallsBackToDefaultCert) {
     NamedCert def_cert("default.test", "fb_def");
     NamedCert a_cert("alpha.example.com", "fb_a");
     ASSERT_TRUE(def_cert.valid() && a_cert.valid());
@@ -290,7 +271,7 @@ TEST(SniTest, UnknownHostnameFallsBackToDefaultCert)
     // the DEFAULT cert and asking for an unknown host.
     auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
     client_ctx->loadCaFile(def_cert.cert_path);
-    client_ctx->setVerifyPeer(false);   // name don't match default cert's CN
+    client_ctx->setVerifyPeer(false);  // name don't match default cert's CN
 
     TlsEngine client(*client_ctx, Role::kClient, "unknown.example.org");
     TlsEngine server(*server_ctx, Role::kServer);
@@ -299,8 +280,7 @@ TEST(SniTest, UnknownHostnameFallsBackToDefaultCert)
     EXPECT_EQ(server.requestedServerName(), "unknown.example.org");
 }
 
-TEST(SniTest, WildcardContextServesSubdomain)
-{
+TEST(SniTest, WildcardContextServesSubdomain) {
     NamedCert def_cert("default.test", "wc_def");
     NamedCert wild_cert("*.example.com", "wc_wild");
     ASSERT_TRUE(def_cert.valid() && wild_cert.valid());

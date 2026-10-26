@@ -1,5 +1,5 @@
-#include "event_loop.h"
 #include "event_loop_thread.h"
+#include "event_loop.h"
 #include "event_loop_thread_pool.h"
 
 #include <gtest/gtest.h>
@@ -14,8 +14,7 @@ using reactor::EventLoop;
 using reactor::EventLoopThread;
 using reactor::EventLoopThreadPool;
 
-TEST(EventLoopThreadTest, StartLoopRunsTaskInThread)
-{
+TEST(EventLoopThreadTest, StartLoopRunsTaskInThread) {
     EventLoopThread thread;
     EventLoop* loop = thread.startLoop();
     ASSERT_NE(loop, nullptr);
@@ -27,8 +26,7 @@ TEST(EventLoopThreadTest, StartLoopRunsTaskInThread)
         ran = true;
     });
 
-    for (int i = 0; i < 100 && !ran.load(); ++i)
-    {
+    for (int i = 0; i < 100 && !ran.load(); ++i) {
         std::this_thread::sleep_for(2ms);
     }
 
@@ -38,8 +36,7 @@ TEST(EventLoopThreadTest, StartLoopRunsTaskInThread)
     // Destructor quits and joins.
 }
 
-TEST(EventLoopThreadPoolTest, ZeroThreadsUsesBaseLoop)
-{
+TEST(EventLoopThreadPoolTest, ZeroThreadsUsesBaseLoop) {
     EventLoop base;
     // start() and getNextLoop() must be called on the base loop thread.
     std::atomic<bool> done{false};
@@ -56,8 +53,7 @@ TEST(EventLoopThreadPoolTest, ZeroThreadsUsesBaseLoop)
     EXPECT_TRUE(done.load());
 }
 
-TEST(EventLoopThreadPoolTest, RoundRobinAcrossLoops)
-{
+TEST(EventLoopThreadPoolTest, RoundRobinAcrossLoops) {
     EventLoop base;
     std::atomic<bool> done{false};
 
@@ -73,12 +69,12 @@ TEST(EventLoopThreadPoolTest, RoundRobinAcrossLoops)
         EventLoop* a = pool.getNextLoop();
         EventLoop* b = pool.getNextLoop();
         EventLoop* c = pool.getNextLoop();
-        EventLoop* d = pool.getNextLoop();   // wraps to first
+        EventLoop* d = pool.getNextLoop();  // wraps to first
 
         std::set<EventLoop*> distinct{a, b, c};
-        EXPECT_EQ(distinct.size(), 3u);        // three distinct loops
-        EXPECT_NE(a, &base);                   // none is the base loop
-        EXPECT_EQ(d, a);                       // wrapped around
+        EXPECT_EQ(distinct.size(), 3u);  // three distinct loops
+        EXPECT_NE(a, &base);             // none is the base loop
+        EXPECT_EQ(d, a);                 // wrapped around
 
         done = true;
         base.quit();

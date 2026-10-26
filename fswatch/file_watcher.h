@@ -7,13 +7,11 @@
 #include <string>
 #include <unordered_map>
 
-namespace reactor
-{
+namespace reactor {
 class EventLoop;
 }
 
-namespace fswatch
-{
+namespace fswatch {
 // FileWatcher monitors filesystem paths for changes using Linux inotify,
 // integrated with an EventLoop via a Channel. It is a general-purpose
 // primitive (config hot-reload, certificate rotation, data-dir watching) with
@@ -63,7 +61,7 @@ private:
         std::string path;
         Callback callback;
     };
-    std::unordered_map<int, Watch> watches_;      // wd -> watch
+    std::unordered_map<int, Watch> watches_;        // wd -> watch
     std::unordered_map<std::string, int> by_path_;  // path -> wd
 };
-}   // namespace fswatch
+}  // namespace fswatch

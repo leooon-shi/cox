@@ -33,25 +33,21 @@ using tls::TlsContextPtr;
 using tls::TlsEngine;
 using namespace std::chrono_literals;
 
-namespace
-{
+namespace {
 constexpr int kResponderPort = 18790;
 
-bool fileExists(const std::string& p)
-{
+bool fileExists(const std::string& p) {
     std::ifstream f(p);
     return f.good();
 }
 
-int runCmd(const std::string& cmd)
-{
+int runCmd(const std::string& cmd) {
     return std::system((cmd + " >/dev/null 2>&1").c_str());
 }
 
 // A throwaway CA plus a leaf certificate carrying an AIA extension pointing at
 // our local responder -- the shape a publicly-trusted cert has.
-struct MiniPki
-{
+struct MiniPki {
     std::string dir = "/tmp/cow_ocsp_pki";
     std::string ca_key = dir + "/ca.key.pem";
     std::string ca_cert = dir + "/ca.cert.pem";
@@ -66,8 +62,7 @@ struct MiniPki
     MiniPki() { ok = build(); }
     ~MiniPki() { runCmd("rm -rf " + dir); }
 
-    bool build()
-    {
+    bool build() {
         runCmd("rm -rf " + dir);
         if (runCmd("mkdir -p " + dir) != 0) return false;
 
@@ -75,13 +70,13 @@ struct MiniPki
         if (runCmd("openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
                    ca_key + " -out " + ca_cert +
                    " -days 2 -subj '/CN=Cox Test CA'") != 0) {
-            return false;            
+            return false;
         }
 
         // Leaf key + CSR.
         if (runCmd("openssl req -newkey rsa:2048 -nodes -keyout " + leaf_key +
-                   " -out " + leaf_csr +
-                   " -subj '/CN=ocsp.example.com'") != 0) {
+                   " -out " + leaf_csr + " -subj '/CN=ocsp.example.com'") !=
+            0) {
             return false;
         }
 
@@ -91,8 +86,8 @@ struct MiniPki
         if (!e.good()) return false;
         e << "basicConstraints=CA:FALSE\n"
           << "subjectAltName=DNS:ocsp.example.com\n"
-          << "authorityInfoAccess=OCSP;URI:http://127.0.0.1:"
-          << kResponderPort << "\n";
+          << "authorityInfoAccess=OCSP;URI:http://127.0.0.1:" << kResponderPort
+          << "\n";
         e.close();
 
         // openssl ca needs an index/serial database to track issued certs,
@@ -118,8 +113,7 @@ struct MiniPki
         conf.close();
 
         if (runCmd("openssl ca -batch -config " + dir + "/ca.cnf -in " +
-                   leaf_csr + " -out " + leaf_cert + " -extfile " + ext) != 0 )
-        {
+                   leaf_csr + " -out " + leaf_cert + " -extfile " + ext) != 0) {
             return false;
         }
         return fileExists(leaf_cert) && fileExists(ca_cert);
@@ -133,19 +127,17 @@ struct Responder {
     std::string pid_file = "/tmp/cox_ocsp_responder.pid";
     bool started = false;
 
-    explicit Responder(const MiniPki& pki, int nmin = 60)
-    {
+    explicit Responder(const MiniPki& pki, int nmin = 60) {
         std::string nmin_opt = nmin > 0 ? " -nmin " + std::to_string(nmin) : "";
         std::string cmd =
             "openssl ocsp -port " + std::to_string(kResponderPort) +
             " -index " + pki.index + " -CA " + pki.ca_cert + " -rkey " +
             pki.ca_key + " -rsigner " + pki.ca_cert + nmin_opt +
-            " -nrequest 5" +
-            " >/dev/null 2>&1 & echo $! > " + pid_file;
+            " -nrequest 5" + " >/dev/null 2>&1 & echo $! > " + pid_file;
         // Responder is started in the background; readiness is probed by
         // the refresh()/skip logic in each test rather than this status.
         (void)test_util::runCmd(cmd);
-        std::this_thread::sleep_for(500ms);   // let it bind
+        std::this_thread::sleep_for(500ms);  // let it bind
         started = true;
     }
 
@@ -156,18 +148,15 @@ struct Responder {
     }
 };
 
-size_t pump(TlsEngine& from, TlsEngine& to)
-{
+size_t pump(TlsEngine& from, TlsEngine& to) {
     std::string enc;
     from.takeEncrypted(enc);
     if (!enc.empty()) to.feedEncrypted(enc.data(), enc.size());
     return enc.size();
 }
 
-bool driveHandshake(TlsEngine& client, TlsEngine& server)
-{
-    for (int round = 0; round < 20; ++round)
-    {
+bool driveHandshake(TlsEngine& client, TlsEngine& server) {
+    for (int round = 0; round < 20; ++round) {
         client.handshake();
         pump(client, server);
         server.handshake();
@@ -176,19 +165,17 @@ bool driveHandshake(TlsEngine& client, TlsEngine& server)
     }
     return client.handshakeDone() && server.handshakeDone();
 }
-}   // namespace
+}  // namespace
 
 // ---- validation (no PKI needed) ----
 
-TEST(OcspTest, RejectsEmptyResponse)
-{
+TEST(OcspTest, RejectsEmptyResponse) {
     OcspStapler stapler("/nonexistent.pem", "/nonexistent.pem");
     EXPECT_FALSE(stapler.setResponseDer(""));
     EXPECT_FALSE(stapler.hasResponse());
 }
 
-TEST(OcspTest, RejectsGarbageResponse)
-{
+TEST(OcspTest, RejectsGarbageResponse) {
     OcspStapler stapler("/nonexistent.pem", "/nonexistent.pem");
     // Must not cache unparseable bytes: serving a broken staple is worse than
     // serving none.
@@ -196,21 +183,18 @@ TEST(OcspTest, RejectsGarbageResponse)
     EXPECT_FALSE(stapler.hasResponse());
 }
 
-TEST(OcspTest, RejectsMissingFile)
-{
+TEST(OcspTest, RejectsMissingFile) {
     OcspStapler stapler("/nonexistent.pem", "/nonexistent.pem");
     EXPECT_FALSE(stapler.loadFromFile("/tmp/cox_no_such_ocsp_response.der"));
     EXPECT_FALSE(stapler.hasResponse());
 }
 
-TEST(OcspTest, NoResponseMeansNoExpiry)
-{
+TEST(OcspTest, NoResponseMeansNoExpiry) {
     OcspStapler stapler("/nonexistent.pem", "/nonexistent.pem");
     EXPECT_EQ(stapler.secondsUntilExpiry(), 0);
 }
 
-TEST(OcspTest, RefreshFailsWithoutResponderUrl)
-{
+TEST(OcspTest, RefreshFailsWithoutResponderUrl) {
     // No cert to read AIA from and no override -> nothing to contact.
     OcspStapler stapler("/nonexistent.pem", "/nonexistent.pem");
     EXPECT_TRUE(stapler.responderUrl().empty());
@@ -219,19 +203,18 @@ TEST(OcspTest, RefreshFailsWithoutResponderUrl)
 
 // ---- fail-open behavior ----
 
-TEST(OcspTest, HandshakeSucceedsWithoutStaple)
-{
+TEST(OcspTest, HandshakeSucceedsWithoutStaple) {
     // The central safety property: a stapler with no cached response must NOT
     // break TLS. A responder outage degrades stapling, it does not take the
     // server down.
     const std::string cert = "/tmp/cox_ocsp_plain_cert.pem";
     const std::string key = "/tmp/cox_ocsp_plain_key.pem";
-    ASSERT_EQ(runCmd("openssl req -x509 -newkey rsa:2048 -nodes -keyout " + key +
-                     " -out " + cert +
+    ASSERT_EQ(runCmd("openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
+                     key + " -out " + cert +
                      " -days 1 -subj '/CN=localhost' -addext "
                      "'subjectAltName=DNS:localhost'"),
               0);
-    
+
     auto server_ctx = std::make_shared<TlsContext>(Role::kServer);
     server_ctx->useCertificateAndKey(cert, key);
 
@@ -253,8 +236,7 @@ TEST(OcspTest, HandshakeSucceedsWithoutStaple)
 
 // ---- real responder end-to-end ----
 
-TEST(OcspTest, DiscoversResponderUrlFromAia)
-{
+TEST(OcspTest, DiscoversResponderUrlFromAia) {
     MiniPki pki;
     if (!pki.ok) GTEST_SKIP() << "openssl CLI could not build the test PKI";
 
@@ -264,15 +246,13 @@ TEST(OcspTest, DiscoversResponderUrlFromAia)
               "http://127.0.0.1:" + std::to_string(kResponderPort));
 }
 
-TEST(OcspTest, FetchesAndCachesRealResponse)
-{
+TEST(OcspTest, FetchesAndCachesRealResponse) {
     MiniPki pki;
     if (!pki.ok) GTEST_SKIP() << "openssl CLI could not build the test PKI";
     Responder responder(pki);
 
     OcspStapler stapler(pki.leaf_cert, pki.ca_cert);
-    if(!stapler.refresh())
-    {
+    if (!stapler.refresh()) {
         GTEST_SKIP() << "local OCSP responder unavailable";
     }
 
@@ -283,15 +263,13 @@ TEST(OcspTest, FetchesAndCachesRealResponse)
     EXPECT_GT(stapler.secondsUntilExpiry(), 0);
 }
 
-TEST(OcspTest, AbsentNextUpdateIsReportedDistinctly)
-{
+TEST(OcspTest, AbsentNextUpdateIsReportedDistinctly) {
     MiniPki pki;
     if (!pki.ok) GTEST_SKIP() << "openssl CLI could not build the test PKI";
     Responder responder(pki, /*nmin=*/0);  // omit nextUpdate (OpenSSL default)
 
     OcspStapler stapler(pki.leaf_cert, pki.ca_cert);
-    if (!stapler.refresh())
-    {
+    if (!stapler.refresh()) {
         GTEST_SKIP() << "local OCSP responder unavailable";
     }
 
@@ -303,8 +281,7 @@ TEST(OcspTest, AbsentNextUpdateIsReportedDistinctly)
     EXPECT_EQ(stapler.secondsUntilExpiry(), -1);
 }
 
-TEST(OcspTest, LoadsResponseFromFile)
-{
+TEST(OcspTest, LoadsResponseFromFile) {
     MiniPki pki;
     if (!pki.ok) GTEST_SKIP() << "openssl CLI could not build the test PKI";
     Responder responder(pki);
@@ -312,11 +289,10 @@ TEST(OcspTest, LoadsResponseFromFile)
     // The common production shape: an external agent writes the DER, the server
     // just loads it.
     int rc = runCmd("openssl ocsp -issuer " + pki.ca_cert + " -cert " +
-                    pki.leaf_cert + " -url http://127.0.0.1:" +
-                    std::to_string(kResponderPort) + " -respout " +
-                    pki.resp_der + " -noverify");
-    if (rc != 0 || !fileExists(pki.resp_der))
-    {
+                    pki.leaf_cert +
+                    " -url http://127.0.0.1:" + std::to_string(kResponderPort) +
+                    " -respout " + pki.resp_der + " -noverify");
+    if (rc != 0 || !fileExists(pki.resp_der)) {
         GTEST_SKIP() << "could not obtain a response file from the responder";
     }
 
@@ -326,15 +302,13 @@ TEST(OcspTest, LoadsResponseFromFile)
     EXPECT_GT(stapler.secondsUntilExpiry(), 0);
 }
 
-TEST(OcspTest, ClientReceivesStapledResponse)
-{
+TEST(OcspTest, ClientReceivesStapledResponse) {
     MiniPki pki;
     if (!pki.ok) GTEST_SKIP() << "openssl CLI could not build the test PKI";
     Responder responder(pki);
 
     OcspStapler stapler(pki.leaf_cert, pki.ca_cert);
-    if (!stapler.refresh())
-    {
+    if (!stapler.refresh()) {
         GTEST_SKIP() << "local OCSP responder unavailable";
     }
 
@@ -352,8 +326,8 @@ TEST(OcspTest, ClientReceivesStapledResponse)
     TlsEngine server(*server_ctx, Role::kServer);
 
     // The client must ASK for status, or the server will not staple.
-    SSL_set_tlsext_status_type(
-        reinterpret_cast<SSL*>(client.nativeHandle()), TLSEXT_STATUSTYPE_ocsp);
+    SSL_set_tlsext_status_type(reinterpret_cast<SSL*>(client.nativeHandle()),
+                               TLSEXT_STATUSTYPE_ocsp);
 
     ASSERT_TRUE(driveHandshake(client, server))
         << "handshake failed: " << client.lastError();

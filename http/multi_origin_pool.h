@@ -13,13 +13,11 @@
 #include <memory>
 #include <string>
 
-namespace reactor
-{
+namespace reactor {
 class EventLoop;
 }
 
-namespace http
-{
+namespace http {
 // MultiOriginPool manages per-origin ConnectionPools behind one object, keyed
 // by (host, port, tls). A client talking to several services uses one
 // MultiOriginPool and routes each request to the right origin's sub-pool,
@@ -31,8 +29,7 @@ namespace http
 //
 // DNS: without a resolver, origin hosts must be numeric IPs. Call setResolver()
 // to accept hostnames -- each sub-pool then resolves its own name on first use.
-class MultiOriginPool
-{
+class MultiOriginPool {
 public:
     using ResponseCallback = ConnectionPool::ResponseCallback;
     explicit MultiOriginPool(reactor::EventLoop* loop);
@@ -52,12 +49,12 @@ public:
     // origin is treated as plaintext HTTP.
     void setTlsContext(const std::string& host, uint16_t port,
                        tls::TlsContextPtr ctx);
-    
+
     // Route a request to the origin's sub-pool (creating it on demand).
     // host_header defaults to the origin host if empty.
     void request(const std::string& host, uint16_t port, const HttpRequest& req,
                  ResponseCallback cb, const std::string& host_header = "");
-    
+
     size_t originCount() const { return pools_.size(); }
 
 private:
@@ -73,11 +70,12 @@ private:
     };
 
     reactor::EventLoop* loop_;
-    net::Resolver* resolver_{nullptr};  // nullptr -> origins must be numeric IPs
+    net::Resolver* resolver_{
+        nullptr};  // nullptr -> origins must be numeric IPs
     size_t max_per_origin_{8};
     uint32_t idle_timeout_s_{60};
     std::map<std::pair<std::string, uint16_t>, tls::TlsContextPtr> tls_ctx_;
     std::map<Origin, std::shared_ptr<ConnectionPool>> pools_;
 };
 
-}   // namespace http
+}  // namespace http

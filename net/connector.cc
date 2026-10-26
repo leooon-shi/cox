@@ -10,87 +10,72 @@
 #include <cstring>
 #include <string>
 
-namespace net
-{
-namespace
-{
-logging::Logger& log()
-{
+namespace net {
+namespace {
+logging::Logger& log() {
     static logging::Logger logger;
     return logger;
 }
-} // namespace
+}  // namespace
 
 Connector::Connector(reactor::EventLoop* loop, const InetAddress& server_addr)
     : loop_(loop),
-    server_addr_(server_addr),
-    state_(State::kDisconnected),
-    backoff_(std::chrono::milliseconds(kInitRetryDelayMs),
-                std::chrono::milliseconds(kMaxRetryDelayMs),
-                /*jitter=*/0.5)
-{
+      server_addr_(server_addr),
+      state_(State::kDisconnected),
+      backoff_(std::chrono::milliseconds(kInitRetryDelayMs),
+               std::chrono::milliseconds(kMaxRetryDelayMs),
+               /*jitter=*/0.5) {
     initNetRuntime();
 }
 
-Connector::~Connector()
-{
+Connector::~Connector() {
     // The channel must already have been reset (connect completed or stopped).
 }
 
-void Connector::start()
-{
+void Connector::start() {
     connect_ = true;
     loop_->runInLoop([self = shared_from_this()]() { self->startInLoop(); });
 }
 
-void Connector::startInLoop()
-{
+void Connector::startInLoop() {
     loop_->assertInLoopThread();
-    if (connect_)
-    {
+    if (connect_) {
         connect();
     }
 }
 
-void Connector::stop()
-{
+void Connector::stop() {
     connect_ = false;
     loop_->runInLoop([self = shared_from_this()]() { self->stopInLoop(); });
 }
 
-void Connector::stopInLoop()
-{
+void Connector::stopInLoop() {
     loop_->assertInLoopThread();
-    if (retry_timer_armed_)
-    {
+    if (retry_timer_armed_) {
         loop_->cancel(retry_timer_);
         retry_timer_armed_ = false;
     }
 
-    if (state_ == State::kConnecting)
-    {
+    if (state_ == State::kConnecting) {
         int sockfd = removeAndResetChannel();
         sockets::close(sockfd);
         setState(State::kDisconnected);
     }
 }
 
-void Connector::restart()
-{
+void Connector::restart() {
     loop_->assertInLoopThread();
     setState(State::kDisconnected);
-    backoff_.reset(server_addr_.toIpPort());   // back to initial delay
+    backoff_.reset(server_addr_.toIpPort());  // back to initial delay
     connect_ = true;
     startInLoop();
 }
 
-void Connector::connect()
-{
+void Connector::connect() {
     int sockfd = sockets::createNonBlockingOrDie(server_addr_.family());
     int ret = sockets::connect(sockfd, server_addr_);
     int saved_errno = (ret == 0) ? 0 : errno;
-    switch (saved_errno)
-    {
+    switch (saved_errno) {
         case 0:
         case EINPROGRESS:
         case EINTR:
@@ -120,8 +105,7 @@ void Connector::connect()
     }
 }
 
-void Connector::connecting(int sockfd)
-{
+void Connector::connecting(int sockfd) {
     setState(State::kConnecting);
     channel_ = std::make_unique<reactor::Channel>(sockfd, loop_);
     channel_->setWriteCallback([this] { handleWrite(); });
@@ -129,8 +113,7 @@ void Connector::connecting(int sockfd)
     channel_->enableWrite();
 }
 
-int Connector::removeAndResetChannel()
-{
+int Connector::removeAndResetChannel() {
     channel_->disableAll();
     channel_->remove();
     int sockfd = channel_->fd();
@@ -146,58 +129,42 @@ int Connector::removeAndResetChannel()
     return sockfd;
 }
 
-void Connector::resetChannel() 
-{ 
-    channel_.reset(); 
+void Connector::resetChannel() {
+    channel_.reset();
 }
 
-void Connector::handleWrite()
-{
-    if (state_ != State::kConnecting)
-    {
+void Connector::handleWrite() {
+    if (state_ != State::kConnecting) {
         return;
     }
 
     int sockfd = removeAndResetChannel();
     int err = sockets::getSocketError(sockfd);
-    if (err != 0)
-    {
+    if (err != 0) {
         log().warning("Connector::handleWrite SO_ERROR=" + std::to_string(err) +
                       " " + std::string(std::strerror(err)));
         retry(sockfd);
-    }
-    else if (sockets::isSelfConnect(sockfd))
-    {
+    } else if (sockets::isSelfConnect(sockfd)) {
         log().warning("Connector::handleWrite self-connect detected; retrying");
         retry(sockfd);
-    }
-    else
-    {
+    } else {
         setState(State::kConnected);
-        if (connect_)
-        {
-            if (new_connection_callback_)
-            {
+        if (connect_) {
+            if (new_connection_callback_) {
                 new_connection_callback_(sockfd);
-            }
-            else
-            {
+            } else {
                 sockets::close(sockfd);
             }
-        }
-        else
-        {
+        } else {
             sockets::close(sockfd);
         }
     }
 }
 
-void Connector::handleError()
-{
+void Connector::handleError() {
     log().error("Connector::handleError state=" +
                 std::to_string(static_cast<int>(state_.load())));
-    if (state_ == State::kConnecting)
-    {
+    if (state_ == State::kConnecting) {
         int sockfd = removeAndResetChannel();
         int err = sockets::getSocketError(sockfd);
         log().error("Connector SO_ERROR=" + std::to_string(err));
@@ -205,12 +172,10 @@ void Connector::handleError()
     }
 }
 
-void Connector::retry(int sockfd)
-{
+void Connector::retry(int sockfd) {
     sockets::close(sockfd);
     setState(State::kDisconnected);
-    if (!connect_)
-    {
+    if (!connect_) {
         return;
     }
     // Advance the jittered exponential backoff for this endpoint and wait that
@@ -228,4 +193,4 @@ void Connector::retry(int sockfd)
     retry_timer_armed_ = true;
 }
 
-}   // namespace net
+}  // namespace net

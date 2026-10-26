@@ -21,4 +21,4 @@ public:
     static std::unique_ptr<Formatter> newDefaultFormatter();
     static std::unique_ptr<Formatter> newJsonFormatter();
 };
-}   // namespace logging
+}  // namespace logging

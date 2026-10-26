@@ -1,62 +1,52 @@
-#include <memory>
-#include <iostream>
 #include <sys/timerfd.h>
+#include <iostream>
+#include <memory>
 
-#include "cox/framework/reactor/Reactor.h"
-#include "cox/framework/poller/Poller.h"
 #include "cox/framework/Poller/Channel.h"
+#include "cox/framework/poller/Poller.h"
+#include "cox/framework/reactor/Reactor.h"
 
-class EventHandler final
-{
+class EventHandler final {
 public:
     EventHandler(framework::Reactor* eventLoop)
-    :timerfd_(createTimerfd()),
-    loop_(eventLoop),
-    chan_(std::make_unique<framework::Channel>(fd, loop_))
-    {
-        std::cout <<"Construct Event Handler" << std::endl;
+        : timerfd_(createTimerfd()),
+          loop_(eventLoop),
+          chan_(std::make_unique<framework::Channel>(fd, loop_)) {
+        std::cout << "Construct Event Handler" << std::endl;
         setReadCallback(std::bind(&EventHandler::onTimeout, this));
     }
-    void callAfter(in seconds)
-    {
-        setTimer(seconds);
-    }
-    
+    void callAfter(in seconds) { setTimer(seconds); }
+
 private:
-    int createTimerfd()
-    {
-        int timerfd = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
-        if (timerfd < 0)
-        {
+    int createTimerfd() {
+        int timerfd =
+            ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+        if (timerfd < 0) {
             std::error << "create timerfd failed. " << std::endl;
         }
         return timerfd;
     }
 
-    int setTimer(int seconds)
-    {
-        struct itimerspec newValue {0};
-        struct itimerspec oldValue {0};
+    int setTimer(int seconds) {
+        struct itimerspec newValue{0};
+        struct itimerspec oldValue{0};
         newValue.it_value.tv_sec = seconds;
         int ret = ::timerfd_settime(timerfd_, 0, &newValue, &oldValue);
-        if (ret < 0)
-        {
-            std::cout <<"set timer error" << std::endl;
+        if (ret < 0) {
+            std::cout << "set timer error" << std::endl;
         }
     }
 
-    void onTimeout()
-    {
-        uint64_t ret {0};
+    void onTimeout() {
+        uint64_t ret{0};
         int nbytes = ::read(timerfd_, &ret, sizeof ret);
-        if (nbytes != sizeof ret)
-        {
+        if (nbytes != sizeof ret) {
             std::cout << "read buffer get partial of uint64_t." << std::endl;
         }
 
-        std::cout <<"timeout occurs" << std::endl;
+        std::cout << "timeout occurs" << std::endl;
         loop_.stop();
-        std::cout <<"stop event loop." << std::endl;
+        std::cout << "stop event loop." << std::endl;
     }
 
     const int timerfd_;
@@ -64,8 +54,7 @@ private:
     framework::Reactor* loop_;
 };
 
-int main()
-{
+int main() {
     framework::Reactor eventLoop;
     EventHandler evHandler(&eventLoop);
     evHandler.callAfter();

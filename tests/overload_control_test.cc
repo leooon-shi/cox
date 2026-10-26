@@ -28,27 +28,23 @@ using net::TcpConnectionPtr;
 using net::TcpServer;
 namespace sockets = net::sockets;
 
-namespace
-{
-bool waitWritable(int fd, int ms)
-{
+namespace {
+bool waitWritable(int fd, int ms) {
     struct pollfd pfd{fd, POLLOUT, 0};
     return ::poll(&pfd, 1, ms) > 0 && (pfd.revents & POLLOUT);
 }
-int connectClient(uint16_t port)
-{
+int connectClient(uint16_t port) {
     int fd = sockets::createNonBlockingOrDie(AF_INET);
     InetAddress server("127.0.0.1", port);
     sockets::connect(fd, server);
     waitWritable(fd, 1000);
     return fd;
 }
-}   // namespace
+}  // namespace
 
 // A burst of connections beyond the accept-rate budget is shed, and the
 // overload callback fires for each shed connection.
-TEST(OverloadControlTest, AcceptRateLimitShedsAndNotifies)
-{
+TEST(OverloadControlTest, AcceptRateLimitShedsAndNotifies) {
     const uint16_t kPort = 50001;
     std::atomic<bool> started{false};
     std::atomic<int> accepted{0};
@@ -77,13 +73,13 @@ TEST(OverloadControlTest, AcceptRateLimitShedsAndNotifies)
     // Fire many connections quickly; only ~burst should be admitted.
     constexpr int kNumClients = 10;
     std::vector<int> clients;
-    for (int i = 0; i < kNumClients; ++i)
-    {
+    for (int i = 0; i < kNumClients; ++i) {
         clients.push_back(connectClient(kPort));
     }
     std::this_thread::sleep_for(150ms);
 
-    // At most the burst (2) admitted; the rest shed with overload notifications.
+    // At most the burst (2) admitted; the rest shed with overload
+    // notifications.
     EXPECT_LE(accepted.load(), 2);
     EXPECT_GT(overloads.load(), 0);
     EXPECT_EQ(accepted.load() + overloads.load(), kNumClients);
@@ -95,8 +91,7 @@ TEST(OverloadControlTest, AcceptRateLimitShedsAndNotifies)
 
 // stopRead applies TCP backpressure: while reading is paused the server does
 // not consume data; after startRead the buffered data is delivered.
-TEST(OverloadControlTest, IngressBackpressurePausesAndResumes)
-{
+TEST(OverloadControlTest, IngressBackpressurePausesAndResumes) {
     const uint16_t kPort = 50002;
     std::atomic<bool> started{false};
     std::atomic<int> bytes_seen{0};
@@ -110,8 +105,7 @@ TEST(OverloadControlTest, IngressBackpressurePausesAndResumes)
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "ol-bp");
         server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
-            if (conn->connected())
-            {
+            if (conn->connected()) {
                 {
                     std::lock_guard<std::mutex> lock(held_m);
                     held = conn;
@@ -149,8 +143,7 @@ TEST(OverloadControlTest, IngressBackpressurePausesAndResumes)
         if (held) held->startRead();
     }
 
-    for (int i = 0; i < 100 && bytes_seen.load() == 0; ++i)
-    {
+    for (int i = 0; i < 100 && bytes_seen.load() == 0; ++i) {
         std::this_thread::sleep_for(5ms);
     }
 

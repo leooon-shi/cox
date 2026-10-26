@@ -8,4 +8,4 @@ class PollerFactory {
 public:
     static std::unique_ptr<Poller> create();
 };
-} // namespace reactor
+}  // namespace reactor

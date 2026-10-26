@@ -56,5 +56,4 @@ private:
     uint32_t cache_ttl_s_{60};
 };
 
-}   // namespace net
-
+}  // namespace net

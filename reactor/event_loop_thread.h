@@ -5,8 +5,7 @@
 #include <mutex>
 #include <thread>
 
-namespace reactor
-{
+namespace reactor {
 class EventLoop;
 
 // EventLoopThread runs an EventLoop in its own thread (the "one loop per
@@ -38,4 +37,4 @@ private:
     std::string name_;
 };
 
-} // namespace reactor
+}  // namespace reactor

@@ -22,8 +22,7 @@ namespace sockets = net::sockets;
 
 // Fixed-port variant that verifies the callback fires. Uses ports in the
 // ephemeral range with SO_REUSEADDR; sufficient for loopback CI.
-TEST(AcceptorTest, CallbackFiresOnConnect)
-{
+TEST(AcceptorTest, CallbackFiresOnConnect) {
     const uint16_t kPort = 45789;
     std::atomic<bool> started{false};
     std::atomic<int> accepted_count{0};
@@ -55,8 +54,7 @@ TEST(AcceptorTest, CallbackFiresOnConnect)
     sockets::connect(client.fd(), server);
 
     // Wait for the callback to observe the accept.
-    for (int i = 0; i < 100 && accepted_count.load() == 0; ++i)
-    {
+    for (int i = 0; i < 100 && accepted_count.load() == 0; ++i) {
         std::this_thread::sleep_for(5ms);
     }
     EXPECT_EQ(accepted_count.load(), 1);
@@ -66,8 +64,7 @@ TEST(AcceptorTest, CallbackFiresOnConnect)
     loop_thread.join();
 }
 
-TEST(AcceptorTest, MultipleConnections)
-{
+TEST(AcceptorTest, MultipleConnections) {
     const uint16_t kPort = 45790;
     std::atomic<bool> started{false};
     std::atomic<int> accepted_count{0};
@@ -78,11 +75,10 @@ TEST(AcceptorTest, MultipleConnections)
         loop_ptr = &loop;
         InetAddress listen_addr("127.0.0.1", kPort);
         Acceptor acceptor(&loop, listen_addr, /*reuse_port=*/false);
-        acceptor.setNewConnectionCallback(
-            [&](int connfd, const InetAddress&) {
-                accepted_count++;
-                sockets::close(connfd);
-            });
+        acceptor.setNewConnectionCallback([&](int connfd, const InetAddress&) {
+            accepted_count++;
+            sockets::close(connfd);
+        });
         acceptor.listen();
         started = true;
         loop.loop();
@@ -93,15 +89,13 @@ TEST(AcceptorTest, MultipleConnections)
 
     constexpr int kNumClients = 5;
     std::vector<Socket> clients;
-    for (int i = 0; i < kNumClients; ++i)
-    {
+    for (int i = 0; i < kNumClients; ++i) {
         clients.emplace_back(sockets::createNonBlockingOrDie(AF_INET));
         InetAddress server("127.0.0.1", kPort);
         sockets::connect(clients.back().fd(), server);
     }
 
-    for (int i = 0; i < 200 && accepted_count.load() < kNumClients; ++i)
-    {
+    for (int i = 0; i < 200 && accepted_count.load() < kNumClients; ++i) {
         std::this_thread::sleep_for(5ms);
     }
 

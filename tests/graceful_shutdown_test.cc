@@ -27,22 +27,18 @@ using net::TcpConnectionPtr;
 using net::TcpServer;
 namespace sockets = net::sockets;
 
-namespace
-{
+namespace {
 
-bool waitReadable(int fd, int timeout_ms)
-{
+bool waitReadable(int fd, int timeout_ms) {
     struct pollfd pfd{fd, POLLIN, 0};
     return ::poll(&pfd, 1, timeout_ms) > 0 && (pfd.revents & POLLIN);
 }
-bool waitWritable(int fd, int timeout_ms)
-{
+bool waitWritable(int fd, int timeout_ms) {
     struct pollfd pfd{fd, POLLOUT, 0};
     return ::poll(&pfd, 1, timeout_ms) > 0 && (pfd.revents & POLLOUT);
 }
 
-int connectClient(uint16_t port)
-{
+int connectClient(uint16_t port) {
     int fd = sockets::createNonBlockingOrDie(AF_INET);
     InetAddress server("127.0.0.1", port);
     sockets::connect(fd, server);
@@ -52,8 +48,7 @@ int connectClient(uint16_t port)
 }  // namespace
 
 // Drain completes once connected clients close; the completion callback fires.
-TEST(GracefulShutdownTest, DrainCompletesWhenClientsClose)
-{
+TEST(GracefulShutdownTest, DrainCompletesWhenClientsClose) {
     const uint16_t kPort = 48001;
     std::atomic<bool> started{false};
     std::atomic<bool> drain_done{false};
@@ -75,7 +70,7 @@ TEST(GracefulShutdownTest, DrainCompletesWhenClientsClose)
         loop.runAfter(200, [&server, &loop, &drain_done]() {
             server.shutdown(10, [&loop, &drain_done]() {
                 drain_done = true;
-                loop.quit();   // stop the loop once fully drained
+                loop.quit();  // stop the loop once fully drained
             });
         });
 
@@ -85,7 +80,8 @@ TEST(GracefulShutdownTest, DrainCompletesWhenClientsClose)
     while (!started.load()) std::this_thread::sleep_for(1ms);
     std::this_thread::sleep_for(20ms);
 
-    // Connect a client, exchange a message, then close it after shutdown begins.
+    // Connect a client, exchange a message, then close it after shutdown
+    // begins.
     int client = connectClient(kPort);
     const char msg[] = "hi";
     ASSERT_TRUE(test_util::sendAll(client, msg, sizeof(msg)));
@@ -94,12 +90,12 @@ TEST(GracefulShutdownTest, DrainCompletesWhenClientsClose)
     char buf[16];
     test_util::drainSome(client, buf, sizeof(buf));
 
-    // Wait past the shutdown trigger, then close the client so drain can finish.
+    // Wait past the shutdown trigger, then close the client so drain can
+    // finish.
     std::this_thread::sleep_for(250ms);
     ::close(client);
 
-    for (int i = 0; i < 200 && !drain_done.load(); ++i)
-    {
+    for (int i = 0; i < 200 && !drain_done.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
 
@@ -109,8 +105,7 @@ TEST(GracefulShutdownTest, DrainCompletesWhenClientsClose)
 }
 
 // New connections are refused once draining has started.
-TEST(GracefulShutdownTest, RejectsNewConnectionsWhileDraining)
-{
+TEST(GracefulShutdownTest, RejectsNewConnectionsWhileDraining) {
     const uint16_t kPort = 48002;
     std::atomic<bool> started{false};
     std::atomic<int> accepted{0};
@@ -148,8 +143,7 @@ TEST(GracefulShutdownTest, RejectsNewConnectionsWhileDraining)
 
 // A client that refuses to close is force-closed at the drain deadline, and
 // drain then completes.
-TEST(GracefulShutdownTest, ForceCloseAtDeadline)
-{
+TEST(GracefulShutdownTest, ForceCloseAtDeadline) {
     const uint16_t kPort = 48003;
     std::atomic<bool> started{false};
     std::atomic<bool> drain_done{false};
@@ -189,8 +183,7 @@ TEST(GracefulShutdownTest, ForceCloseAtDeadline)
     test_util::drainSome(client, buf, sizeof(buf));
 
     // Do NOT close the client. Drain must still finish via the 1s deadline.
-    for (int i = 0; i < 400 && !drain_done.load(); ++i)
-    {
+    for (int i = 0; i < 400 && !drain_done.load(); ++i) {
         std::this_thread::sleep_for(10ms);
     }
 

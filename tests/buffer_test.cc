@@ -9,16 +9,14 @@
 
 using buffer::Buffer;
 
-TEST(BufferTest, InitialState)
-{
+TEST(BufferTest, InitialState) {
     Buffer buf;
     EXPECT_EQ(buf.readableBytes(), 0u);
     EXPECT_EQ(buf.writableBytes(), Buffer::kInitialSize);
     EXPECT_EQ(buf.prependableBytes(), Buffer::kCheapPrepend);
 }
 
-TEST(BufferTest, AppendAndRetrieve)
-{
+TEST(BufferTest, AppendAndRetrieve) {
     Buffer buf;
     buf.append(std::string("hello"));
     EXPECT_EQ(buf.readableBytes(), 5u);
@@ -34,8 +32,7 @@ TEST(BufferTest, AppendAndRetrieve)
     EXPECT_EQ(buf.prependableBytes(), Buffer::kCheapPrepend);
 }
 
-TEST(BufferTest, GrowsWhenNeeded)
-{
+TEST(BufferTest, GrowsWhenNeeded) {
     Buffer buf;
     std::string big(2000, 'x');  // exceeds kInitialSize (1024)
     buf.append(big);
@@ -43,8 +40,7 @@ TEST(BufferTest, GrowsWhenNeeded)
     EXPECT_EQ(buf.retrieveAllAsString(), big);
 }
 
-TEST(BufferTest, CompactsInsteadOfGrowing)
-{
+TEST(BufferTest, CompactsInsteadOfGrowing) {
     Buffer buf;
     // Fill, consume part, then append again; should compact rather than grow.
     buf.append(std::string(900, 'a'));
@@ -58,8 +54,7 @@ TEST(BufferTest, CompactsInsteadOfGrowing)
     EXPECT_EQ(result.substr(100), std::string(200, 'b'));
 }
 
-TEST(BufferTest, MultipleAppendsAccumulate)
-{
+TEST(BufferTest, MultipleAppendsAccumulate) {
     Buffer buf;
     buf.append(std::string("abc"));
     buf.append(std::string("def"));
@@ -68,8 +63,7 @@ TEST(BufferTest, MultipleAppendsAccumulate)
     EXPECT_EQ(buf.retrieveAllAsString(), "abcdefghi");
 }
 
-TEST(BufferTest, ReadFdReadsAllData)
-{
+TEST(BufferTest, ReadFdReadsAllData) {
     int fds[2];
     ASSERT_EQ(::pipe(fds), 0);
 
@@ -83,12 +77,10 @@ TEST(BufferTest, ReadFdReadsAllData)
     ::fcntl(fds[1], F_SETFL, O_NONBLOCK);
 
     size_t written = 0;
-    while (written < payload.size())
-    {
-        ssize_t w = ::write(fds[1], payload.data() + written,
-                            payload.size() - written);
-        if (w > 0)
-        {
+    while (written < payload.size()) {
+        ssize_t w =
+            ::write(fds[1], payload.data() + written, payload.size() - written);
+        if (w > 0) {
             written += static_cast<size_t>(w);
         }
 
@@ -98,8 +90,7 @@ TEST(BufferTest, ReadFdReadsAllData)
 
     // Final drain of anything still buffered in the pipe.
     int err = 0;
-    while (buf.readableBytes() < payload.size())
-    {
+    while (buf.readableBytes() < payload.size()) {
         ssize_t n = buf.readFd(fds[0], &err);
         if (n <= 0) break;
     }

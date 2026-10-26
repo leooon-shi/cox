@@ -40,7 +40,8 @@ public:
     void setMaxQueueSize(size_t size) { max_queue_size_ = size; }
 
     // Launch num_threads workers. If num_threads == 0 the pool runs tasks
-    // synchronously in the caller's thread (useful for tests / degenerate mode).
+    // synchronously in the caller's thread (useful for tests / degenerate
+    // mode).
     void start(int num_threads);
 
     // Stop the pool: wake all workers, let them finish draining, and join.
@@ -72,7 +73,7 @@ private:
     // pool is stopping and the queue is fully drained. Amortizes one mutex
     // acquisition (and condvar wait) over a whole batch of tasks.
     void takeBatch(std::vector<Task>& out);
-    bool isFull() const;    // Caller must hold mutex_
+    bool isFull() const;  // Caller must hold mutex_
 
     std::string name_;
     mutable std::mutex mutex_;
@@ -85,4 +86,4 @@ private:
     std::atomic<bool> running_{false};
 };
 
-}
+}  // namespace concurrent

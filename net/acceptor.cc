@@ -12,21 +12,17 @@
 #include <cstring>
 #include <string>
 
-namespace net
-{
-namespace
-{
-logging::Logger& log()
-{
+namespace net {
+namespace {
+logging::Logger& log() {
     static logging::Logger logger;
     return logger;
 }
 
-int openIdleFd()
-{
+int openIdleFd() {
     return ::open("/dev/null", O_RDONLY | O_CLOEXEC);
 }
-}   // namespace
+}  // namespace
 
 Acceptor::Acceptor(reactor::EventLoop* loop, const InetAddress& listen_addr,
                    bool reuse_port)
@@ -34,8 +30,7 @@ Acceptor::Acceptor(reactor::EventLoop* loop, const InetAddress& listen_addr,
       accept_socket_(sockets::createNonBlockingOrDie(listen_addr.family())),
       accept_channel_(accept_socket_.fd(), loop),
       listening_(false),
-      idle_fd_(openIdleFd())
-{
+      idle_fd_(openIdleFd()) {
     initNetRuntime();  // ensure SIGPIPE is ignored before any socket I/O
     accept_socket_.setReuseAddr(true);
     accept_socket_.setReusePort(reuse_port);
@@ -43,44 +38,36 @@ Acceptor::Acceptor(reactor::EventLoop* loop, const InetAddress& listen_addr,
     accept_channel_.setReadCallback([this] { handleRead(); });
 }
 
-Acceptor::~Acceptor()
-{
+Acceptor::~Acceptor() {
     accept_channel_.disableAll();
     accept_channel_.remove();
-    if (idle_fd_ >= 0)
-    {
+    if (idle_fd_ >= 0) {
         ::close(idle_fd_);
     }
 }
 
-void Acceptor::listen()
-{
+void Acceptor::listen() {
     loop_->assertInLoopThread();
     listening_ = true;
     accept_socket_.listen();
     accept_channel_.enableRead();
 }
 
-void Acceptor::stopListening()
-{
+void Acceptor::stopListening() {
     loop_->assertInLoopThread();
     listening_ = false;
     accept_channel_.disableAll();
 }
 
-void Acceptor::handleRead()
-{
+void Acceptor::handleRead() {
     loop_->assertInLoopThread();
     // Drain all pending connections in one go: efficient under load and correct
     // for edge-triggered pollers.
-    for (;;)
-    {
+    for (;;) {
         InetAddress peer;
         int connfd = accept_socket_.accept(&peer);
-        if (connfd >= 0)
-        {
-            if (new_connection_callback_)
-            {
+        if (connfd >= 0) {
+            if (new_connection_callback_) {
                 new_connection_callback_(connfd, peer);
             } else {
                 sockets::close(connfd);
@@ -89,18 +76,15 @@ void Acceptor::handleRead()
         }
 
         // connfd < 0: inspect errno.
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-        {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
             break;  // no more pending connections
         }
 
-        if (errno == EINTR)
-        {
+        if (errno == EINTR) {
             continue;
         }
 
-        if (errno == EMFILE || errno == ENFILE)
-        {
+        if (errno == EMFILE || errno == ENFILE) {
             // Out of file descriptors. Free the reserved idle fd, accept the
             // pending connection so it doesn't wedge the readable event, close
             // it immediately, then reopen the idle fd. This prevents a busy
@@ -108,12 +92,10 @@ void Acceptor::handleRead()
             log().error("Acceptor::handleRead out of fds (" +
                         std::string(std::strerror(errno)) + ")");
 
-            if (idle_fd_ >= 0)
-            {
+            if (idle_fd_ >= 0) {
                 ::close(idle_fd_);
                 idle_fd_ = ::accept(accept_socket_.fd(), nullptr, nullptr);
-                if (idle_fd_ >= 0)
-                {
+                if (idle_fd_ >= 0) {
                     ::close(idle_fd_);
                 }
                 idle_fd_ = openIdleFd();
@@ -127,4 +109,4 @@ void Acceptor::handleRead()
     }
 }
 
-}   // namespace net
+}  // namespace net

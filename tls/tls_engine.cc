@@ -3,15 +3,13 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
-#include <openssl/x509v3.h>         // X509_CHECK_FLAG_* for hostname verification
+#include <openssl/x509v3.h>  // X509_CHECK_FLAG_* for hostname verification
 
 #include <stdexcept>
 
-namespace tls
-{
-namespace{
-std::string opensslError(const std::string& what)
-{
+namespace tls {
+namespace {
+std::string opensslError(const std::string& what) {
     unsigned long e = ERR_get_error();
     char buf[256];
     ERR_error_string_n(e, buf, sizeof(buf));
@@ -20,42 +18,35 @@ std::string opensslError(const std::string& what)
 
 // SNI must carry a DNS name, never an IP address (RFC 6066 §3). Cheap check:
 // an IPv4 literal is all digits and dots; an IPv6 literal contains ':'.
-bool looksLikeIpLiteral(const std::string& host)
-{
+bool looksLikeIpLiteral(const std::string& host) {
     if (host.find(':') != std::string::npos) return true;  // IPv6
 
     bool all_digits_dots = true;
-    for (char c : host)
-    {
-        if (!((c >= '0' && c <= '9') || c == '.'))
-        {
+    for (char c : host) {
+        if (!((c >= '0' && c <= '9') || c == '.')) {
             all_digits_dots = false;
             break;
         }
     }
     return all_digits_dots;
 }
-}   // namespace
+}  // namespace
 
 TlsEngine::TlsEngine(const TlsContext& ctx, Role role)
-    : ssl_(nullptr), rbio_(nullptr), wbio_(nullptr)
-{
+    : ssl_(nullptr), rbio_(nullptr), wbio_(nullptr) {
     init(ctx, role, std::string());
 }
 
 TlsEngine::TlsEngine(const TlsContext& ctx, Role role,
                      const std::string& server_hostname)
-    : ssl_(nullptr), rbio_(nullptr), wbio_(nullptr)
-{
+    : ssl_(nullptr), rbio_(nullptr), wbio_(nullptr) {
     init(ctx, role, server_hostname);
 }
 
 void TlsEngine::init(const TlsContext& ctx, Role role,
-                     const std::string& server_hostname)
-{
+                     const std::string& server_hostname) {
     ssl_ = SSL_new(ctx.nativeHandle());
-    if (ssl_ == nullptr)
-    {
+    if (ssl_ == nullptr) {
         throw std::runtime_error(opensslError("SSL_new failed"));
     }
 
@@ -63,14 +54,11 @@ void TlsEngine::init(const TlsContext& ctx, Role role,
     // and out ourselves so the event loop owns all actual I/O.
     rbio_ = BIO_new(BIO_s_mem());
     wbio_ = BIO_new(BIO_s_mem());
-    if (!rbio_ || !wbio_ )
-    {
-        if (rbio_)
-        {
+    if (!rbio_ || !wbio_) {
+        if (rbio_) {
             BIO_free(rbio_);
         }
-        if(wbio_)
-        {
+        if (wbio_) {
             BIO_free(wbio_);
         }
         SSL_free(ssl_);
@@ -78,19 +66,14 @@ void TlsEngine::init(const TlsContext& ctx, Role role,
     }
     SSL_set_bio(ssl_, rbio_, wbio_);  // take ownership of the BIOs
 
-    if (role == Role::kServer)
-    {
+    if (role == Role::kServer) {
         SSL_set_accept_state(ssl_);
-    }
-    else
-    {
+    } else {
         SSL_set_connect_state(ssl_);
-        if (!server_hostname.empty())
-        {
+        if (!server_hostname.empty()) {
             // Send SNI so a multi-domain server can select a certificate. An IP
             // literal must NOT be sent as SNI (RFC 6066), so skip those.
-            if (!looksLikeIpLiteral(server_hostname))
-            {
+            if (!looksLikeIpLiteral(server_hostname)) {
                 // OpenSSL's macro casts internally; see note in tls_context.cc.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -106,51 +89,43 @@ void TlsEngine::init(const TlsContext& ctx, Role role,
     }
 }
 
-TlsEngine::~TlsEngine()
-{
-    if (ssl_)
-    {
+TlsEngine::~TlsEngine() {
+    if (ssl_) {
         SSL_free(ssl_);  // also frees the attached BIOs
     }
 }
 
-size_t TlsEngine::feedEncrypted(const char* data, size_t len)
-{
+size_t TlsEngine::feedEncrypted(const char* data, size_t len) {
     if (len == 0) return 0;
     int n = BIO_write(rbio_, data, static_cast<int>(len));
     return n > 0 ? static_cast<size_t>(n) : 0;
 }
 
-size_t TlsEngine::takeEncrypted(std::string& out)
-{
+size_t TlsEngine::takeEncrypted(std::string& out) {
     size_t total = 0;
     char buf[16384];
-    for (;;)
-    {
+    for (;;) {
         int n = BIO_read(wbio_, buf, sizeof(buf));
-        if (n > 0)
-        {
+        if (n > 0) {
             out.append(buf, static_cast<size_t>(n));
             total += static_cast<size_t>(n);
         } else {
-            break;   // no more pending outbound bytes.
+            break;  // no more pending outbound bytes.
         }
     }
     return total;
 }
 
-TlsEngine::Status TlsEngine::mapError(int ret)
-{
+TlsEngine::Status TlsEngine::mapError(int ret) {
     int err = SSL_get_error(ssl_, ret);
-    switch(err)
-    {
+    switch (err) {
         case SSL_ERROR_NONE:
             return Status::kOk;
         case SSL_ERROR_WANT_READ:
         case SSL_ERROR_WANT_WRITE:
             return Status::kWantIo;
         case SSL_ERROR_ZERO_RETURN:
-            return Status::kClosed;   // peer sent close_notify
+            return Status::kClosed;  // peer sent close_notify
         case SSL_ERROR_SYSCALL:
         case SSL_ERROR_SSL:
         default:
@@ -159,11 +134,9 @@ TlsEngine::Status TlsEngine::mapError(int ret)
     }
 }
 
-TlsEngine::Status TlsEngine::handshake()
-{
+TlsEngine::Status TlsEngine::handshake() {
     int ret = SSL_do_handshake(ssl_);
-    if ( ret == 1 )
-    {
+    if (ret == 1) {
         return Status::kOk;  // handshake complete
     }
     return mapError(ret);
@@ -174,49 +147,41 @@ bool TlsEngine::handshakeDone() const {
 }
 
 TlsEngine::Status TlsEngine::writePlaintext(const char* data, size_t len,
-                                            size_t* consumed)
-{
+                                            size_t* consumed) {
     *consumed = 0;
     if (len == 0) return Status::kOk;
     int ret = SSL_write(ssl_, data, static_cast<int>(len));
-    if (ret > 0)
-    {
+    if (ret > 0) {
         *consumed = static_cast<size_t>(ret);
         return Status::kOk;
     }
     return mapError(ret);
 }
 
-TlsEngine::Status TlsEngine::readPlaintext(std::string& out)
-{
+TlsEngine::Status TlsEngine::readPlaintext(std::string& out) {
     char buf[16384];
-    for (;;)
-    {
+    for (;;) {
         int ret = SSL_read(ssl_, buf, sizeof(buf));
-        if (ret > 0)
-        {
+        if (ret > 0) {
             out.append(buf, static_cast<size_t>(ret));
-            continue;   // drain all currently-available plaintext
+            continue;  // drain all currently-available plaintext
         }
 
         Status s = mapError(ret);
         // kWantIo with some data already appended is still kOk from the
         // caller's perspective (they got data; more needs network input).
-        if (s == Status::kWantIo)
-        {
+        if (s == Status::kWantIo) {
             return Status::kOk;
         }
         return s;  // kClosed / kError
     }
 }
 
-void TlsEngine::shutdown()
-{
-    SSL_shutdown(ssl_);   // best-effort close_notify; caller flushes wbio
+void TlsEngine::shutdown() {
+    SSL_shutdown(ssl_);  // best-effort close_notify; caller flushes wbio
 }
 
-std::string TlsEngine::protocolVersion() const
-{
+std::string TlsEngine::protocolVersion() const {
     const char* v = SSL_get_version(ssl_);
     return v ? v : "";
 }
@@ -227,9 +192,8 @@ std::string TlsEngine::cipherName() const {
     return n ? n : "";
 }
 
-std::string TlsEngine::requestedServerName() const
-{
+std::string TlsEngine::requestedServerName() const {
     return TlsContext::requestedServerName(ssl_);
 }
 
-}   // namespace tls
+}  // namespace tls

@@ -9,8 +9,7 @@ namespace reactor {
 class EventLoop;
 }
 
-namespace net
-{
+namespace net {
 
 class InetAddress;
 // Acceptor is the passive-open side of the Acceptor-Connector pattern. It owns
@@ -21,8 +20,7 @@ class InetAddress;
 // The Acceptor performs no I/O on accepted connections itself; wiring an
 // accepted fd into a TcpConnection is the responsibility of the callback
 // (typically TcpServer).
-class Acceptor
-{
+class Acceptor {
 public:
     // Called with (connfd, peer_address) for each accepted connection. The
     // callback takes ownership of connfd.
@@ -36,8 +34,7 @@ public:
     Acceptor(const Acceptor&) = delete;
     Acceptor& operator=(const Acceptor&) = delete;
 
-    void setNewConnectionCallback(NewConnectionCallback cb)
-    {
+    void setNewConnectionCallback(NewConnectionCallback cb) {
         new_connection_callback_ = std::move(cb);
     }
 
@@ -60,4 +57,4 @@ private:
     int idle_fd_;
 };
 
-}   // namespace net
+}  // namespace net

@@ -13,42 +13,36 @@
 
 using namespace http;
 
-TEST(UrlTest, DecodePercentEscapes)
-{
+TEST(UrlTest, DecodePercentEscapes) {
     EXPECT_EQ(urlDecode("hello%20world"), "hello world");
     EXPECT_EQ(urlDecode("a%2Fb"), "a/b");
     EXPECT_EQ(urlDecode("%7Euser"), "~user");
     EXPECT_EQ(urlDecode("caf%C3%A9"), "caf\xC3\xA9");  // UTF-8 passthrough
 }
 
-TEST(UrlTest, DecodePlusHandling)
-{
-    EXPECT_EQ(urlDecode("a+b"), "a b");                       // form default
+TEST(UrlTest, DecodePlusHandling) {
+    EXPECT_EQ(urlDecode("a+b"), "a b");  // form default
     EXPECT_EQ(urlDecode("a+b", /*plus_as_space=*/false), "a+b");  // path mode
 }
 
-TEST(UrlTest, DecodeMalformedEscapeIsKeptLiterally)
-{
+TEST(UrlTest, DecodeMalformedEscapeIsKeptLiterally) {
     EXPECT_EQ(urlDecode("100%"), "100%");
     EXPECT_EQ(urlDecode("%zz"), "%zz");
-    EXPECT_EQ(urlDecode("%A"), "%A");    // truncated escape at end
+    EXPECT_EQ(urlDecode("%A"), "%A");  // truncated escape at end
 }
 
-TEST(UrlTest, EncodeUnreservedPassThrough)
-{
+TEST(UrlTest, EncodeUnreservedPassThrough) {
     EXPECT_EQ(urlEncode("abcXYZ019-_.~"), "abcXYZ019-_.~");
     EXPECT_EQ(urlEncode("a b"), "a%20b");
     EXPECT_EQ(urlEncode("a/b?c=d&e"), "a%2Fb%3Fc%3Dd%26e");
 }
 
-TEST(UrlTest, EncodeDecodeRoundTrip)
-{
+TEST(UrlTest, EncodeDecodeRoundTrip) {
     const std::string raw = "key with spaces/&=?%+#";
     EXPECT_EQ(urlDecode(urlEncode(raw), /*plus_as_space=*/false), raw);
 }
 
-TEST(UrlTest, ParseQueryBasic)
-{
+TEST(UrlTest, ParseQueryBasic) {
     auto p = parseQuery("a=1&b=2&c=three");
     EXPECT_EQ(p.size(), 3u);
     EXPECT_EQ(p["a"], "1");
@@ -56,15 +50,13 @@ TEST(UrlTest, ParseQueryBasic)
     EXPECT_EQ(p["c"], "three");
 }
 
-TEST(UrlTest, ParseQueryDecodesKeysAndValues)
-{
+TEST(UrlTest, ParseQueryDecodesKeysAndValues) {
     auto p = parseQuery("full+name=Ada+Lovelace&path=%2Fusr%2Fbin");
     EXPECT_EQ(p["full name"], "Ada Lovelace");
     EXPECT_EQ(p["path"], "/usr/bin");
 }
 
-TEST(UrlTest, ParseQueryEdgeCases)
-{
+TEST(UrlTest, ParseQueryEdgeCases) {
     auto p = parseQuery("flag&empty=&x=1");
     EXPECT_TRUE(p.count("flag"));
     EXPECT_EQ(p["flag"], "");
@@ -84,8 +76,7 @@ TEST(UrlTest, ParseQueryEdgeCases)
     EXPECT_EQ(d["k"], "2");
 }
 
-TEST(UrlTest, RequestQueryParams)
-{
+TEST(UrlTest, RequestQueryParams) {
     HttpRequest req;
     req.setQuery("page=2&per_page=50&q=hello+world");
 
@@ -98,11 +89,10 @@ TEST(UrlTest, RequestQueryParams)
     EXPECT_EQ(req.queryParams().size(), 3u);
 }
 
-TEST(UrlTest, RequestQueryCacheInvalidatedOnSet)
-{
+TEST(UrlTest, RequestQueryCacheInvalidatedOnSet) {
     HttpRequest req;
     req.setQuery("a=1");
-    EXPECT_EQ(req.queryParam("a"), "1");    // Populates the cache
+    EXPECT_EQ(req.queryParam("a"), "1");  // Populates the cache
     req.setQuery("a=2&b=3");
     EXPECT_EQ(req.queryParam("a"), "2");
     EXPECT_EQ(req.queryParam("b"), "3");
@@ -111,8 +101,7 @@ TEST(UrlTest, RequestQueryCacheInvalidatedOnSet)
     EXPECT_TRUE(req.queryParams().empty());
 }
 
-TEST(UrlTest, RequestFormParams)
-{
+TEST(UrlTest, RequestFormParams) {
     HttpRequest req;
     req.setMethod(Method::kPost);
     req.addHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -123,8 +112,7 @@ TEST(UrlTest, RequestFormParams)
     EXPECT_EQ(form["msg"], "hi there");
 }
 
-TEST(UrlTest, RequestFormParamsIgnoresOtherContentTypes)
-{
+TEST(UrlTest, RequestFormParamsIgnoresOtherContentTypes) {
     HttpRequest req;
     req.setMethod(Method::kPost);
     req.addHeader("Content-Type", "application/json");
@@ -132,8 +120,7 @@ TEST(UrlTest, RequestFormParamsIgnoresOtherContentTypes)
     EXPECT_TRUE(req.formParams().empty());
 }
 
-TEST(UrlTest, RouterDecodesPathParams)
-{
+TEST(UrlTest, RouterDecodesPathParams) {
     Router router;
     std::string captured;
     router.get("/files/{name}", [&](const HttpRequest&, const PathParams& p,
@@ -150,8 +137,7 @@ TEST(UrlTest, RouterDecodesPathParams)
     EXPECT_EQ(captured, "my report.txt");
 }
 
-TEST(UrlTest, RouterEncodedSlashStaysInOneSegment)
-{
+TEST(UrlTest, RouterEncodedSlashStaysInOneSegment) {
     Router router;
     std::string captured;
     router.get("/files/{name}", [&](const HttpRequest&, const PathParams& p,
@@ -166,11 +152,9 @@ TEST(UrlTest, RouterEncodedSlashStaysInOneSegment)
     HttpResponse resp;
     EXPECT_TRUE(router.route(req, &resp));
     EXPECT_EQ(captured, "a/b");
-
 }
 
-TEST(UrlTest, RouterDoesNotTreatPlusAsSpaceInPath)
-{
+TEST(UrlTest, RouterDoesNotTreatPlusAsSpaceInPath) {
     Router router;
     std::string captured;
     router.get("/tags/{tag}", [&](const HttpRequest&, const PathParams& p,
