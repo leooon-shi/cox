@@ -33,3 +33,14 @@ PointerAlignment: Left
 AllowShortFunctionsOnASingleLine: Inline
 AllowShortIfStatementsOnASingleLine: WithoutElse
 AllowShortLoopsOnASingleLine: true
+
+# Every file ends with exactly one newline (POSIX text file; avoids
+# "\ No newline at end of file" noise in differs". Rquires clang-format >= 16
+InsertNewlineAtEOF: true
+
+# NOTE: clang-format 18 (the CI version, Ubuntu24.04) mis-parses and
+# elaborated type with a braced initializer -- `struct pollfd pdf{fd, POLLIN, 0};`
+# -- as a struct definition and splits it over three lines while newer version
+# keep it on on. No option fixes this, so write `pollfd pfd{...};`
+# (the  `struct` keyword is redundant in C++) got get identical output from
+# every version.
