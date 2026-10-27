@@ -35,7 +35,7 @@ AllowShortIfStatementsOnASingleLine: WithoutElse
 AllowShortLoopsOnASingleLine: true
 
 # Every file ends with exactly one newline (POSIX text file; avoids
-# "\ No newline at end of file" noise in diffs". Rquires clang-format >= 16
+# "\ No newline at end of file" noise in diffs". Requires clang-format >= 16
 InsertNewlineAtEOF: true
 
 # NOTE: clang-format 18 (the CI version, Ubuntu24.04) mis-parses and

@@ -34,8 +34,8 @@ public:
         thread_ = std::thread([this, handler] {
             reactor::EventLoop loop;
             loop_ = &loop;
-            // Bind the IPv6 wildcard(::). With the kernel default
-            // IPV6_V6ONLY=0 this is a dual stack listener that also accepts
+            // Bind the IPv6 wildcard (::). With the kernel default
+            // IPV6_V6ONLY=0 this is a dual-stack listener that also accepts
             // IPv4-mapped connections, so the server is reachable whether
             // "localhost" resolves to ::1 or 127.0.0.1. getaddrinfo ordering
             // is environment-dependent (IPv6-first on the CI runners), so an
