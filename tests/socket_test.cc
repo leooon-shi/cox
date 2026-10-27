@@ -31,12 +31,12 @@ Socket makeListener(bool ipv6, InetAddress* bound_out) {
 
 // Wait until fd is writable (connect completed) or timeout.
 bool waitWritable(int fd, int timeout_ms) {
-    struct pollfd pfd{fd, POLLOUT, 0};
+    pollfd pfd{fd, POLLOUT, 0};
     return ::poll(&pfd, 1, timeout_ms) > 0 && (pfd.revents & POLLOUT);
 }
 
 bool waitReadable(int fd, int timeout_ms) {
-    struct pollfd pfd{fd, POLLIN, 0};
+    pollfd pfd{fd, POLLIN, 0};
     return ::poll(&pfd, 1, timeout_ms) > 0 && (pfd.revents & POLLIN);
 }
 }  // namespace

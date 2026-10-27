@@ -30,7 +30,7 @@ namespace sockets = net::sockets;
 
 namespace {
 bool waitWritable(int fd, int ms) {
-    struct pollfd pfd{fd, POLLOUT, 0};
+    pollfd pfd{fd, POLLOUT, 0};
     return ::poll(&pfd, 1, ms) > 0 && (pfd.revents & POLLOUT);
 }
 int connectClient(uint16_t port) {

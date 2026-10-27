@@ -29,12 +29,12 @@ namespace sockets = net::sockets;
 
 namespace {
 bool waitReadable(int fd, int ms) {
-    struct pollfd pfd{fd, POLLIN, 0};
+    pollfd pfd{fd, POLLIN, 0};
     return ::poll(&pfd, 1, ms) > 0 && (pfd.revents & POLLIN);
 }
 
 bool waitWritable(int fd, int ms) {
-    struct pollfd pfd{fd, POLLOUT, 0};
+    pollfd pfd{fd, POLLOUT, 0};
     return ::poll(&pfd, 1, ms) > 0 && (pfd.revents & POLLOUT);
 }
 

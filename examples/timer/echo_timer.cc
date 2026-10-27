@@ -28,8 +28,8 @@ private:
     }
 
     int setTimer(int seconds) {
-        struct itimerspec newValue{0};
-        struct itimerspec oldValue{0};
+        itimerspec newValue{0};
+        itimerspec oldValue{0};
         newValue.it_value.tv_sec = seconds;
         int ret = ::timerfd_settime(timerfd_, 0, &newValue, &oldValue);
         if (ret < 0) {

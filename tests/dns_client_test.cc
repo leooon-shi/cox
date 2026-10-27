@@ -34,7 +34,16 @@ public:
         thread_ = std::thread([this, handler] {
             reactor::EventLoop loop;
             loop_ = &loop;
-            HttpServer server(&loop, net::InetAddress(port_), "dns-test");
+            // Bind the IPv6 wildcard(::). With the kernel default
+            // IPV6_V6ONLY=0 this is a dual stack listener that also accepts
+            // IPv4-mapped connections, so the server is reachable whether
+            // "localhost" resolves to ::1 or 127.0.0.1. getaddrinfo ordering
+            // is environment-dependent (IPv6-first on the CI runners), so an
+            // IPv4-only server here left the client retrying [::1] forever.
+            HttpServer server(&loop,
+                              net::InetAddress(port_, /*loopback_only=*/false,
+                                               /*ipv6=*/true),
+                              "dns-test");
             server.setHttpHandler(handler);
             server.start();
             ready_ = true;
