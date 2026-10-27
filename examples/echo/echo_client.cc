@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
             conn->shutdown();
             loop.quit();
         });
-    
+
     std::cout << "connecting to " << server_addr.toIpPort() << std::endl;
     client.connect();
     loop.loop();

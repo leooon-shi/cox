@@ -25,8 +25,10 @@ using namespace http;
 
 namespace {
 volatile std::sig_atomic_t g_stop = 0;
-void onSignal(int) { g_stop = 1; }
-}   // namespace
+void onSignal(int) {
+    g_stop = 1;
+}
+}  // namespace
 
 int main(int argc, char* argv[]) {
     uint16_t port = 8080;
@@ -36,32 +38,32 @@ int main(int argc, char* argv[]) {
     HttpServer server(&loop, net::InetAddress(port), "rest");
 
     Router router;
-    router.get("/health", [](const HttpRequest&, const PathParams&,
-                            HttpResponse* resp) {
-        resp->setStatus(200);
-        resp->setContentType("application/json");
-        resp->setBody(R"({"status":"ok"})");
-    });
-    router.get("/users/{id}", [](const HttpRequest&, const PathParams& p,
-                                HttpResponse* resp) {
-        resp->setStatus(200);
-        resp->setContentType("application/json");
-        resp->setBody(R"({"id":)" + p.at("id") + R"(","name":"user)" +
-                      p.at("id") + R"("})");
-    });
+    router.get("/health",
+               [](const HttpRequest&, const PathParams&, HttpResponse* resp) {
+                   resp->setStatus(200);
+                   resp->setContentType("application/json");
+                   resp->setBody(R"({"status":"ok"})");
+               });
+    router.get("/users/{id}",
+               [](const HttpRequest&, const PathParams& p, HttpResponse* resp) {
+                   resp->setStatus(200);
+                   resp->setContentType("application/json");
+                   resp->setBody(R"({"id":)" + p.at("id") +
+                                 R"(","name":"user)" + p.at("id") + R"("})");
+               });
     // Query-string parsing: /search?q=hello+world&page=2
     router.get("/search", [](const HttpRequest& req, const PathParams&,
-                            HttpResponse* resp) {
+                             HttpResponse* resp) {
         std::string q = req.queryParam("q");
-        std::string page = req.hasQueryParam("page") ? req.queryParam("page")
-                                                     : "1";
+        std::string page =
+            req.hasQueryParam("page") ? req.queryParam("page") : "1";
         resp->setStatus(200);
         resp->setContentType("application/json");
         resp->setBody(R"({"q":)" + q + R"(","page":")" + page + R"("})");
     });
     // Form body parsing: -d 'name-Ada+Lovelace'
     router.post("/form", [](const HttpRequest& req, const PathParams&,
-                           HttpResponse* resp) {
+                            HttpResponse* resp) {
         auto form = req.formParams();
         auto it = form.find("name");
         resp->setStatus(200);
@@ -69,14 +71,15 @@ int main(int argc, char* argv[]) {
         resp->setBody(it == form.end() ? "no name" : "hello" + it->second);
     });
     router.post("/echo", [](const HttpRequest& req, const PathParams&,
-                          HttpResponse* resp) {
+                            HttpResponse* resp) {
         resp->setStatus(200);
         resp->setContentType("text/plain");
         resp->setBody(req.body());
     });
-    server.setHttpHandler([&router](const HttpRequest& req, HttpResponse* resp) {
-        router.route(req, resp);
-    });
+    server.setHttpHandler(
+        [&router](const HttpRequest& req, HttpResponse* resp) {
+            router.route(req, resp);
+        });
 
     std::signal(SIGINT, onSignal);
     std::signal(SIGTERM, onSignal);

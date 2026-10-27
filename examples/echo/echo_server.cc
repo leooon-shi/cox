@@ -25,8 +25,10 @@ namespace {
 // Set by the signal handler; polled by the event loop to trigger graceful
 // shutdown. sig_automic_t + volatile is the async-signal-safe idiom.
 volatile std::sig_atomic_t g_shutdown_requested = 0;
-void onSignal(int) { g_shutdown_requested = 1; }
-}   // namespace
+void onSignal(int) {
+    g_shutdown_requested = 1;
+}
+}  // namespace
 
 int main(int argc, char* argv[]) {
     // Unix-domain mode: echo_server -- unix /path/to/socket
@@ -52,8 +54,7 @@ int main(int argc, char* argv[]) {
     }
 
     uint16_t port = 9000;
-    if (argc > 1)
-    {
+    if (argc > 1) {
         port = static_cast<uint16_t>(std::atoi(argv[1]));
     }
 
@@ -70,10 +71,10 @@ int main(int argc, char* argv[]) {
     server.setMessageCallback(
         [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
             std::string msg = buf->retrieveAllAsString();
-            conn->send(msg); // echo it back
+            conn->send(msg);  // echo it back
         });
     std::cout << "echo server listening on" << listen_addr.toIpPort()
-                << std::endl;
+              << std::endl;
     server.start();
     // Install SIGINT/SIGTERM handlers for graceful shutdown. The handler only
     // sets a flag; a periodic timer polls it and initiates the drain from the
