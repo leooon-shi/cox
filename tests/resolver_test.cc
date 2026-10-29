@@ -105,7 +105,7 @@ TEST(ResolverTest, ThreadPoolResolveAllReturnsList) {
     std::vector<InetAddress> addrs;
     std::string err;
 
-    std::thread t([t] {
+    std::thread t([&] {
         reactor::EventLoop loop;
         ThreadPoolResolver resolver(&loop, &pool);
         resolver.resolveAll(
@@ -128,7 +128,7 @@ TEST(ResolverTest, ThreadPoolResolveAllReturnsList) {
 
     EXPECT_TRUE(done.load());
     EXPECT_TRUE(err.empty()) << "resolveAll error: " << err;
-    // At least one address; every entry is loopback with the requested port
+    // At least one address; every entry is a loopback with the requested port.
     ASSERT_FALSE(addrs.empty());
     for (const auto& a : addrs) {
         EXPECT_TRUE(a.toIp() == "127.0.0.1" || a.toIp() == "::1")

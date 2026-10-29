@@ -110,7 +110,7 @@ private:
                 auto* s6 =
                     reinterpret_cast<struct sockaddr_in6*>(node->ai_addr);
                 s6->sin6_port = htons(port);
-                addrs.push_back(InetAddress(s6));
+                addrs.push_back(InetAddress(*s6));
             }
         }
 

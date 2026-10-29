@@ -45,16 +45,16 @@ int resolveBlocking(const std::string& host, uint16_t port,
     // version did) meant an IPv6-first host committed to ::1 and could never
     // reach an IPv4-only server -- the dual-stack bug this path fixes.
     for (struct addrinfo* ai = res; ai != nullptr; ai = ai->ai_next) {
-        if (res->ai_family == AF_INET) {
-            auto* sin = reinterpret_cast<struct sockaddr_in*>(res->ai_addr);
+        if (ai->ai_family == AF_INET) {
+            auto* sin = reinterpret_cast<struct sockaddr_in*>(ai->ai_addr);
             sin->sin_port = htons(port);
             out->push_back(InetAddress(*sin));
-        } else if (res->ai_family == AF_INET6) {
-            auto* sin6 = reinterpret_cast<struct sockaddr_in6*>(res->ai_addr);
+        } else if (ai->ai_family == AF_INET6) {
+            auto* sin6 = reinterpret_cast<struct sockaddr_in6*>(ai->ai_addr);
             sin6->sin6_port = htons(port);
             out->push_back(InetAddress(*sin6));
         }
-        // Silently skip faimilies we do not use (e.g. AF_UNIX never appears).
+        // Silently skip families we do not use (e.g. AF_UNIX never appears).
     }
 
     ::freeaddrinfo(res);

@@ -302,7 +302,7 @@ private:
     }
 
     // Resolver callbacks arrive on the loop thread.
-    void onResolved(const std::vector<net::InetAddress>& addr,
+    void onResolved(const std::vector<net::InetAddress>& addrs,
                     const std::string& err) {
         loop_->assertInLoopThread();
         resolving_ = false;

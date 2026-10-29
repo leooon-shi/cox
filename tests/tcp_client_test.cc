@@ -160,7 +160,7 @@ TEST(TcpClientTest, FailsOverToReachableCandidate) {
     std::thread client_thread([&] {
         reactor::EventLoop loop;
         cli_loop = &loop;
-        // First candidate refuse (ECONNREFUSED), second is the live server.
+        // First candidate refuses (ECONNREFUSED), second is the live server.
         std::vector<InetAddress> candidates{
             InetAddress("127.0.0.1", kDeadPort),
             InetAddress("127.0.0.1", kLivePort)};
@@ -172,7 +172,7 @@ TEST(TcpClientTest, FailsOverToReachableCandidate) {
             }
         });
         client.setMessageCallback(
-            [&](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
+            [&](const TcpConnectionPtr&, buffer::Buffer* buf) {
                 received = buf->retrieveAllAsString();
                 got_reply = true;
             });
@@ -224,5 +224,20 @@ TEST(TcpClientTest, FailsOverFromIpv6ToIpv4) {
                 received = buf->retrieveAllAsString();
                 got_reply = true;
             });
+        client.connect();
+        cli_started = true;
+        loop.loop();
     });
+    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+
+    for (int i = 0; i < 60 && !got_reply.load(); ++i) {
+        std::this_thread::sleep_for(5ms);
+    }
+
+    EXPECT_TRUE(got_reply.load());
+    EXPECT_EQ(received, "x");
+
+    cli_loop->quit();
+    client_thread.join();
+    server.stop();
 }

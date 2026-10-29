@@ -2,23 +2,24 @@
 //
 // One binary, every knob a flag, so you can change ONE variable and measure:
 //
-//  c10k_server [--port N] [--threads N] [--reuseport N] [--max-conns N]
-//              [--idle S] [--accept-qps Q] [--nodelay] [--quit]
+//   c10k_server [--port N] [--threads N] [--reuseport N] [--max-conns N]
+//               [--idle S] [--accept-qps Q] [--nodelay] [--quit]
 //
-//  --threads N     N io loops behind ONE listener (main reactor + sub reactors;
-//                  accepted fds are handed out round-robin).
-//  --reuseport N   N independent listeners on the same port (SO_REUSEPORT),
-//                  each with its own own loop thread: the kernel spreads
-//                  incoming connections by 4-tuple hash, no shared accept path.
-//                  Mutually exclusive with --threads.
-//  --max-conns N   connection cap per listener (0 == unlimited).
-//  --idle S        close connection idle for S seconds (0 = never).
-//  --accept-qps Q  token-bucket limit on NEW connections per second.
-//  nodelay         set TCP_NODELAY on accepted connections.
+//   --threads N     N io loops behind ONE listener (main reactor + sub
+//   reactors;
+//                   accepted fds are handed out round-robin).
+//   --reuseport N   N independent listeners on the same port (SO_REUSEPORT),
+//                   each with its own own loop thread: the kernel spreads
+//                   incoming connections by 4-tuple hash, no shared accept
+//                   path. Mutually exclusive with --threads.
+//   --max-conns N   connection cap per listener (0 == unlimited).
+//   --idle S        close connection idle for S seconds (0 = never).
+//   --accept-qps Q  token-bucket limit on NEW connections per second.
+//   --nodelay       set TCP_NODELAY on accepted connections.
 //
 // Prints one stats line per second: live connections, accepted/rejected/closed
 // totals and bytes echoed, so you can watch the server while c10k_client (or
-// wrk/ab/iperf) drives it. Raise the fd limit first: `ulimit -n 2000000`.
+// wrk/ab/iperf) drives it. Raise the fd limit first: `ulimit -n 200000`.
 //
 // Ctrl-C drains and exits.
 
@@ -47,8 +48,8 @@ using net::TcpConnectionPtr;
 using net::TcpServer;
 
 namespace {
-// A lock-free std::atomic, not `volatile sig_atomic_t`: with serveral loop
-// threads the signal may be delivered to any of time, so the flag is
+// A lock-free std::atomic, not `volatile sig_atomic_t`: with several loop
+// threads the signal may be delivered to any of them, so the flag is
 // shared across threads (sig_atomic_t is only safe within one thread).
 std::atomic<bool> g_stop{false};
 static_assert(std::atomic<bool>::is_always_lock_free);
@@ -89,7 +90,7 @@ Options parse(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         auto val = [&]() -> const char* {
-            if (i + 1 > argc) usage(argv[0]);
+            if (i + 1 >= argc) usage(argv[0]);
             return argv[++i];
         };
         if (a == "--port") {
@@ -97,7 +98,7 @@ Options parse(int argc, char** argv) {
         } else if (a == "threads") {
             o.threads = std::atoi(val());
         } else if (a == "--reuseport") {
-            o.reuseport = std::atof(val());
+            o.reuseport = std::atoi(val());
         } else if (a == "--max-conns") {
             o.max_conns = std::strtoul(val(), nullptr, 10);
         } else if (a == "--idle") {
@@ -121,7 +122,7 @@ void configure(TcpServer& server, const Options& o, Stats& st) {
     if (o.threads > 0) server.setThreadNum(o.threads);
     if (o.max_conns > 0) server.setMaxConnections(o.max_conns);
     if (o.idle > 0) server.setIdleTimeout(o.idle);
-    if (o.accept_qps) server.setAcceptRateLimit(o.accept_qps, o.accept_qps);
+    if (o.accept_qps > 0) server.setAcceptRateLimit(o.accept_qps, o.accept_qps);
     server.setOverloadCallback([&st](const InetAddress&) { ++st.rejected; });
     const bool nodelay = o.nodelay;
     server.setConnectionCallback([&st, nodelay](const TcpConnectionPtr& c) {
@@ -131,7 +132,7 @@ void configure(TcpServer& server, const Options& o, Stats& st) {
             if (nodelay) c->setTcpNoDelay(true);
         } else {
             ++st.closed;
-            ++st.live;
+            --st.live;
         }
     });
     server.setMessageCallback(
@@ -148,7 +149,7 @@ void printFdLimit() {
                 static_cast<unsigned long long>(rl.rlim_cur),
                 static_cast<unsigned long long>(rl.rlim_max));
     if (rl.rlim_cur < 20000) {
-        std::printf(" (low: run `ulimit -n 200000` for C10K tests)");
+        std::printf("  (low: run `ulimit -n 200000` for C10K tests)");
     }
     std::printf("\n");
 }
@@ -163,7 +164,7 @@ int main(int argc, char** argv) {
     InetAddress addr(o.port);
 
     // Mode A: one listener (optionally with N io threads).
-    // Mode B: N SO_REUSEPORT listeners, each owning its loop threads.
+    // Mode B: N SO_REUSEPORT listeners, each owning its loop thread.
     std::vector<std::unique_ptr<TcpServer>> servers;
     std::vector<std::unique_ptr<reactor::EventLoopThread>> listener_threads;
 

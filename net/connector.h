@@ -22,13 +22,13 @@ namespace net {
 // detection, and retry with exponential backoff on failure.
 //
 // Dual-stack: a Connector may be given an ordered list of candidate addresses
-// (e.g. a host's AAAA and A records). It attempts the in order; a failed
+// (e.g. a host's AAAA and A records). It attempts them in order; a failed
 // attempt fails over to the next candidate IMMEDIATELY (no backoff), so a name
 // whose first address is unreachable still connects via a later one. Only when
-// the whole list is exhausted does it apply apply the jittered exponential
-// backoff and retry from the top -- that backoff is for a genuinely-down
-// endpoint, not for stepping between candidates. A bounded per-attempt timeout
-// guards against a silently backholed address stalling the walk.
+// the whole list is exhausted does it apply the jittered exponential backoff
+// and retry from the top -- that backoff is for a genuinely-down endpoint, not
+// for stepping between candidates. A bounded per-attempt timeout guards against
+// a silently blackholed address stalling the walk.
 //
 // On success it hands the connected socket fd to a callback; the caller
 // (TcpClient) then wraps it in a TcpConnection. Connector owns no connection
@@ -81,8 +81,8 @@ private:
     void connecting(int sockfd);
     void handleWrite();
     void handleError();
-    // Called on a failed attempt:  fail over to the next candidate immediately,
-    // or (if the list exhausted) back off and retry the whole list.
+    // Called on a failed attempt: fail over to the next candidate immediately,
+    // or (if the list is exhausted) back off and retry the whole list.
     void retry(int sockfd);
     void armConnectTimeout();
     void cancelConnectTimeout();
@@ -94,7 +94,7 @@ private:
     const std::string& backoffKey() const { return backoff_key_; }
 
     reactor::EventLoop* loop_;
-    const std::vector<InetAddress> candidates_;  // >= 1 retry
+    const std::vector<InetAddress> candidates_;  // >= 1 entry
     size_t current_{0};                          // index being attempted
     const std::string backoff_key_;
     std::atomic<bool> connect_{false};

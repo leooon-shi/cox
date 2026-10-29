@@ -1,7 +1,7 @@
 // backpressure_proxy: a TCP relay that demonstrates end-to-end backpressure.
 //
-//  backpressure_proxy [--listen PORT] [--upstream PORT] [--hwm BYTES]
-//                     [--no-backpressure]
+//   backpressure_proxy [--listen PORT] [--upstream PORT] [--hwm BYTES]
+//                      [--no-backpressure]
 //
 // Each client connection gets its own upstream connection to
 // 127.0.0.1:--upstream. Bytes are relayed both ways.
@@ -16,11 +16,11 @@
 // slow side drains.
 //
 // Try it (see examples/README.md for the full walkthrough):
-//   slow sin:    ./slow_sink --port 9300 --kbps 512
+//   slow sink:   ./slow_sink --port 9300 --kbps 512
 //   proxy:       ./backpressure_proxy --listen 9200 --upstream 9300
-//   fast source:  head -c 200M /dev/zero | nc -q1 127.0.0.1 9200
-//   watch:        the proxy prints queued bytes + RSS every second; compare
-//                 with --no-backpressure.
+//   fast source: head -c 200M /dev/zero | nc -q1 127.0.0.1 9200
+//   watch:       the proxy prints queued bytes + RSS every second; compare
+//                with --no-backpressure.
 
 #include "buffer.h"
 #include "event_loop.h"
@@ -47,7 +47,7 @@ using net::TcpServer;
 namespace {
 // A lock-free std::atomic, not `volatile sig_atomic_t`: with several loop
 // threads the signal may be delivered to any of them, so the flag is
-// shared accross threads (sig_atomic_t is only safe within one thread).
+// shared across threads (sig_atomic_t is only safe within one thread).
 std::atomic<bool> g_stop{false};
 static_assert(std::atomic<bool>::is_always_lock_free);
 void onSignal(int) {
@@ -55,7 +55,7 @@ void onSignal(int) {
 }
 
 long rssKb() {
-    std::ifstream f("proc/self/status");
+    std::ifstream f("/proc/self/status");
     std::string k;
     long v = 0;
     while (f >> k) {
@@ -101,7 +101,7 @@ void pipe(const TcpConnectionPtr& from, const TcpConnectionPtr& to, size_t hwm,
 
 int main(int argc, char** argv) {
     uint16_t listen_port = 9200, upstream_port = 9300;
-    size_t hwm = 1 << 20;  // 1MiB
+    size_t hwm = 1 << 20;  // 1 MiB
     bool backpressure = true;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
             backpressure = false;
         } else {
             std::fprintf(stderr,
-                         "Usage: %s [--listen P] [--upstream P] [--hwm BYTES] "
+                         "usage: %s [--listen P] [--upstream P] [--hwm BYTES] "
                          "[--no-backpressure]\n",
                          argv[0]);
             return 2;
@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
 
     reactor::EventLoop loop;
     TcpServer server(&loop, InetAddress(listen_port), "bp-proxy");
-    // Client connection name -> its upstream TcpClient (owned here, loop
+    // client connection name -> its upstream TcpClient (owned here, loop
     // thread)
     std::map<std::string, std::unique_ptr<TcpClient>> upstreams;
 
@@ -182,5 +182,5 @@ int main(int argc, char** argv) {
     });
 
     loop.loop();
-    return;
+    return 0;
 }

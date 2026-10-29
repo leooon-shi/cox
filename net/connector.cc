@@ -19,7 +19,7 @@ logging::Logger& log() {
 }  // namespace
 
 namespace {
-// Build a non-empty() candidate vector from a single address (single-address
+// Build a non-empty candidate vector from a single address (single-address
 // ctor delegates here).
 std::vector<InetAddress> single(const InetAddress& a) {
     return std::vector<InetAddress>{a};
@@ -33,7 +33,7 @@ Connector::Connector(reactor::EventLoop* loop,
                      std::vector<InetAddress> candidates)
     : loop_(loop),
       candidates_(std::move(candidates)),
-      // Key backoff by the first candidiate's endpoint identity: cycling
+      // Key backoff by the first candidate's endpoint identity: cycling
       // through the whole list is one logical failure, not one per address.
       backoff_key_(candidates_.empty() ? std::string()
                                        : candidates_.front().toIpPort()),
@@ -84,7 +84,7 @@ void Connector::restart() {
     loop_->assertInLoopThread();
     setState(State::kDisconnected);
     backoff_.reset(backoffKey());  // back to initial delay
-    current_ = 0;                  // restart the candidate walk from top
+    current_ = 0;                  // restart the candidate walk from the top
     connect_ = true;
     startInLoop();
 }
@@ -214,7 +214,7 @@ void Connector::cancelConnectTimeout() {
 
 void Connector::onConnectTimeout() {
     loop_->assertInLoopThread();
-    // The attempt to the current candidate neither completed nor errrored in
+    // The attempt to the current candidate neither completed nor errored in
     // time (e.g. a blackholed address). Abandon it and fail over.
     if (state_ != State::kConnecting) {
         return;
@@ -241,7 +241,7 @@ void Connector::retry(int sockfd) {
     // is reached from handleWrite()/handleError()/onConnectTimeout()), so
     // freeing it now is a use-after-free when handleEvents() returns -- the
     // same hazard removeAndResetChannel() guards against. Defer the attempt to
-    // the next loop interation with queueInLoop: still "immediate" (no timer
+    // the next loop iteration with queueInLoop: still "immediate" (no timer
     // delay) but after the current callback unwinds and the old Channel is
     // reset. (ThreadSanitizer/ASan caught the synchronous version.)
     if (current_ + 1 < candidates_.size()) {
@@ -254,7 +254,7 @@ void Connector::retry(int sockfd) {
         return;
     }
 
-    // Candidate list exhaused: the endpoint is (currently) unreachable. Reset
+    // Candidate list exhausted: the endpoint is (currently) unreachable. Reset
     // to the first candidate, advance the jittered exponential backoff for this
     // endpoint, and retry the whole list after the delay. Jitter decorrelates
     // mass reconnects.

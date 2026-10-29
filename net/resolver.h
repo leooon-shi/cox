@@ -34,13 +34,13 @@ public:
         std::function<void(const InetAddress& addr, const std::string& error)>;
 
     // (addresses, error). On Success error is empty and addrs is non-empty,
-    // ordered as the OS returned them (RFC 6742 / getaddrinfo order). On
+    // ordered as the OS returned them (RFC 6724 / getaddrinfo order). On
     // failure addrs is empty and error is set. This is the dual-stack path:
     // the caller (Connector) tries each address in turn until one connects,
-    // so a name that resolves to both an A and AAA record reaches whichever
-    // faimily is actually reachable.
+    // so a name that resolves to both an A and AAAA record reaches whichever
+    // family is actually reachable.
     using ListCallback = std::function<void(
-        const std::vector<InetAddress>& addrs, const std::string& err)>;
+        const std::vector<InetAddress>& addrs, const std::string& error)>;
 
     virtual ~Resolver() = default;
 

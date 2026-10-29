@@ -26,8 +26,7 @@ TcpClient::TcpClient(reactor::EventLoop* loop, const InetAddress& server_addr,
 }
 
 TcpClient::TcpClient(reactor::EventLoop* loop,
-                     const std::vector<InetAddress> candidates,
-                     std::string name)
+                     std::vector<InetAddress> candidates, std::string name)
     : loop_(loop),
       connector_(std::make_shared<Connector>(loop, std::move(candidates))),
       name_(std::move(name)) {
