@@ -395,7 +395,7 @@ error and a later request retries.
 
 Dual-stack: when a name resolves to several addresses (e.g. an `AAAA` and an
 `A` record, as in a dual-stack Kubernetes cluster), the full ordered list is
-kepts and the connector tries each address in turn, failing over immediately to
+kept and the connector tries each address in turn, failing over immediately to
 the next if one is unreachable. A client therefore connects as long as *any*
 resolved address accepts the connection, regardless of which family the OS
 orders first.

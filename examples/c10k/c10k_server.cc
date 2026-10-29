@@ -8,10 +8,10 @@
 //   --threads N    N io loops behind ONE listener (main reactor + sub-reactors;
 //                  accepted fds are handed out round-robin).
 //   --reuseport N  N independent listeners on the same port (SO_REUSEPORT),
-//                  each with its own own loop thread: the kernel spreads
-//                  incoming connections by 4-tuple hash, no shared accept path.
+//                  each with its own loop thread: the kernel spreads incoming
+//                  connections by 4-tuple hash, no shared accept path.
 //                  Mutually exclusive with --threads.
-//   --max-conns N  connection cap per listener (0 == unlimited).
+//   --max-conns N  connection cap per listener (0 = unlimited).
 //   --idle S       close connections idle for S seconds (0 = never).
 //   --accept-qps Q token-bucket limit on NEW connections per second.
 //   --nodelay      set TCP_NODELAY on accepted connections.
