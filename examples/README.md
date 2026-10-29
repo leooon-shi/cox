@@ -19,7 +19,7 @@ cmake --preset examples && cmake --build --preset examples --parallel
 
 ## C10K walkthrough
 
-Raise the file-descriptor limit in **both** shells first  each connection is one fd on each side:
+Raise the file-descriptor limit in **both** shells first — each connection is one fd on each side:
 
 ```bash
 ulimit -n 200000          # needs a hard limit >= this (ulimit -Hn)

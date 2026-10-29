@@ -10,7 +10,7 @@
 //                 Rate-limiting connects avoids SYN/accept-queue overflow and
 //                 shows the difference between "how many" and "how fast".
 //   --duration S  after connecting, keep traffic going for S seconds.
-//   --msg BYTES   payload per request (0 = idle connection only).
+//   --msg BYTES   payload per request (0 = idle connections only).
 //   --inflight K  requests in flight per connection (closed loop, default 1).
 //   --src-ips     bind to several local IPs round-robin (e.g. 127.0.0.2,...)
 //                 to get past the ~28k ephemeral-port limit per destination.
