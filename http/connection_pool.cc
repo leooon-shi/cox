@@ -451,7 +451,7 @@ private:
 
     reactor::EventLoop* loop_;
     std::vector<net::InetAddress>
-        origins_; // candidate addresses (>=1 once resolved)
+        origins_;  // candidate addresses (>=1 once resolved)
     std::string host_;
     tls::TlsContextPtr tls_ctx_;
     size_t* max_connections_;

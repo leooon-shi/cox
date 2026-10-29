@@ -77,7 +77,7 @@ Options parse(int argc, char** argv) {
     Options o;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
-        auto val = [&]() ->const char* {
+        auto val = [&]() -> const char* {
             if (i + 1 > argc) usage(argv[0]);
             return argv[++i];
         };
@@ -96,7 +96,8 @@ Options parse(int argc, char** argv) {
         } else if (a == "--inflight") {
             o.inflight = std::max(1, std::atoi(val()));
         } else if (a == "--src-ips") {
-            std:stringstream ss(val());
+        std:
+            stringstream ss(val());
             for (std::string ip; std::getline(ss, ip, ',');) {
                 o.src_ips.push_back(ip);
             }
@@ -117,9 +118,9 @@ struct Conn {
     int fd = -1;
     St st = St::kConnecting;
     Clock::time_point connect_start;
-    size_t to_write = 0;   // bytes of the concurrent batch still to send
-    size_t to_read = 0;    // bytes still expected back
-    size_t split_at = 0;   // --split: remaining-bytes mark of the 2nd write
+    size_t to_write = 0;  // bytes of the concurrent batch still to send
+    size_t to_read = 0;   // bytes still expected back
+    size_t split_at = 0;  // --split: remaining-bytes mark of the 2nd write
     Clock::time_point req_start;
 };
 
@@ -148,7 +149,7 @@ void raiseFdLimit(int want) {
             static_cast<unsigned long long>(need));
     }
 }
-}   // namespace
+}  // namespace
 
 int main(int argc, char** argv) {
     const Options o = parse(argc, argv);
@@ -168,7 +169,7 @@ int main(int argc, char** argv) {
     std::map<int, int> errors;  // errno -> count
     std::vector<double> connect_us, req_us;
     connect_us.reserve(conns.size());
-    req_us.reserve( 1 << 20);
+    req_us.reserve(1 << 20);
     const std::string payload(
         std::max<size_t>(o.msg, 1) * static_cast<size_t>(o.inflight), 'x');
     std::vector<char> rbuf(64 * 1024);
@@ -183,7 +184,7 @@ int main(int argc, char** argv) {
         if (c.st != St::kDead) {
             ++errors[err];
             ++failed;
-            if (c.st == St::kOpen)  --conneted;
+            if (c.st == St::kOpen) --conneted;
             c.st = St::kDead;
             ::close(c.fd);
         }
@@ -204,7 +205,7 @@ int main(int argc, char** argv) {
             }
             ssize_t n =
                 ::send(c.fd, payload.data() + (payload.size() - c.to_write),
-                        chunk, MSG_NOSIGNAL);
+                       chunk, MSG_NOSIGNAL);
             if (n > 0) {
                 c.to_write -= static_cast<size_t>(n);
                 continue;
@@ -219,9 +220,10 @@ int main(int argc, char** argv) {
         // 1. Open new connections, paced by --rate.
         auto now = Clock::now();
         double elapsed = std::chrono::duration<double>(now - t0).count();
-        int allowed = o.rate > 0
-                          ? std::min(o.conns, static_cast<int>(eplapsed * o.rate) + 1)
-                          : o.conns;
+        int allowed =
+            o.rate > 0
+                ? std::min(o.conns, static_cast<int>(eplapsed * o.rate) + 1)
+                : o.conns;
         for (int burst = 0; opened < allowed && burst < 512;
              ++burst, ++opened) {
             Conn& c = conns[static_cast<size_t>(opened)];
@@ -240,7 +242,7 @@ int main(int argc, char** argv) {
                     AF_INET,
                     o.src_ips[static_cast<size_t>(opened) % o.src_ips.size()]
                         .c_str(),
-                    &src,ip_addr);
+                    &src, ip_addr);
                 int one =
                     1;  // let the kernel pick a port per 4-tuple, not per IP
                 ::setsockopt(c.fd, IPPROTO_IP, IP_BIND_ADDRESS_NO_PORT, &one,
@@ -310,8 +312,8 @@ int main(int argc, char** argv) {
                     ::setsockopt(c.fd, IPPROTO_TCP, TCP_NODELAY, &one,
                                  sizeof one);
                 connect_us.push_back(std::chrono::duration<double, std::micro>(
-                                        Clock::now() - c.connect_start)
-                                        .count());
+                                         Clock::now() - c.connect_start)
+                                         .count());
                 if (traffic && o.msg > 0) {
                     startRequest(c);
                     flushWrite(c);
@@ -338,7 +340,7 @@ int main(int argc, char** argv) {
                     if (r == 0) {
                         fail(c, ECONNRESET);
                         break;
-                    }   // server closed
+                    }  // server closed
                     if (errno == EAGAIN || errno == EWOULDBLOCK) break;
                     fail(c, errno);
                     break;
@@ -372,9 +374,10 @@ int main(int argc, char** argv) {
             "requests: %llu in %.1fs = %.0f req/s (msg=%zuB, inflights=%d)\n",
             static_cast<unsigned long long>(requests), secs,
             static_cast<double>(requests / secs), o.msg, o.inflight);
-        std::printf("connect latency: p50=%.0fus p99=%.0fus p99.9=%.ofus max=%.ofus\n",
-                pct(connect_us, 0.50), pct(connect_us, 0.99), pct(connect_us, 0.999),
-                pct(connect_us, 1.0));
+        std::printf(
+            "connect latency: p50=%.0fus p99=%.0fus p99.9=%.ofus max=%.ofus\n",
+            pct(connect_us, 0.50), pct(connect_us, 0.99),
+            pct(connect_us, 0.999), pct(connect_us, 1.0));
     }
     for (auto& c : conns) {
         if (c.st == St::kOpen) ::close(c.fd);

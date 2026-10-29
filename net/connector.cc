@@ -24,12 +24,13 @@ namespace {
 std::vector<InetAddress> single(const InetAddress& a) {
     return std::vector<InetAddress>{a};
 }
-}   // namespace
+}  // namespace
 
 Connector::Connector(reactor::EventLoop* loop, const InetAddress& server_addr)
     : Connector(loop, single(server_addr)) {}
 
-Connector::Connector(reactor::EventLoop* loop, std::vector<InetAddress> candidates)
+Connector::Connector(reactor::EventLoop* loop,
+                     std::vector<InetAddress> candidates)
     : loop_(loop),
       candidates_(std::move(candidates)),
       // Key backoff by the first candidiate's endpoint identity: cycling
@@ -158,7 +159,7 @@ void Connector::handleWrite() {
     if (state_ != State::kConnecting) {
         return;
     }
-    cancelConnectTimeout();     // the attempt has resolved (success or error)
+    cancelConnectTimeout();  // the attempt has resolved (success or error)
 
     int sockfd = removeAndResetChannel();
     int err = sockets::getSocketError(sockfd);
@@ -205,8 +206,7 @@ void Connector::armConnectTimeout() {
 }
 
 void Connector::cancelConnectTimeout() {
-    if (connect_timer_armed_)
-    {
+    if (connect_timer_armed_) {
         loop_->cancel(connect_timer_);
         connect_timer_armed_ = false;
     }

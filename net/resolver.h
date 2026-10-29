@@ -49,7 +49,7 @@ public:
     // resolveAll(), handing back the first result.
     virtual void resolve(const std::string& host, uint16_t port,
                          Callback cb) = 0;
-    
+
     // Resolve host:port to the full ordered address list, invoking cb on the
     // loop thread.
     virtual void resolveAll(const std::string& host, uint16_t port,

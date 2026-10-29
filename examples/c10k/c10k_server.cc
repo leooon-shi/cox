@@ -8,8 +8,8 @@
 //  --threads N     N io loops behind ONE listener (main reactor + sub reactors;
 //                  accepted fds are handed out round-robin).
 //  --reuseport N   N independent listeners on the same port (SO_REUSEPORT),
-//                  each with its own own loop thread: the kernel spreads incoming
-//                  connections by 4-tuple hash, no shared accept path.
+//                  each with its own own loop thread: the kernel spreads
+//                  incoming connections by 4-tuple hash, no shared accept path.
 //                  Mutually exclusive with --threads.
 //  --max-conns N   connection cap per listener (0 == unlimited).
 //  --idle S        close connection idle for S seconds (0 = never).
@@ -88,7 +88,7 @@ Options parse(int argc, char** argv) {
     Options o;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
-        auto val = [&]() ->const char* {
+        auto val = [&]() -> const char* {
             if (i + 1 > argc) usage(argv[0]);
             return argv[++i];
         };
@@ -152,7 +152,7 @@ void printFdLimit() {
     }
     std::printf("\n");
 }
-}   // namespace
+}  // namespace
 
 int main(int argc, char** argv) {
     const Options o = parse(argc, argv);
@@ -177,7 +177,7 @@ int main(int argc, char** argv) {
             std::atomic<bool> ready{false};
             loop->runInLoop([&, loop, i]() {
                 srv = new TcpServer(loop, addr, "c10k-rp" + std::to_string(i),
-                                     TcpServer::Option::kReusePort);
+                                    TcpServer::Option::kReusePort);
                 configure(*srv, o, st);
                 srv->start();
                 ready = true;
@@ -189,7 +189,8 @@ int main(int argc, char** argv) {
         std::printf("c10k_server: %d SO_REUSEPORT listeners on :%u\n",
                     o.reuseport, o.port);
     } else {
-        servers.push_back(std::make_unique<TcpServer>(&main_loop, addr, "c10k"));
+        servers.push_back(
+            std::make_unique<TcpServer>(&main_loop, addr, "c10k"));
         configure(*servers.back(), o, st);
         servers.back()->start();
         std::printf("c10k_server: 1 listener + %d io threads on :%u\n",
@@ -234,7 +235,7 @@ int main(int argc, char** argv) {
             });
             while (!done) std::this_thread::yield();
         }
-        listener_threads.clear();   // quits and joins each loop thread
+        listener_threads.clear();  // quits and joins each loop thread
     }
     std::printf("stopped: accepted=%llu rejected=%llu\n",
                 static_cast<unsigned long long>(st.accepted.load()),

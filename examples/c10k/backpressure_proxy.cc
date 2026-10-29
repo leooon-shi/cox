@@ -58,8 +58,7 @@ long rssKb() {
     std::ifstream f("proc/self/status");
     std::string k;
     long v = 0;
-    while (f >> k)
-    {
+    while (f >> k) {
         if (k == "VmRSS:") {
             f >> v;
             return v;
@@ -75,12 +74,12 @@ void pipe(const TcpConnectionPtr& from, const TcpConnectionPtr& to, size_t hwm,
     from->setMessageCallback(
         [weak_to = std::weak_ptr<net::TcpConnection>(to)](
             const TcpConnectionPtr& self, buffer::Buffer* buf) {
-                if (auto t = weak_to.lock()) {
-                    t->send(buf->retrieveAllAsString());
-                } else {
-                    buf->retrieveAll();
-                    self->shutdown();
-                }
+            if (auto t = weak_to.lock()) {
+                t->send(buf->retrieveAllAsString());
+            } else {
+                buf->retrieveAll();
+                self->shutdown();
+            }
         });
     if (!backpressure) return;
     // When `to` backs up past hwm, stop reading from `from`.
@@ -98,32 +97,27 @@ void pipe(const TcpConnectionPtr& from, const TcpConnectionPtr& to, size_t hwm,
         }
     });
 }
-}   // namespace
+}  // namespace
 
 int main(int argc, char** argv) {
     uint16_t listen_port = 9200, upstream_port = 9300;
-    size_t hwm = 1 << 20; // 1MiB
+    size_t hwm = 1 << 20;  // 1MiB
     bool backpressure = true;
-    for (int i = 1; i < argc; ++i)
-    {
+    for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
-        if (a == "--listen" && i + 1 < argc)
-        {
+        if (a == "--listen" && i + 1 < argc) {
             listen_port = static_cast<uint16_t>(std::atoi(argv[++i]));
-        } else if (a == "--upstream" && i + 1 < argc)
-        {
+        } else if (a == "--upstream" && i + 1 < argc) {
             upstream_port = static_cast<uint16_t>(std::atoi(argv[++i]));
-        } else if (a == "--hwm" && i + 1 < argc)
-        {
+        } else if (a == "--hwm" && i + 1 < argc) {
             hwm = std::strtoul(argv[++i], nullptr, 10);
-        } else if (a == "--no-backpressure" && i + 1 < argc)
-        {
+        } else if (a == "--no-backpressure" && i + 1 < argc) {
             backpressure = false;
         } else {
             std::fprintf(stderr,
-                        "Usage: %s [--listen P] [--upstream P] [--hwm BYTES] "
-                        "[--no-backpressure]\n",
-                        argv[0]);
+                         "Usage: %s [--listen P] [--upstream P] [--hwm BYTES] "
+                         "[--no-backpressure]\n",
+                         argv[0]);
             return 2;
         }
     }
@@ -136,22 +130,26 @@ int main(int argc, char** argv) {
 
     server.setConnectionCallback([&](const TcpConnectionPtr& down) {
         if (down->connected()) {
-            down->stopRead();   // don't read until the upstream is connected
-            auto client = std::make_unique<TcpClient>(&loop, InetAddress("127.0.0.1", upstream_port), "upstream-" + down->name());
-            client->setConnectionCallback([&, weak_down = std::weak_ptr<net::TcpConnection>(down)](const TcpConnectionPtr& up) {
-                auto d = weak_down.lock();
-                if (up->connected()) {
-                    if (!d) {
-                        up->shutdown();
-                        return;
+            down->stopRead();  // don't read until the upstream is connected
+            auto client = std::make_unique<TcpClient>(
+                &loop, InetAddress("127.0.0.1", upstream_port),
+                "upstream-" + down->name());
+            client->setConnectionCallback(
+                [&, weak_down = std::weak_ptr<net::TcpConnection>(down)](
+                    const TcpConnectionPtr& up) {
+                    auto d = weak_down.lock();
+                    if (up->connected()) {
+                        if (!d) {
+                            up->shutdown();
+                            return;
+                        }
+                        pipe(d, up, hwm, backpressure);  // client -> upstream
+                        pipe(up, d, hwm, backpressure);  // upstream -> client
+                        d->startRead();
+                    } else if (d) {
+                        d->shutdown();  // upstream gone: half-close the client
                     }
-                    pipe(d, up, hwm, backpressure);     // client -> upstream
-                    pipe(up, d, hwm, backpressure);     // upstream -> client
-                    d->startRead();
-                } else if (d) {
-                    d->shutdown();  // upstream gone: half-close the client
-                }
-            });
+                });
             client->connect();
             upstreams[down->name()] = std::move(client);
         } else {
@@ -186,5 +184,3 @@ int main(int argc, char** argv) {
     loop.loop();
     return;
 }
-
-

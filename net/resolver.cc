@@ -44,7 +44,7 @@ int resolveBlocking(const std::string& host, uint16_t port,
     // between families/addresses. Taking only the first entry (as an earlier
     // version did) meant an IPv6-first host committed to ::1 and could never
     // reach an IPv4-only server -- the dual-stack bug this path fixes.
-    for(struct addrinfo* ai = res; ai != nullptr; ai = ai->ai_next) {
+    for (struct addrinfo* ai = res; ai != nullptr; ai = ai->ai_next) {
         if (res->ai_family == AF_INET) {
             auto* sin = reinterpret_cast<struct sockaddr_in*>(res->ai_addr);
             sin->sin_port = htons(port);
@@ -59,8 +59,7 @@ int resolveBlocking(const std::string& host, uint16_t port,
 
     ::freeaddrinfo(res);
 
-    if (out->empty())
-    {
+    if (out->empty()) {
         *err = "no usable address";
         return -1;
     }
@@ -156,18 +155,18 @@ void ThreadPoolResolver::resolve(const std::string& host, uint16_t port,
     // One-address convenience: delegate to the list path and hand back the
     // first result (or the error).
     resolveAll(host, port,
-        [cb = std::move(cb)](const std::vector<InetAddress>& addrs,
-                                                const std::string& err) {
-            if (err.empty()) {
-                cb(addrs.front(), "");
-            } else {
-                cb(InetAddress(), err);
-            }
-        });
+               [cb = std::move(cb)](const std::vector<InetAddress>& addrs,
+                                    const std::string& err) {
+                   if (err.empty()) {
+                       cb(addrs.front(), "");
+                   } else {
+                       cb(InetAddress(), err);
+                   }
+               });
 }
 
 void ThreadPoolResolver::resolveAll(const std::string& host, uint16_t port,
-                                 ListCallback cb) {
+                                    ListCallback cb) {
     impl_->resolve(host, port, std::move(cb), cache_ttl_s_);
 }
 

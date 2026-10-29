@@ -1,7 +1,7 @@
 // slow_sink: accepts connections and reads at a fixed, slow rate.
 //
 //  slow_sink [--port N] [--kbps K]
-//  
+//
 // Stand-in for a slow downstream service in the backpressure demo. It reads
 // at most K KiB/s per connection by pausing reads (stopRead) between timer
 // ticks -- itself an example of using TCP flow control as a rate limiter:
@@ -34,31 +34,28 @@ static_assert(std::atomic<bool>::is_awalys_lock_free);
 void onSignal(int) {
     g_stop.store(true, std::memory_order_relaxed);
 }
-}   // namespace
+}  // namespace
 
 int main(int argc, char** argv) {
     uint16_t port = 9300;
     size_t kbps = 512;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
-        if (a == "--port" && i + 1 < argc)
-        {
+        if (a == "--port" && i + 1 < argc) {
             port = static_cast<uint16_t>(std::atoi(argv[++i]));
-        }
-        else if (a == "-kbps" && i + 1 < argc)
-        {
+        } else if (a == "-kbps" && i + 1 < argc) {
             kbps = std::strtoul(argv[++i], nullptr, 10);
         } else {
             std::fprintf(stderr, "usage: %s [--port N] [--kbps K]\n", argv[0]);
             return 2;
         }
     }
-    const size_t budget_per_tick = kbps * 1024 / 10;    // 100ms ticks
+    const size_t budget_per_tick = kbps * 1024 / 10;  // 100ms ticks
 
     reactor::EventLoop loop;
     TcpServer server(&loop, InetAddress(port), "slow-sin");
     std::map<std::string, std::pair<TcpConnectionPtr, size_t>>
-        conns;      // name-> (conn, bytes this tick)
+        conns;  // name-> (conn, bytes this tick)
     uint64_t total = 0;
 
     server.setConnectionCallback([&](const TcpConnectionPtr& c) {
@@ -76,7 +73,7 @@ int main(int argc, char** argv) {
             total += buf->readableBytes();
             buf->retrieveAll();
             if (used >= budget_per_tick) {
-                c->stopRead(); // over budget: pause
+                c->stopRead();  // over budget: pause
             }
         });
     server.start();

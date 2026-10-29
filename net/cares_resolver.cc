@@ -119,7 +119,8 @@ private:
             self->loop_->runInLoop([cb, addrs]() { cb(addrs, ""); });
         } else {
             self->loop_->runInLoop([cb]() {
-                cb(std::vector<InetAddress>(), "no usable address"); });
+                cb(std::vector<InetAddress>(), "no usable address");
+            });
         }
     }
 
@@ -204,9 +205,9 @@ void CaresResolver::resolve(const std::string& host, uint16_t port,
                [cb = std::move(cb)](const std::vector<InetAddress>& addrs,
                                     const std::string& err) {
                    if (err.empty()) {
-                        cb(addrs.front(), "");
+                       cb(addrs.front(), "");
                    } else {
-                        cb(InetAddress(), err);
+                       cb(InetAddress(), err);
                    }
                });
 }

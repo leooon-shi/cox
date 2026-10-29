@@ -130,8 +130,7 @@ TEST(ResolverTest, ThreadPoolResolveAllReturnsList) {
     EXPECT_TRUE(err.empty()) << "resolveAll error: " << err;
     // At least one address; every entry is loopback with the requested port
     ASSERT_FALSE(addrs.empty());
-    for (const auto& a : addrs)
-    {
+    for (const auto& a : addrs) {
         EXPECT_TRUE(a.toIp() == "127.0.0.1" || a.toIp() == "::1")
             << "ip=" << a.toIp();
         EXPECT_EQ(a.port(), 8080);

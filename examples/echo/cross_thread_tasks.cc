@@ -15,7 +15,7 @@
 #include <thread>
 
 int main() {
-    reactor::EventLoop loop;    // lives on this (main) thread for the whole run
+    reactor::EventLoop loop;  // lives on this (main) thread for the whole run
     const std::map<std::string, std::string> items{{"hello", "world"},
                                                    {"Name", " Leon"},
                                                    {"Gender", " Female"},

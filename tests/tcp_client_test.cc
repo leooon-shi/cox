@@ -147,7 +147,7 @@ TEST(TcpClientTest, RetryUntilServerAvailable) {
 // after a backoff interval, since stepping between a host's candidates is
 // immediate.
 TEST(TcpClientTest, FailsOverToReachableCandidate) {
-    const uint16_t kDeadPort = 47010;   // nothing listens here
+    const uint16_t kDeadPort = 47010;  // nothing listens here
     const uint16_t kLivePort = 47011;
     EchoServerThread server(kLivePort);
 
@@ -201,7 +201,7 @@ TEST(TcpClientTest, FailsOverToReachableCandidate) {
 // server is up (mirrors the DNS/K8s case that motivated the feature).
 TEST(TcpClientTest, FailsOverFromIpv6ToIpv4) {
     const uint16_t kPort = 47012;
-    EchoServerThread server(kPort);     // IPv4 (127.0.0.1) only
+    EchoServerThread server(kPort);  // IPv4 (127.0.0.1) only
 
     std::atomic<bool> cli_started{false};
     std::atomic<bool> got_reply{false};
@@ -212,16 +212,17 @@ TEST(TcpClientTest, FailsOverFromIpv6ToIpv4) {
         reactor::EventLoop loop;
         cli_loop = &loop;
         // ::1 first (refused: no IPv6 listener), then 127.0.0.1 (live).
-        std::vector<InetAddress> candidates {
+        std::vector<InetAddress> candidates{
             InetAddress("::1", kPort, /*ipv6=*/true),
             InetAddress("127.0.0.1", kPort)};
         TcpClient client(&loop, std::move(candidates), "v6v4-cli");
         client.setConnectionCallback([&](const TcpConnectionPtr& conn) {
             if (conn->connected()) conn->send("x");
         });
-        client.setMessageCallback([&](const TcpConnectionPtr&, buffer::Buffer* buf) {
-            received = buf->retrieveAllAsString();
-            got_reply = true;
-        });
+        client.setMessageCallback(
+            [&](const TcpConnectionPtr&, buffer::Buffer* buf) {
+                received = buf->retrieveAllAsString();
+                got_reply = true;
+            });
     });
 }
