@@ -23,7 +23,7 @@ using net::TcpServer;
 
 namespace {
 // Set by the signal handler; polled by the event loop to trigger graceful
-// shutdown. sig_automic_t + volatile is the async-signal-safe idiom.
+// shutdown. sig_atomic_t + volatile is the async-signal-safe idiom.
 volatile std::sig_atomic_t g_shutdown_requested = 0;
 void onSignal(int) {
     g_shutdown_requested = 1;
@@ -31,7 +31,7 @@ void onSignal(int) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-    // Unix-domain mode: echo_server -- unix /path/to/socket
+    // Unix-domain mode: echo_server --unix /path/to/socket
     if (argc > 2 && std::string(argv[1]) == "--unix") {
         reactor::EventLoop loop;
         InetAddress listen_addr = InetAddress::unixDomain(argv[2]);
@@ -40,13 +40,13 @@ int main(int argc, char* argv[]) {
         server.setMaxConnections(10000);
         server.setConnectionCallback([](const TcpConnectionPtr& conn) {
             std::cout << "connection " << conn->name()
-                      << (conn->connected() ? "UP" : "DOWN") << std::endl;
+                      << (conn->connected() ? " UP" : "DOWN") << std::endl;
         });
         server.setMessageCallback(
             [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
                 conn->send(buf->retrieveAllAsString());
             });
-        std::cout << "echo server listening on" << listen_addr.toIpPort()
+        std::cout << "echo server listening on " << listen_addr.toIpPort()
                   << std::endl;
         server.start();
         loop.loop();
@@ -66,14 +66,14 @@ int main(int argc, char* argv[]) {
     server.setConnectionCallback([](const TcpConnectionPtr& conn) {
         std::cout << "connection " << conn->name() << " from "
                   << conn->peerAddress().toIpPort()
-                  << (conn->connected() ? "UP" : "DOWN") << std::endl;
+                  << (conn->connected() ? " UP" : "DOWN") << std::endl;
     });
     server.setMessageCallback(
         [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
             std::string msg = buf->retrieveAllAsString();
             conn->send(msg);  // echo it back
         });
-    std::cout << "echo server listening on" << listen_addr.toIpPort()
+    std::cout << "echo server listening on " << listen_addr.toIpPort()
               << std::endl;
     server.start();
     // Install SIGINT/SIGTERM handlers for graceful shutdown. The handler only

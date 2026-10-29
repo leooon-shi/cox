@@ -59,16 +59,16 @@ int main(int argc, char* argv[]) {
             req.hasQueryParam("page") ? req.queryParam("page") : "1";
         resp->setStatus(200);
         resp->setContentType("application/json");
-        resp->setBody(R"({"q":)" + q + R"(","page":")" + page + R"("})");
+        resp->setBody(R"({"q":")" + q + R"(","page":")" + page + R"("})");
     });
-    // Form body parsing: -d 'name-Ada+Lovelace'
+    // Form body parsing: -d 'name=Ada+Lovelace'
     router.post("/form", [](const HttpRequest& req, const PathParams&,
                             HttpResponse* resp) {
         auto form = req.formParams();
         auto it = form.find("name");
         resp->setStatus(200);
         resp->setContentType("text/plain");
-        resp->setBody(it == form.end() ? "no name" : "hello" + it->second);
+        resp->setBody(it == form.end() ? "no name" : "hello " + it->second);
     });
     router.post("/echo", [](const HttpRequest& req, const PathParams&,
                             HttpResponse* resp) {

@@ -25,6 +25,8 @@ public:
     ~CaresResolver() override;
 
     void resolve(const std::string& host, uint16_t port, Callback cb) override;
+    void resolveAll(const std::string& host, uint16_t port,
+                    ListCallback cb) override;
 
 private:
     class Impl;

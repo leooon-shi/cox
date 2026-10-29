@@ -22,9 +22,12 @@ logging::Logger& log() {
     return logger;
 }
 
-// Blocking resolution via getaddrinfo. Returns 0 on success and fills `out`.
-int resolveBlocking(const std::string& host, uint16_t port, InetAddress* out,
-                    std::string* err) {
+// Blocking resolution via getaddrinfo. Returns 0 on success and fills `out`
+// with every usable (IPv4/IPv6) address, in the order getaddrinfo returned
+// them (the OS applies RFC 6724 destination-address ordering). On failure
+// returns the getaddrinfo error code and sets `err`.
+int resolveBlocking(const std::string& host, uint16_t port,
+                    std::vector<InetAddress>* out, std::string* err) {
     struct addrinfo hints;
     std::memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;  // IPv4 or IPv6
@@ -37,22 +40,30 @@ int resolveBlocking(const std::string& host, uint16_t port, InetAddress* out,
         return rc;
     }
 
-    // Take the first result; set the port.
-    if (res->ai_family == AF_INET) {
-        auto* sin = reinterpret_cast<struct sockaddr_in*>(res->ai_addr);
-        sin->sin_port = htons(port);
-        *out = InetAddress(*sin);
-    } else if (res->ai_family == AF_INET6) {
-        auto* sin6 = reinterpret_cast<struct sockaddr_in6*>(res->ai_addr);
-        sin6->sin6_port = htons(port);
-        *out = InetAddress(*sin6);
-    } else {
-        *err = "unsupported address family";
-        ::freeaddrinfo(res);
-        return -1;
+    // Collect ALL results, preserving order, so the caller can fail over
+    // between families/addresses. Taking only the first entry (as an earlier
+    // version did) meant an IPv6-first host committed to ::1 and could never
+    // reach an IPv4-only server -- the dual-stack bug this path fixes.
+    for(struct addrinfo* ai = res; ai != nullptr; ai = ai->ai_next) {
+        if (res->ai_family == AF_INET) {
+            auto* sin = reinterpret_cast<struct sockaddr_in*>(res->ai_addr);
+            sin->sin_port = htons(port);
+            out->push_back(InetAddress(*sin));
+        } else if (res->ai_family == AF_INET6) {
+            auto* sin6 = reinterpret_cast<struct sockaddr_in6*>(res->ai_addr);
+            sin6->sin6_port = htons(port);
+            out->push_back(InetAddress(*sin6));
+        }
+        // Silently skip faimilies we do not use (e.g. AF_UNIX never appears).
     }
 
     ::freeaddrinfo(res);
+
+    if (out->empty())
+    {
+        *err = "no usable address";
+        return -1;
+    }
     return 0;
 }
 }  // namespace
@@ -63,11 +74,11 @@ public:
         : loop_(loop), pool_(pool) {}
 
     struct CacheEntry {
-        InetAddress addr;
+        std::vector<InetAddress> addrs;
         logging::Timestamp when;
     };
 
-    void resolve(const std::string& host, uint16_t port, Callback cb,
+    void resolve(const std::string& host, uint16_t port, ListCallback cb,
                  uint32_t ttl_s) {
         // Cache hit? (positive cache, TTL-bounded)
         {
@@ -80,10 +91,12 @@ public:
                     1000000;
 
                 if (age_s <= ttl_s) {
-                    InetAddress a = it->second.addr;
                     // Re-stamp the requested port (cache keyed by host only).
-                    // Rebuild with the port.
-                    InetAddress result = withPort(a, port);
+                    std::vector<InetAddress> result;
+                    result.reserve(it->second.addrs.size());
+                    for (const auto& a : it->second.addrs) {
+                        result.push_back(withPort(a, port));
+                    }
                     loop_->runInLoop([cb, result]() { cb(result, ""); });
                     return;
                 }
@@ -97,22 +110,23 @@ public:
 
         std::string h = host;
         pool_->run([self, h, port, cb]() {
-            InetAddress addr;
+            std::vector<InetAddress> addrs;
             std::string err;
-            int rc = resolveBlocking(h, port, &addr, &err);
+            int rc = resolveBlocking(h, port, &addrs, &err);
             if (rc == 0) {
                 {
                     std::lock_guard<std::mutex> lock(self->mutex_);
                     self->cache_[h] =
-                        CacheEntry{addr, logging::Timestamp::now()};
+                        CacheEntry{addrs, logging::Timestamp::now()};
                 }
-                self->loop_->runInLoop([cb, addr]() { cb(addr, ""); });
+                self->loop_->runInLoop([cb, addrs]() { cb(addrs, ""); });
             } else {
                 // Log the failure here: the callback only receives the message
                 // string, so without this a resolution failure leaves no trace
                 // on the server side.
                 log().debug("DNS resolution failed for " + h + ": " + err);
-                self->loop_->runInLoop([cb, err]() { cb(InetAddress(), err); });
+                self->loop_->runInLoop(
+                    [cb, err]() { cb(std::vector<InetAddress>(), err); });
             }
         });
     }
@@ -139,6 +153,22 @@ ThreadPoolResolver::~ThreadPoolResolver() = default;
 
 void ThreadPoolResolver::resolve(const std::string& host, uint16_t port,
                                  Callback cb) {
+    // One-address convenience: delegate to the list path and hand back the
+    // first result (or the error).
+    resolveAll(host, port,
+        [cb = std::move(cb)](const std::vector<InetAddress>& addrs,
+                                                const std::string& err) {
+            if (err.empty()) {
+                cb(addrs.front(), "");
+            } else {
+                cb(InetAddress(), err);
+            }
+        });
+}
+
+void ThreadPoolResolver::resolveAll(const std::string& host, uint16_t port,
+                                 ListCallback cb) {
     impl_->resolve(host, port, std::move(cb), cache_ttl_s_);
 }
+
 }  // namespace net

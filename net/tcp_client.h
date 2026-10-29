@@ -8,6 +8,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 namespace reactor {
 class EventLoop;
@@ -21,6 +22,9 @@ namespace net {
 class TcpClient {
 public:
     TcpClient(reactor::EventLoop* loop, const InetAddress& server_addr,
+              std::string name);
+    // Dual-stack: ordered candidate addresses tried in turn (see Connector).
+    TcpClient(reactor::EventLoop* loop, std::vector<InetAddress> candidates,
               std::string name);
     ~TcpClient();
 

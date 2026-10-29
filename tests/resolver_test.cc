@@ -97,6 +97,50 @@ TEST(ResolverTest, ThreadPoolResolvesNumericIp) {
     pool.stop();
 }
 
+TEST(ResolverTest, ThreadPoolResolveAllReturnsList) {
+    concurrent::ThreadPool pool("dns");
+    pool.start(2);
+
+    std::atomic<bool> started{false}, done{false};
+    std::vector<InetAddress> addrs;
+    std::string err;
+
+    std::thread t([t] {
+        reactor::EventLoop loop;
+        ThreadPoolResolver resolver(&loop, &pool);
+        resolver.resolveAll(
+            "localhost", 8080,
+            [&](const std::vector<InetAddress>& a, const std::string& e) {
+                addrs = a;
+                err = e;
+                done = true;
+                loop.quit();
+            });
+        started = true;
+        loop.loop();
+    });
+
+    while (!started.load()) std::this_thread::sleep_for(1ms);
+
+    for (int i = 0; i < 200 && !done.load(); ++i) {
+        std::this_thread::sleep_for(5ms);
+    }
+
+    EXPECT_TRUE(done.load());
+    EXPECT_TRUE(err.empty()) << "resolveAll error: " << err;
+    // At least one address; every entry is loopback with the requested port
+    ASSERT_FALSE(addrs.empty());
+    for (const auto& a : addrs)
+    {
+        EXPECT_TRUE(a.toIp() == "127.0.0.1" || a.toIp() == "::1")
+            << "ip=" << a.toIp();
+        EXPECT_EQ(a.port(), 8080);
+    }
+
+    t.join();
+    pool.stop();
+}
+
 TEST(ResolverTest, ThreadPoolReportsErrorForBogusHost) {
     concurrent::ThreadPool pool("dns");
     pool.start(2);

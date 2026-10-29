@@ -6,6 +6,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace net {
 namespace {
@@ -19,6 +20,15 @@ TcpClient::TcpClient(reactor::EventLoop* loop, const InetAddress& server_addr,
                      std::string name)
     : loop_(loop),
       connector_(std::make_shared<Connector>(loop, server_addr)),
+      name_(std::move(name)) {
+    connector_->setNewConnectionCallback(
+        [this](int sockfd) { newConnection(sockfd); });
+}
+
+TcpClient::TcpClient(reactor::EventLoop* loop,
+                     const std::vector<InetAddress> candidates, std::string name)
+    : loop_(loop),
+      connector_(std::make_shared<Connector>(loop, std::move(candidates))),
       name_(std::move(name)) {
     connector_->setNewConnectionCallback(
         [this](int sockfd) { newConnection(sockfd); });

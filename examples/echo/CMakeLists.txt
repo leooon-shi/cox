@@ -7,6 +7,6 @@ target_link_libraries(echo_server PRIVATE cow_net)
 add_executable(echo_client echo_client.cc)
 target_link_libraries(echo_client PRIVATE cow_net)
 
-# Legacy task-scheduling demo (not an echo server; kept for reference).
-add_executable(echo_scheduling_demo echo_main.cc)
-target_link_libraries(echo_scheduling_demo PRIVATE cow_reactor cow_logging cow_utilities)
+# runInLoop(): marshal work from other threads onto the loop thread.
+add_executable(cross_thread_tasks cross_thread_tasks.cc)
+target_link_libraries(cross_thread_tasks PRIVATE cow_reactor cow_logging cow_utilities)

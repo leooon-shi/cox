@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace net {
 namespace {
@@ -51,14 +52,15 @@ public:
 
     struct Query {
         uint16_t port;
-        Callback cb;
+        ListCallback cb;
         std::shared_ptr<Impl> self;  // keep Impl alive until callback
     };
 
-    void resolve(const std::string& host, uint16_t port, Callback cb) {
+    void resolve(const std::string& host, uint16_t port, ListCallback cb) {
         if (!channel_) {
-            loop_->runInLoop(
-                [cb]() { cb(InetAddress(), "resolver not initialized"); });
+            loop_->runInLoop([cb]() {
+                cb(std::vector<InetAddress>(), "resolver not initialized");
+            });
             return;
         }
 
@@ -83,43 +85,41 @@ private:
         auto* q = static_cast<Query*>(arg);
         std::shared_ptr<Impl> self = q->self;
         uint16_t port = q->port;
-        Callback cb = std::move(q->cb);
+        ListCallback cb = std::move(q->cb);
         delete q;
 
         if (status != ARES_SUCCESS || result == nullptr) {
             std::string err = ares_strerror(status);
-            self->loop_->runInLoop([cb, err]() { cb(InetAddress(), err); });
+            self->loop_->runInLoop(
+                [cb, err]() { cb(std::vector<InetAddress>(), err); });
             if (result) ares_freeaddrinfo(result);
             return;
         }
 
-        InetAddress addr;
-        bool ok = false;
+        // Collect ALL addresses in order so the caller can fail over between
+        // families/addresses (dual-stack). c-ares already returns the list.
+        std::vector<InetAddress> addrs;
         for (auto* node = result->nodes; node != nullptr;
              node = node->ai_next) {
             if (node->ai_family == AF_INET) {
                 auto* sin =
                     reinterpret_cast<struct sockaddr_in*>(node->ai_addr);
                 sin->sin_port = htons(port);
-                addr = InetAddress(*sin);
-                ok = true;
-                break;
+                addrs.push_back(InetAddress(*sin));
             } else if (node->ai_family == AF_INET6) {
                 auto* s6 =
                     reinterpret_cast<struct sockaddr_in6*>(node->ai_addr);
                 s6->sin6_port = htons(port);
-                addr = InetAddress(*s6);
-                ok = true;
-                break;
+                addrs.push_back(InetAddress(s6));
             }
         }
 
         ares_freeaddrinfo(result);
-        if (ok) {
-            self->loop_->runInLoop([cb, addr]() { cb(addr, ""); });
+        if (!addrs.empty()) {
+            self->loop_->runInLoop([cb, addrs]() { cb(addrs, ""); });
         } else {
-            self->loop_->runInLoop(
-                [cb]() { cb(InetAddress(), "no usable address"); });
+            self->loop_->runInLoop([cb]() {
+                cb(std::vector<InetAddress>(), "no usable address"); });
         }
     }
 
@@ -200,6 +200,20 @@ CaresResolver::~CaresResolver() = default;
 
 void CaresResolver::resolve(const std::string& host, uint16_t port,
                             Callback cb) {
+    resolveAll(host, port,
+               [cb = std::move(cb)](const std::vector<InetAddress>& addrs,
+                                    const std::string& err) {
+                   if (err.empty()) {
+                        cb(addrs.front(), "");
+                   } else {
+                        cb(InetAddress(), err);
+                   }
+               });
+}
+
+void CaresResolver::resolveAll(const std::string& host, uint16_t port,
+                               ListCallback cb) {
     impl_->resolve(host, port, std::move(cb));
 }
+
 }  // namespace net

@@ -12,6 +12,7 @@
 #include <chrono>
 #include <string>
 #include <thread>
+#include <vector>
 
 using namespace std::chrono_literals;
 using net::InetAddress;
@@ -138,4 +139,89 @@ TEST(TcpClientTest, RetryUntilServerAvailable) {
     cli_loop->quit();
     client_thread.join();
     server.stop();
+}
+
+// Dual-stack failover: the client is handed an ordered candidate list whose
+// FIRST address is unreachable (a port with no listener) and whose second is
+// the live server. It must fail over and connect -- and do so quickly, not
+// after a backoff interval, since stepping between a host's candidates is
+// immediate.
+TEST(TcpClientTest, FailsOverToReachableCandidate) {
+    const uint16_t kDeadPort = 47010;   // nothing listens here
+    const uint16_t kLivePort = 47011;
+    EchoServerThread server(kLivePort);
+
+    std::atomic<bool> cli_started{false};
+    std::atomic<bool> connected{false};
+    std::atomic<bool> got_reply{false};
+    std::string received;
+    reactor::EventLoop* cli_loop = nullptr;
+
+    std::thread client_thread([&] {
+        reactor::EventLoop loop;
+        cli_loop = &loop;
+        // First candidate refuse (ECONNREFUSED), second is the live server.
+        std::vector<InetAddress> candidates{
+            InetAddress("127.0.0.1", kDeadPort),
+            InetAddress("127.0.0.1", kLivePort)};
+        TcpClient client(&loop, std::move(candidates), "failover-cli");
+        client.setConnectionCallback([&](const TcpConnectionPtr& conn) {
+            if (conn->connected()) {
+                connected = true;
+                conn->send("hi");
+            }
+        });
+        client.setMessageCallback(
+            [&](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
+                received = buf->retrieveAllAsString();
+                got_reply = true;
+            });
+        client.connect();
+        cli_started = true;
+        loop.loop();
+    });
+    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+
+    // Failover is immediate (no backoff), so a short window suffices. The
+    // initial backoff delay is 500 ms; we expect to connect well under that.
+    for (int i = 0; i < 60 && !got_reply.load(); ++i) {
+        std::this_thread::sleep_for(5ms);
+    }
+
+    EXPECT_TRUE(connected.load());
+    EXPECT_TRUE(got_reply.load());
+    EXPECT_EQ(received, "hi");
+
+    cli_loop->quit();
+    client_thread.join();
+    server.stop();
+}
+
+// Failover across families: an IPv6-first candidate list where only the IPv4
+// server is up (mirrors the DNS/K8s case that motivated the feature).
+TEST(TcpClientTest, FailsOverFromIpv6ToIpv4) {
+    const uint16_t kPort = 47012;
+    EchoServerThread server(kPort);     // IPv4 (127.0.0.1) only
+
+    std::atomic<bool> cli_started{false};
+    std::atomic<bool> got_reply{false};
+    std::string received;
+    reactor::EventLoop* cli_loop = nullptr;
+
+    std::thread client_thread([&] {
+        reactor::EventLoop loop;
+        cli_loop = &loop;
+        // ::1 first (refused: no IPv6 listener), then 127.0.0.1 (live).
+        std::vector<InetAddress> candidates {
+            InetAddress("::1", kPort, /*ipv6=*/true),
+            InetAddress("127.0.0.1", kPort)};
+        TcpClient client(&loop, std::move(candidates), "v6v4-cli");
+        client.setConnectionCallback([&](const TcpConnectionPtr& conn) {
+            if (conn->connected()) conn->send("x");
+        });
+        client.setMessageCallback([&](const TcpConnectionPtr&, buffer::Buffer* buf) {
+            received = buf->retrieveAllAsString();
+            got_reply = true;
+        });
+    });
 }

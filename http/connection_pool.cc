@@ -31,9 +31,10 @@ class PooledConn : public std::enable_shared_from_this<PooledConn> {
 public:
     using ResponseCallback = ConnectionPool::ResponseCallback;
 
-    PooledConn(reactor::EventLoop* loop, const net::InetAddress& origin,
-               std::string host, tls::TlsContextPtr tls_ctx)
-        : client_(loop, origin, "pool-conn"),
+    PooledConn(reactor::EventLoop* loop,
+               const std::vector<net::InetAddress>& origins, std::string host,
+               tls::TlsContextPtr tls_ctx)
+        : client_(loop, origins, "pool-conn"),
           host_(std::move(host)),
           tls_ctx_(std::move(tls_ctx)) {}
 
@@ -217,7 +218,7 @@ public:
          std::string host, tls::TlsContextPtr tls_ctx, size_t* max_conns,
          uint32_t* idle_s)
         : loop_(loop),
-          origin_(origin),
+          origins_{origin},
           host_(std::move(host)),
           tls_ctx_(std::move(tls_ctx)),
           max_connections_(max_conns),
@@ -294,30 +295,33 @@ private:
         if (resolving_) return;
         resolving_ = true;
         auto self = shared_from_this();
-        resolver_->resolve(
+        resolver_->resolveAll(
             dns_host_, dns_port_,
-            [self](const net::InetAddress& addr, const std::string& err) {
-                self->onResolved(addr, err);
-            });
+            [self](const std::vector<net::InetAddress>& addrs,
+                   const std::string& err) { self->onResolved(addrs, err); });
     }
 
     // Resolver callbacks arrive on the loop thread.
-    void onResolved(const net::InetAddress& addr, const std::string& err) {
+    void onResolved(const std::vector<net::InetAddress>& addr,
+                    const std::string& err) {
         loop_->assertInLoopThread();
         resolving_ = false;
         std::deque<Pending> waiting = std::move(waiting_on_dns_);
         waiting_on_dns_.clear();
 
-        if (!err.empty()) {
+        if (!err.empty() || addrs.empty()) {
             // Fail every parked request; a later request retries resolution.
-            log().error("DNS resolution failed for " + dns_host_ + ": " + err);
+            std::string msg = err.empty() ? "no usable address" : err;
+            log().error("DNS resolution failed for " + dns_host_ + ": " + msg);
             for (auto& p : waiting) {
-                if (p.cb) p.cb(HttpResponse(), "DNS resolution failed: " + err);
+                if (p.cb) p.cb(HttpResponse(), "DNS resolution failed: " + msg);
             }
             return;
         }
 
-        origin_ = addr;
+        // Keep the full, ordered address list; connections fail over between
+        // them (dual-stack). dns_host_ stays as the SNI/Host value.
+        origins_ = addrs;
         resolved_ = true;
         for (auto& p : waiting) {
             dispatch(p.req, std::move(p.cb));
@@ -338,7 +342,7 @@ private:
         // Open a new connection if under the cap.
         if (total() < *max_connections_) {
             auto c =
-                std::make_shared<PooledConn>(loop_, origin_, host_, tls_ctx_);
+                std::make_shared<PooledConn>(loop_, origins_, host_, tls_ctx_);
             wireCallbacks(c);
             c->init();
             connecting_.push_back(c);
@@ -417,7 +421,7 @@ private:
             Pending p = std::move(queue_.front());
             queue_.pop_front();
             auto nc =
-                std::make_shared<PooledConn>(loop_, origin_, host_, tls_ctx_);
+                std::make_shared<PooledConn>(loop_, origins_, host_, tls_ctx_);
             wireCallbacks(nc);
             nc->init();
             connecting_.push_back(nc);
@@ -446,7 +450,8 @@ private:
     }
 
     reactor::EventLoop* loop_;
-    net::InetAddress origin_;
+    std::vector<net::InetAddress>
+        origins_; // candidate addresses (>=1 once resolved)
     std::string host_;
     tls::TlsContextPtr tls_ctx_;
     size_t* max_connections_;
