@@ -31,9 +31,9 @@ ulimit -n 200000          # needs a hard limit >= this (ulimit -Hn)
 ./c10k_server --port 9100
 ./c10k_client --port 9100 --conns 20000 --msg 0 --duration 10
 ```
-The server's stats line shows `live=20000`. One epoll loop holds them all; with thread-per-connection that would be 20k threads (8 Mib stack reservation each by default).
+The server's stats line shows `live=20000`. One epoll loop holds them all; with thread-per-connection that would be 20k threads (8 MiB stack reservation each by default).
 
-Measured on the study host (8 VCPU VM, kernel 6.8, Release build):
+Measured on the study host (8 vCPU VM, kernel 6.8, Release build):
 `20000 connected, 0 failed`, server `live=20000`, ~0 CPU while idle.
 
 ### 2. Why did connecting 20k take 11 s? - client-side TIME_WAIT / ephemeral ports
@@ -111,7 +111,7 @@ Exercises in increasing depth. Each names the question, the commands to drive it
 | 13 | CPU profiling a hot server | `c10k_server --threads 4` at full load | `perf record -F 99 -g -p <pid>`, flame graph; `perf stat` IPC | Find whether time goes to syscalls, memcpy (`Buffer`), logging, or locks | `Interview/performance_profiling_methodology.md`, `performance/cpu.md` |
 | 14 | Lock contention in the thread pool | `thread_pool_bench 8 300000 4` (keep tasks ≤1M under perf; the 10M default x 8 batch sizes produces GBs of trace data and looks hung) | `sudo perf lock record -o lock.data -- ./thread_pool_bench 8 300000 4` then `sudo perf lock contention -i lock.data -E 8`; `sudo perf trace -s -e futex -- ...`; `sudo perf record -e sched:sched_switch -g` + `perf report --no-children` for who blocks where. (`perf lock contention -b` needs perf built with BPF skeletons - Ubuntu's isn't.) | Measured: ~9k futex calls per worker; 78% of blocking is `__lll_lock_wait` from `ThreadPool::takeBatch` (34%) and `ThreadPool::run` (26%) - the queue mutex, on both the consumer and producer side | `interview/std_mutex_real_cost.md`, `interview/multithreading_hazards.md` |
 | 15 | Allocator effect | `LD_PRELOAD=libjemalloc.so.2` or `libtcmalloc.so` on `echo_throughput_bench` / `c10k_server` | QPS, RSS, `perf top` (`malloc`/`free` share) | Per-message `std::string` allocations; allocator choice and buffer reuse | `interview/tcmalloc-rseq-vs-jemalloc-tls.md` |
-| 16 | NUMA / IRQ affinity (multi-socket or real NIC) | `c10k_server` pinned with `taskset`/`numactl`;client on another host | `/proc/interrupts`, `numastat -p`, `perf c2c` | Keep NIC IRQs, loop threads and memory on one node | `interview/numa_hugepages_memory_locallity.md` |
+| 16 | NUMA / IRQ affinity (multi-socket or real NIC) | `c10k_server` pinned with `taskset`/`numactl`; client on another host | `/proc/interrupts`, `numastat -p`, `perf c2c` | Keep NIC IRQs, loop threads and memory on one node | `interview/numa_hugepages_memory_locallity.md` |
 | 17 | Sanitizer regression run | `cmake --preset tsan` / `asan`, then ex. 3 and ex. 5 | TSan/ASan reports | Concurrency changes must stay race-free under load | `docs/interview/sanitizers_hands_on.md` |
 
-Ground rules for every excercise: change one variable at a time, record the environment (kernel, CPU, build type, client location), run each case several times, compare percentiles rather than means, and remember the client can be the bottleneck - as excerciese 3 above shows.
+Ground rules for every exercise: change one variable at a time, record the environment (kernel, CPU, build type, client location), run each case several times, compare percentiles rather than means, and remember the client can be the bottleneck - as exerciese 3 above shows.

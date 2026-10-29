@@ -188,8 +188,8 @@ void Connector::handleError() {
     log().error("Connector::handleError state=" +
                 std::to_string(static_cast<int>(state_.load())));
     if (state_ == State::kConnecting) {
-        int sockfd = removeAndResetChannel();
         cancelConnectTimeout();
+        int sockfd = removeAndResetChannel();
         int err = sockets::getSocketError(sockfd);
         log().error("Connector SO_ERROR=" + std::to_string(err));
         retry(sockfd);
@@ -237,7 +237,7 @@ void Connector::retry(int sockfd) {
     // a host's addresses (e.g. ::1 refused -> try 127.0.0.1 now).
     //
     // The next connect() reassigns channel_, which frees the current Channel.
-    // We are presently executing INSIDE that Channel's event callback (retry())
+    // We are presently executing INSIDE that Channel's event callback (retry()
     // is reached from handleWrite()/handleError()/onConnectTimeout()), so
     // freeing it now is a use-after-free when handleEvents() returns -- the
     // same hazard removeAndResetChannel() guards against. Defer the attempt to

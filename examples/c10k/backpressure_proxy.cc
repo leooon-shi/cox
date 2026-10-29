@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
             upstream_port = static_cast<uint16_t>(std::atoi(argv[++i]));
         } else if (a == "--hwm" && i + 1 < argc) {
             hwm = std::strtoul(argv[++i], nullptr, 10);
-        } else if (a == "--no-backpressure" && i + 1 < argc) {
+        } else if (a == "--no-backpressure") {
             backpressure = false;
         } else {
             std::fprintf(stderr,

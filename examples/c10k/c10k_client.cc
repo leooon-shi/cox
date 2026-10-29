@@ -96,7 +96,6 @@ Options parse(int argc, char** argv) {
         } else if (a == "--inflight") {
             o.inflight = std::max(1, std::atoi(val()));
         } else if (a == "--src-ips") {
-        std:
             std::stringstream ss(val());
             for (std::string ip; std::getline(ss, ip, ',');) {
                 o.src_ips.push_back(ip);

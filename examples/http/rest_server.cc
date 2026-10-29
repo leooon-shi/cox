@@ -48,7 +48,9 @@ int main(int argc, char* argv[]) {
                [](const HttpRequest&, const PathParams& p, HttpResponse* resp) {
                    resp->setStatus(200);
                    resp->setContentType("application/json");
-                   resp->setBody(R"({"id":)" + p.at("id") +
+                   // NOTE: path params are echoed unescaped; fine for a demo,
+                   // a real service must JSON-escape untrusted input.
+                   resp->setBody(R"({"id":")" + p.at("id") +
                                  R"(","name":"user)" + p.at("id") + R"("})");
                });
     // Query-string parsing: /search?q=hello+world&page=2

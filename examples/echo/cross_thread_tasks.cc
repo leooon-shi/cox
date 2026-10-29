@@ -1,4 +1,4 @@
-// runInLoop(): marshal work from other threads onto the event-loop thread
+// runInLoop(): marshal work from other threads onto the event-loop thread.
 //
 // Two producer threads post closures to one EventLoop. Every closure runs on
 // the loop thread (the printed thread id is the same), which is how Cox keeps
@@ -16,7 +16,7 @@
 
 int main() {
     reactor::EventLoop loop;  // lives on this (main) thread for the whole run
-    const std::map<std::string, std::string> items{{"hello", "world"},
+    const std::map<std::string, std::string> items{{"hello", " world"},
                                                    {"Name", " Leon"},
                                                    {"Gender", " Female"},
                                                    {"Hobbies", " Walking"},

@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
         server.setMaxConnections(10000);
         server.setConnectionCallback([](const TcpConnectionPtr& conn) {
             std::cout << "connection " << conn->name()
-                      << (conn->connected() ? " UP" : "DOWN") << std::endl;
+                      << (conn->connected() ? " UP" : " DOWN") << std::endl;
         });
         server.setMessageCallback(
             [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
     server.setConnectionCallback([](const TcpConnectionPtr& conn) {
         std::cout << "connection " << conn->name() << " from "
                   << conn->peerAddress().toIpPort()
-                  << (conn->connected() ? " UP" : "DOWN") << std::endl;
+                  << (conn->connected() ? " UP" : " DOWN") << std::endl;
     });
     server.setMessageCallback(
         [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
