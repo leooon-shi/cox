@@ -3,19 +3,18 @@
 // One binary, every knob a flag, so you can change ONE variable and measure:
 //
 //   c10k_server [--port N] [--threads N] [--reuseport N] [--max-conns N]
-//               [--idle S] [--accept-qps Q] [--nodelay] [--quit]
+//               [--idle S] [--accept-qps Q] [--nodelay] [--quiet]
 //
-//   --threads N     N io loops behind ONE listener (main reactor + sub
-//   reactors;
-//                   accepted fds are handed out round-robin).
-//   --reuseport N   N independent listeners on the same port (SO_REUSEPORT),
-//                   each with its own own loop thread: the kernel spreads
-//                   incoming connections by 4-tuple hash, no shared accept
-//                   path. Mutually exclusive with --threads.
-//   --max-conns N   connection cap per listener (0 == unlimited).
-//   --idle S        close connection idle for S seconds (0 = never).
-//   --accept-qps Q  token-bucket limit on NEW connections per second.
-//   --nodelay       set TCP_NODELAY on accepted connections.
+//   --threads N    N io loops behind ONE listener (main reactor + sub-reactors;
+//                  accepted fds are handed out round-robin).
+//   --reuseport N  N independent listeners on the same port (SO_REUSEPORT),
+//                  each with its own own loop thread: the kernel spreads
+//                  incoming connections by 4-tuple hash, no shared accept path.
+//                  Mutually exclusive with --threads.
+//   --max-conns N  connection cap per listener (0 == unlimited).
+//   --idle S       close connections idle for S seconds (0 = never).
+//   --accept-qps Q token-bucket limit on NEW connections per second.
+//   --nodelay      set TCP_NODELAY on accepted connections.
 //
 // Prints one stats line per second: live connections, accepted/rejected/closed
 // totals and bytes echoed, so you can watch the server while c10k_client (or
@@ -68,7 +67,7 @@ struct Options {
     bool quiet = false;
 };
 
-struct Stats {  // shared by all loops -> atomics
+struct Stats {  // shared by all loops → atomics
     std::atomic<int64_t> live{0};
     std::atomic<uint64_t> accepted{0};
     std::atomic<uint64_t> rejected{0};
@@ -95,7 +94,7 @@ Options parse(int argc, char** argv) {
         };
         if (a == "--port") {
             o.port = static_cast<uint16_t>(std::atoi(val()));
-        } else if (a == "threads") {
+        } else if (a == "--threads") {
             o.threads = std::atoi(val());
         } else if (a == "--reuseport") {
             o.reuseport = std::atoi(val());

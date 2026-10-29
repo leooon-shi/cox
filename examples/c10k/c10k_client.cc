@@ -1,23 +1,23 @@
 // c10k_client: open N concurrent TCP connections and (optionally) drive
 // request/response traffic over them, measuring connect rate and latency.
 //
-//   c10k_client [--host H] [--port N] [--conns] [--rate R] [--duration S]
+//   c10k_client [--host H] [--port N] [--conns N] [--rate R] [--duration S]
 //               [--msg BYTES] [--inflight K] [--src-ips a,b,c]
 //               [--split] [--client-nagle]
 //
-//   --conns N       total connections to hold open (default 10000).
-//   --rate R        new connections per second (0 - as fast as possible).
-//                   Rate-limiting connects avoids SYN/accept-queue overflow and
-//                   shows the difference between "how many" and "how fast"
-//   --duration S    after connecting, keep traffic going for S seconds.
-//   --msg BYTES     payload per request (0 = idle connection only).
-//   --inflight K    requests in flight per connection (closed loop, default 1).
-//   --src-ips       bind to several local IPs round-robin (e.g. 127.0.0.2,...)
-//                   to get past the ~28k ephemeral port limit per destination.
-//   --split         send each request as two writes (header + body), the
-//                   write-write-read pattern that triggers Nagle x delayed ACK.
-//   --client-nagle   leave Nagle enabled on te client (default: TCP_NODELAY).
-//                   With --split this shows the classic ~40 ms stall.
+//   --conns N     total connections to hold open (default 10000).
+//   --rate R      new connections per second (0 - as fast as possible).
+//                 Rate-limiting connects avoids SYN/accept-queue overflow and
+//                 shows the difference between "how many" and "how fast"
+//   --duration S  after connecting, keep traffic going for S seconds.
+//   --msg BYTES   payload per request (0 = idle connection only).
+//   --inflight K  requests in flight per connection (closed loop, default 1).
+//   --src-ips     bind to several local IPs round-robin (e.g. 127.0.0.2,...)
+//                 to get past the ~28k ephemeral port limit per destination.
+//   --split       send each request as two writes (header + body), the
+//                 write-write-read pattern that triggers Nagle x delayed ACK.
+//   --client-nagle leave Nagle enabled on te client (default: TCP_NODELAY).
+//                 With --split this shows the classic ~40 ms stall.
 //
 // Single-threaded, non-blocking, epoll edge-triggered: one client thread can
 // hold far more connections than thread-per-connection tools. Report:

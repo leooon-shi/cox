@@ -15,7 +15,7 @@ cmake --preset examples && cmake --build --preset examples --parallel
 | `benchmark/*` | Micro-benchmarks: reactor task scheduling, echo QPS/latency, thread-pool batching, buffer |
 | **`c10k/c10k_server`** | Tunable echo server for C10K experiments: io threads vs `SO_REUSEPORT` listeners, caps, accept rate limit, live stats |
 | **`c10k/c10k_client`** | Standalone epoll load generator: N connections, paced connects, closed-loop requests, multiple source IPs, latency percentiles |
-| **`c10k/backpressure_proxy`** + **`c10k/slow_sink`** | End-to-end backpressure: high-water mark –> `stopRead()` -> TCP window closes -> fast sender throttled |
+| **`c10k/backpressure_proxy`** + **`c10k/slow_sink`** | End-to-end backpressure: high-water mark → `stopRead()` → TCP window closes → fast sender throttled |
 
 ## C10K walkthrough
 
@@ -38,7 +38,7 @@ Measured on the study host (8 vCPU VM, kernel 6.8, Release build):
 
 ### 2. Why did connecting 20k take 11 s? - client-side TIME_WAIT / ephemeral ports
 
-Run test 1 twice in a row. The second run connects at ~1.8k conn/s with a p99 connect latency near 900 ms, while a 10k run takes 0.35 s. Nothing is wrong on the server (`ListenOverflows=0`, `softnet_stat` drops 0). The previous run's sockets sit in **TIME_WAIT on the client** (`ss -tan state time-wait | wc -l` -> ~40k), and the kernel has to search the 28,232-port ephemeral range (`ip_local_port_range 32768 60999`) for a free 4-tuple to 127.0.0.1:9100.
+Run test 1 twice in a row. The second run connects at ~1.8k conn/s with a p99 connect latency near 900 ms, while a 10k run takes 0.35 s. Nothing is wrong on the server (`ListenOverflows=0`, `softnet_stat` drops 0). The previous run's sockets sit in **TIME_WAIT on the client** (`ss -tan state time-wait | wc -l` → ~40k), and the kernel has to search the 28,232-port ephemeral range (`ip_local_port_range 32768 60999`) for a free 4-tuple to 127.0.0.1:9100.
 
 Fix it the way production clients do - more 4-tuples:
 ```bash
@@ -48,7 +48,7 @@ Fix it the way production clients do - more 4-tuples:
 Measured: **20000 connected in 0.79 s (25k conn/s), p99 21 ms** - same server, same TIME_WAIT backlog. (`IP_BIND_ADDRESS_NO_PORT` lets the kernel pick ports per 4-tuple rather than per local IP.) See `docs/interview/tcp_connection_lifecycle_scaling.md` for the theory.
 
 ### 3. One loop vs io threads vs SO_REUSEPORT listeners
-
+f
 ```bash
 ./c10k_server --port 9100 --quiet                 # 1 loop does accept + I/O
 ./c10k_server --port 9100 --quiet --threads 4     # 1 acceptor loop + 4 io loops (round-robin)
@@ -98,11 +98,11 @@ Exercises in increasing depth. Each names the question, the commands to drive it
 |---|---|---|---|---|---|
 | 1 | Idle connection capacity | `c10k_client --msg 0 --conns 50000` | `free -m`, `proc/<pid>/status` VmRSS, `ss -s`, `slabtop` (`TCP`, `sock_inode_cache`) | Memory per idle connection (kernel socket + Cox buffers); fds and memory, not CPU, bound C10K | `performance/network/C10K_C10M_problem.md`, `buffer.md` |
 | 2 | Ephemeral port / TIME_WAIT exhaustion | Repeat ex. 1 twice; then `--src-ips` | `ss -tan state time-wait \| wc -l`, connect p99 | Client 4-tuples run out first; fixes: keep-alive, more source IPs, `tcp_tw_reuse` | `interview/tcp_connection_lifecycle_scaling.md` |
-| 3 | Accept-queue overflow | `c10k_server` with a deliberately slow accept loop (add a `usleep` in `setConnectionCallback`) + burst `c10k_client`; vary `net.core.somaxconn` | `ss -lnt` (Recv-Q vs Send-Q), `nstat -az TcpExtListenOverflows TcpExtListenDrops` | Full accept queue silently drops the final ACK -> 1 s/3 s connect stalls | `performance/network/syn_attack.md`, `performance/network/practice_1.md` |
+| 3 | Accept-queue overflow | `c10k_server` with a deliberately slow accept loop (add a `usleep` in `setConnectionCallback`) + burst `c10k_client`; vary `net.core.somaxconn` | `ss -lnt` (Recv-Q vs Send-Q), `nstat -az TcpExtListenOverflows TcpExtListenDrops` | Full accept queue silently drops the final ACK → 1 s/3 s connect stalls | `performance/network/syn_attack.md`, `performance/network/practice_1.md` |
 | 4 | SYN flood vs SYN cookies | `hping3 -S --flood -p 9100 127.0.0.1` against `c10k_server` (own machine only) | `nstat TcpExtSyncookiesSent`, `netstat -s \| grep -i listen`, `ss -n state syn-recv` | `tcp_syncookies`, `tcp_max_syn_backlog`, `tcp_synack_retries` trade-offs | `performance/network/syn_attack.md`, `ddos_attack.md` |
 | 5 | Threading model | Ex. 3 table: `--threads` vs `--reuseport`, client on another host | `mpstat -P ALL 1`, `pidstat -t 1`, `perf top` | One loop saturates one core; SO_REUSEPORT removes the shared accept path | `performance/network/network_io_model.md`, `interview/epoll_edge_triggered.md` |
 | 6 | Small-packet syscall cost | `echo_throughput_bench 100 5 16` vs `... 16384`; `c10k_client --inflight 8` | `perf stat -e syscalls:sys_enter_write,context-switches`, `strace -c -f -p` | Per-message syscall + wakeup overhead dominates small messages; pipelining/batching wins | `interview/zero_copy_small_packets.md`, `interview/io_uring_schedulers_allocators.md` |
-| 7 | Nagle x delayed ACK | `c10k_server` with and without `--nodelay`; `c10k_client --conns 10 --msg 200 --split` | Request p99 | Measured: server without `TCP_NODELAY` -> **p99 41 ms, 8k req/s**; with `--nodelay` -> **p99 0.24 ms, 66k req/s**. The split request makes the echo leave in two segments; the server holds the second (Nagle) until the client's delayed ACK (~40 ms) | `performance/network/network_delay.md` |
+| 7 | Nagle x delayed ACK | `c10k_server` with and without `--nodelay`; `c10k_client --conns 10 --msg 200 --split` | Request p99 | Measured: server without `TCP_NODELAY` → **p99 41 ms, 8k req/s**; with `--nodelay` → **p99 0.24 ms, 66k req/s**. The split request makes the echo leave in two segments; the server holds the second (Nagle) until the client's delayed ACK (~40 ms) | `performance/network/network_delay.md` |
 | 8 | Backpressure and memory | Ex. 5 | Proxy RSS, `ss -tmi` (`Recv-Q`, `rcv_space`, `skmem`) | Bounded buffers + `stopRead()` push the problem back into TCP | `interview/tcp_connection_lifecycle_scaling.md` §5 |
 | 9 | Socket buffer sizing | `backpressure_proxy` + `tc qdisc add dev lo root netem delay 50ms` | `ss -ti` (`cwnd`, `rtt`, `snd_wnd`), throughput with `net.ipv4.tcp_rmem/wmem` changes | Bandwidth-delay product drives buffer needs; autotuning limits | `performance/network/buffer.md`, `network_configuration.md` |
 | 10 | Packet loss and retransmits | `tc qdisc add dev lo root netem loss 1%` + `c10k_client --msg 512` | `nstat TcpRetransSegs`, `ss -ti retrans`, p99 vs p50 | Tail latency explodes before averages move; RTO and fast retransmit | `performance/network/network_delay.md`, `packets_tools.md` |

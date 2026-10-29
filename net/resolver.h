@@ -33,7 +33,7 @@ public:
     using Callback =
         std::function<void(const InetAddress& addr, const std::string& error)>;
 
-    // (addresses, error). On Success error is empty and addrs is non-empty,
+    // (addresses, error). On success error is empty and addrs is non-empty,
     // ordered as the OS returned them (RFC 6724 / getaddrinfo order). On
     // failure addrs is empty and error is set. This is the dual-stack path:
     // the caller (Connector) tries each address in turn until one connects,

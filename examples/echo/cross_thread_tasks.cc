@@ -21,6 +21,7 @@ int main() {
                                                    {"Gender", " Female"},
                                                    {"Hobbies", " Walking"},
                                                    {"Job", " SW Developer"}};
+
     std::cout << "loop thread " << std::this_thread::get_id() << std::endl;
 
     std::thread thread1([&]() {
