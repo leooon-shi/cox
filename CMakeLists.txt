@@ -148,8 +148,8 @@ if (BUILD_TESTS STREQUAL ON)
 endif()
 
 # Wire in third-party dependencies from one place (see third_party/README.md).
-set(COX_THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_part")
-add_subdirectory(third_part)
+set(COX_THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
+add_subdirectory(third_party)
 
 if (BUILD_TESTS STREQUAL ON)
     add_subdirectory(tests)

@@ -12,14 +12,15 @@
 # TOOLING REQUIREMENTS
 #   * clang-tidy >= 15 (CI uses 18 on Ubuntu 24.04).
 #   * A compile database. Every CMake preset sets
-#     CMAKE_EXPORT_COMPILE_COMMANDS=ON, so `cmake --preset clang-debug`
-#     produces build/clang-debug/compile_commands.json. clang-tidy must be run
-#     with `-p build/clang-debug` AND only over files that database actually
-#     contains -- examples (a separate preset) and platform-specific sources
-#     such as reactor/poller/kqueue_poller.cc (macOS/BSD, never built on the
-#     Linux CI) are NOT in it, and linting them yields spurious
-#     "file not found" / "undeclared identifier" errors. The CI job derives its
-#     file list from the database for exactly this reason; do the same locally.
+#     CMAKE_EXPORT_COMPILE_COMMANDS=ON. Use the 'examples' preset: it builds the
+#     library, tests AND examples, so `cmake --preset examples` produces a
+#     build/examples/compile_commands.json that covers ALL first-party code.
+#     clang-tidy must be run with `-p build/examples` AND only over files that
+#     database actually contains -- platform-specific sources such as
+#     reactor/poller/kqueue_poller.cc (macOS/BSD, never built on the Linux CI)
+#     are NOT in it, and linting them yields spurious "file not found" /
+#     "undeclared identifier" errors. The CI job derives its file list from the
+#     database for exactly this reason; do the same locally.
 #
 # SCOPE (deliberately minimal)
 #   One check is enabled: readability-braces-around-statements, which requires
@@ -35,11 +36,11 @@
 #   whether an already-braced short `if` may share one line; it never removes
 #   braces, so the two tools never disagree.
 #
-# MAITENANCE
+# MAINTENANCE
 #   Apply fixes in place after a large-merge (over DB files only):
-#     clang-tidy -p build/clang-debug --fix \
+#     clang-tidy -p build/examples --fix \
 #       $(sed -n 's/.*"file": "\(.*\)".*/\1/p' \
-#           build/clang-debug/compile_commands.json | grep -v /third_party/)
+#            build/examples/compile_commands.json | grep -v /third_party/)
 #   To add a check, append it to `Checks`, make the tree clean, then land the
 #   config and the fixes together so CI stays green. Prefer enabling one family
 #   at a time (bugprone-*, performance-*) rather than a broad wildcard, so each
@@ -65,8 +66,8 @@ WarningsAsErrors: 'readability-*'
 # The regex matches any path that is not under a third_party/ directory
 # (negative lookahead; verified supported by clang-tidy 18's regex engine -- if
 # you must support clang-tidy < 14, replace with an explicit allowlist).
-HeaderFilterRegex: '^(?!.*/thrid_party/).*$'
+HeaderFilterRegex: '^(?!.*/third_party/).*$'
 
 # When a fix inserts braces, reformat the touched region with the project's
-# .clang-format rules so --fix output needs no manul cleanup.
+# .clang-format rules so --fix output needs no manual cleanup.
 FormatStyle: file
