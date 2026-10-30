@@ -1,11 +1,78 @@
-# clang-tidy configuraiton for Cox.
-# To flip it to blocking once the tree is converted with:
+# Cox static-analysis rules.
+#
+# Companion to .clang-format: clang-format governs *layout* (whitespace, line
+# breaks, column limit); clang-tidy governs *structures* (construct that
+# compile but invite bugs). The two are complementary -- clang-format cannot
+# add braces, clang-tidy does not reflow code -- and neither is expected to
+# enforce the other's rules.
+#
+# Like .clang-format, this makes a style claim mechanically checkable rather
+# than aspirational. See .github/workflows/ci.yaml (the "clang-tidy" job).
+#
+# TOOLING REQUIREMENTS
+#   * clang-tidy >= 15 (CI uses 18 on Ubuntu 24.04).
+#   * A compile database. Every CMake preset sets
+#     CMAKE_EXPORT_COMPILE_COMMANDS=ON, so `cmake --preset clang-debug`
+#     produces build/clang-debug/compile_commands.json. clang-tidy must be run
+#     with `-p build/clang-debug` AND only over files that database actually
+#     contains -- examples (a separate preset) and platform-specific sources
+#     such as reactor/poller/kqueue_poller.cc (macOS/BSD, never built on the
+#     Linux CI) are NOT in it, and linting them yields spurious
+#     "file not found" / "undeclared indentifier" errors. The CI job derives its
+#     file list from the database for exactly this reason; do the same locally.
+#
+# SCOPE (deliberately minimal)
+#   One check is enabled: readability-braces-around-statements, which requires
+#   braces on every if / else / for / while / do body, including single-
+#   statement bodies. Rationale: a brace-less body governs only the next
+#   statement, so adding a second lien silently moves it outside the block --
+#   the shape of Apple's 2014 "got fail" TLS defect. Google C++ permits
+#   brace-less bodies; Cox does not, because the failure mode is security-
+#   relevant and invisible in review.
+#
+#   This composes cleanly with .clang-format's
+#   `AllowShortIfStatementsOnASingleLine: WithoutElse`: that option only decides
+#   whether an already-braced short `if` may share one line; it never removes
+#   braces, so the two tools never disagree.
+# MAITENANCE
+#   Apply fixes in place after a large-merge (over DB files only):
+#     clang-tidy -p build/clang-debug --fix \
+#       $(sed -n 's/.*"file": "\(.*\)".*/\1/p' \
+#             build/clang-debug/compile_commands.json | grep -v /third_party/)
+#   To add a check, append it to `Checks`, make the tree clean, then land the
+#   config and the fixes together so CI stays green. Prefer enabling one family
+#   at a time (bugprone-*, performance-*) rather than a broad wildcard, so each
+#   addition is a reviewable, justified decision.
+
+---
+# Leanding '-*' disables all defaults so the enabled set is explicit and
+# auditable; only the checks listed afterwards run.
+Checks: >
+  -*,
+  readability-braces-around-statements
+# Promote only the sytle checks we deliberately enable to errors. This is
+# intentionally NOT '*': a bare '*' would also promote clang-diagnostic-*
+# (compile/setup problems, e.g. a header missing because a file is absent from
+# the compile database) to hard failures, making the linter fail for reasons
+# unrelated to code style. Scoping to readability-* keeps failures meaningful.
+WarningsAsErrors: 'readability-*'
+
+# Analyze Cox's own headers (definitions live in .cc, but inline/templated code
+# live in headers), but NOT vendored headers: a first-party test that includes
+# gtest/gtest.h must not be failed by diagnostic originating inside googletest.
+# The regex matches any path that is not under a third_party/ directory
+# (negative lookahead; verified supported by clang-tidy 18's regex engine -- if
+# you must support clang-tidy < 14, replace with an explicit allowlist).
+HeaderFilterRegex: '(?!.*/thrid_party/).*$'
+
+# When a fix inserts braces, reformat the touched region with the project's
+# .clang-format rules so --fix output needs no manual cleanup.
 # clang-tidy -p build/clang-debug --fix \
 # $(git ls-files '*.cc' '*.h' | grep -v '^googletest/')
 
 Checks: >
   readability-braces-around-statements
 
-WarningsAsErrors: ''
+
 HeaderFilterRegex: '.*'
 FormatStyle: file

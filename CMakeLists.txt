@@ -8,6 +8,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(USE_JEMALLOC "Use jemalloc instead of system malloc" OFF)
 option(BUILD_EXAMPLES "Compile project with examples" OFF)
 option(BUILD_TESTS "To enable compile tests" OFF)
+
+# Optional, feature-gated third-party integrations. Default OFF so a plain
+# build pulls in no extra dependencies. See third_party/README.md.
+opton(COX_WITH_HTTP2 "Enable HTTP/2 support via nghttp2" OFF)
+
+# Project-local CMake modules (cox_add_vendored, ...)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR/cmake}")
+
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
 endif()
@@ -137,19 +145,11 @@ add_subdirectory(http)
 if (BUILD_TESTS STREQUAL ON)
     # Register tests with CTest so the whole suite runs via `ctest`.
     enable_testing()
-
-    # Add Google Test. Vendored third-party code must NOT inherit Cox's warning
-    # policy: -Werror on code we do not control means a compiler or dependency
-    # upgrade can break our build for reasons unrelated to our own sources.
-    # Directory COMPILE_OPTIONS are captured by a subdirectory when it is added,
-    # so clear them BEFORE add_subdirectory() and restore afterwards.
-    get_directory_property(COX_DIR_OPTIONS COMPILE_OPTIONS)
-    set_directory_properties(PROPERTIES COMPILE_OPTIONS "")
-    add_subdirectory(googletest)
-    set_directory_properties(PROPERTIES COMPILE_OPTIONS "${COX_DIR_OPTIONS}")
-
-    add_subdirectory(tests)
 endif()
+
+# Wire in third-party dependencies from one place (see third_party/README.md).
+set(COX_THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_part")
+add_subdirectory(third_part)
 
 if (BUILD_EXAMPLES STREQUAL ON)
     # Add examples

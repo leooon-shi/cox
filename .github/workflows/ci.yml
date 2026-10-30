@@ -96,19 +96,20 @@ jobs:
           sudo apt-get install -y --no-install-recommends clang-format
       - name: Check formatting
         run: |
-          # Only Cox's own sources; googletest/ is vendored and has its own style.
+          # Only Cox's own sources; all vendored code lives under third_party/
+          # (each dependency has its own style) and is excluded.
           files=$(git ls-files '*.cc' '*.h' \
-            | grep -v '^googletest/')
+            | grep -v '^third_party/')
           echo "checking $(echo "$files" | wc -l) files"
           clang-format --dry-run --Werror $files
 
   clang-tidy:
     name: clang-tidy (braces)
     runs-on: ubuntu-24.04
-    # NON-BLOCKING: enforces readability-braces-around-statements (braces on)
-    # every if/else/loop body) to kill the "goto fail" class of bug.
-    # continue-on-error: true
-    # BLOCKING: Any new brace-less if/else/loop body is a regression and fails the build.
+    # BLOCKING: enforces readability-braces-around-statements (braces on every
+    # if/else/loop body) to kill the "goto fail" class of bug. A new brace-less
+    # body is a regression and fails the build. Config and rationale live in
+    # .clang-tidy; this job holds no analysis knowledge, only how to invoke it.
     steps:
       - uses: actions/checkout@v4
         with:
@@ -122,8 +123,15 @@ jobs:
         run: cmake --preset clang-debug
       - name: Run clang-tidy
         run: |
-          # Only Cox's own source; googletest/ is vendored and has its own style.
-          files=$(git ls-files '*.cc' '*.h' | grep -v '^googletest/')
+          # Lint only files the compile database actually contains. Driving the
+          # list from compile_commands.json (not `git ls-files`) excludes
+          # examples (a separate preset) and platform-specific sources such as
+          # kqueue_poller.cc (macOS/BSD), which would otherwise produce spurious
+          # "file not found" errors. Vendored code under third_part/ is
+          # filtered out.
+          files=$(sed -n 's/.*"file": "\(.*\)".*/\1/p' \
+                    build/clang-debug/compile_commands.json |
+                    grep -v /third_party/' | sort -u)
           echo "checking $(echo "$files" | wc -l) files"
           clang-tidy -p build/clang-debug $files
   sanitizers:
