@@ -113,7 +113,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: recursive   # googletest is a submodule (needed to configure)
       - name: Install dependencies
         run: |
           sudo apt-get update

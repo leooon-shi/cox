@@ -1,6 +1,6 @@
 # third_party/ -- vendored dependencies.
 #
-# This file is the SINGLE place that wires third_party code into the build.
+# This file is the SINGLE place that wires third-party code into the build.
 # Each dependency is either always-on (test infrastructure) or feature-gated
 # behind a COX_WITH_* option so optional dependencies (HTTP/2) are opt-in and
 # never required to build the core library.

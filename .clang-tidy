@@ -53,14 +53,14 @@ Checks: >
   -*,
   readability-braces-around-statements
 
-# Promote only the sytle checks we deliberately enable to errors. This is
+# Promote only the style checks we deliberately enable to errors. This is
 # intentionally NOT '*': a bare '*' would also promote clang-diagnostic-*
 # (compile/setup problems, e.g. a header missing because a file is absent from
 # the compile database) to hard failures, making the linter fail for reasons
 # unrelated to code style. Scoping to readability-* keeps failures meaningful.
 WarningsAsErrors: 'readability-*'
 
-# Analyze Cox's own headers (definitions live in .cc, but inline/templated code
+# Analyse Cox's own headers (definitions live in .cc, but inline/templated code
 # lives in headers), but NOT vendored headers: a first-party test that includes
 # gtest/gtest.h must not be failed by diagnostics originating inside googletest.
 # The regex matches any path that is not under a third_party/ directory
