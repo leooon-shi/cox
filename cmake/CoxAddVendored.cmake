@@ -28,7 +28,7 @@ function(cox_add_vendored _name)
 
     if(NOT EXISTS "${ARG_SOURCE_DIR}/CMakeLists.txt}")
         message(FATAL_ERROR
-            "cox_add_vendored(${_name}): '${ARG_SOURCE_DIR}/CMakeLists.txt' not"
+            "cox_add_vendored(${_name}): '${ARG_SOURCE_DIR}/CMakeLists.txt' not "
             "found. Did you run `git submodule update --init --recursive`?")
     endif()
 
