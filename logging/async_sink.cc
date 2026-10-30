@@ -124,7 +124,9 @@ void AsyncSink::writerThread() {
                                 " log line(s) -- buffer full");
         }
 
-        if (!batch.empty()) downstream_->flush();
+        if (!batch.empty()) {
+            downstream_->flush();
+        }
 
         {
             std::lock_guard<std::mutex> lock(mutex_);

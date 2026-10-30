@@ -398,7 +398,9 @@ int main(int argc, char** argv) {
             pct(req_us, 1.0));
     }
     for (auto& c : conns) {
-        if (c.st == St::kOpen) ::close(c.fd);
+        if (c.st == St::kOpen) {
+            ::close(c.fd);
+        }
     }
     ::close(ep);
     return failed > 0 ? 1 : 0;

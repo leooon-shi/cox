@@ -43,7 +43,9 @@ void TlsConnection::start() {
             }
         });
     conn_->setConnectionCallback([weak](const net::TcpConnectionPtr& c) {
-        if (c->connected()) return;
+        if (c->connected()) {
+            return;
+        }
         if (auto self = weak.lock()) {
             self->onTcpClose();
         }

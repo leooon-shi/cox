@@ -123,7 +123,9 @@ TEST(ConnectionPoolTest, SequentialReuseSingleConnection) {
 
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "srv");
         server.setConnectionObserver([&](const net::TcpConnectionPtr& c) {
-            if (c->connected()) server_conns++;
+            if (c->connected()) {
+                server_conns++;
+            }
         });
         server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp) {
             resp->setStatus(200);
