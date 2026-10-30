@@ -10,7 +10,8 @@
             "binaryDir": "${sourceDir}/build/${presetName}",
             "cacheVariables": {
                 "BUILD_TESTS": "ON",
-                "COX_WERROR": "ON"
+                "COX_WERROR": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             }
         },
         {

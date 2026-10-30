@@ -15,7 +15,9 @@ std::vector<std::string> Router::splitPath(const std::string& path) {
             continue;
         }
         size_t j = path.find('/', i);
-        if (j == std::string::npos) j = path.size();
+        if (j == std::string::npos) {
+            j = path.size();
+        }
         segs.push_back(path.substr(i, j - i));
         i = j;
     }
@@ -42,7 +44,9 @@ void Router::addRoute(Method method, const std::string& pattern,
 bool Router::matchRoute(const Route& r,
                         const std::vector<std::string>& path_segs,
                         PathParams* params) const {
-    if (r.segments.size() != path_segs.size()) return false;
+    if (r.segments.size() != path_segs.size()) {
+        return false;
+    }
     PathParams captured;
     for (size_t i = 0; i < r.segments.size(); ++i) {
         if (r.is_param[i]) {

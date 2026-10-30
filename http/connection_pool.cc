@@ -122,19 +122,27 @@ private:
                 tls_conn_->setHandshakeDoneCallback(
                     [weak](const tls::TlsConnectionPtr&) {
                         auto self = weak.lock();
-                        if (!self) return;
+                        if (!self) {
+                            return;
+                        }
                         self->ready_ = true;
                         self->last_used_ = logging::Timestamp::now();
-                        if (self->on_ready) self->on_ready(self);
+                        if (self->on_ready) {
+                            self->on_ready(self);
+                        }
                     });
                 tls_conn_->setMessageCallback(
                     [weak](const tls::TlsConnectionPtr&, std::string& pt) {
-                        if (auto self = weak.lock()) self->onPlaintext(pt);
+                        if (auto self = weak.lock()) {
+                            self->onPlaintext(pt);
+                        }
                     });
                 tls_conn_->start();
             } else {
                 ready_ = true;
-                if (on_ready) on_ready(shared_from_this());
+                if (on_ready) {
+                    on_ready(shared_from_this());
+                }
             }
         } else {
             ready_ = false;
@@ -146,18 +154,24 @@ private:
                 ResponseCallback cb = takeCallback();
                 parser_.onEof();
                 if (parser_.gotAll()) {
-                    if (cb) cb(parser_.response(), "");
+                    if (cb) {
+                        cb(parser_.response(), "");
+                    }
                 } else if (cb) {
                     cb(HttpResponse(), "connection closed before response");
                 }
             }
-            if (on_closed) on_closed(shared_from_this());
+            if (on_closed) {
+                on_closed(shared_from_this());
+            }
         }
     }
 
     // Plaintext (non-TLS) inbound bytes arrive as a Buffer.
     void onTcpMessage(const net::TcpConnectionPtr& c, buffer::Buffer* buf) {
-        if (tls_conn_) return;  // TLS path handles bytes via TlsConnection
+        if (tls_conn_) {
+            return;  // TLS path handles bytes via TlsConnection
+        }
         consume(buf);
         (void)c;
     }
@@ -172,14 +186,18 @@ private:
     void consume(buffer::Buffer* buf) {
         if (!parser_.parse(buf)) {
             ResponseCallback cb = takeCallback();
-            if (cb) cb(HttpResponse(), "malformed response");
+            if (cb) {
+                cb(HttpResponse(), "malformed response");
+            }
             close();
             return;
         }
         if (parser_.gotAll()) {
             HttpResponse resp = parser_.response();
             std::string conn_hdr = resp.header("Connection");
-            for (auto& ch : conn_hdr) ch = static_cast<char>(::tolower(ch));
+            for (auto& ch : conn_hdr) {
+                ch = static_cast<char>(::tolower(ch));
+            }
             bool server_keep_alive = (conn_hdr != "close");
 
             parser_.reset();
@@ -189,11 +207,15 @@ private:
 
             ResponseCallback cb = takeCallback();
             if (server_keep_alive) {
-                if (on_free) on_free(shared_from_this());
+                if (on_free) {
+                    on_free(shared_from_this());
+                }
             } else {
                 close();
             }
-            if (cb) cb(resp, "");
+            if (cb) {
+                cb(resp, "");
+            }
         }
     }
 
@@ -256,7 +278,9 @@ public:
         // pool is gone.
         std::weak_ptr<Impl> weak = weak_from_this();
         eviction_timer_ = loop_->runEvery(5000, [weak]() {
-            if (auto self = weak.lock()) self->evictIdle();
+            if (auto self = weak.lock()) {
+                self->evictIdle();
+            }
         });
         eviction_timer_armed_ = true;
     }
@@ -292,7 +316,9 @@ private:
 
     // Kick off DNS once; subsequent requests just queue behind it.
     void startResolveOnce() {
-        if (resolving_) return;
+        if (resolving_) {
+            return;
+        }
         resolving_ = true;
         auto self = shared_from_this();
         resolver_->resolveAll(
@@ -314,7 +340,9 @@ private:
             std::string msg = err.empty() ? "no usable address" : err;
             log().error("DNS resolution failed for " + dns_host_ + ": " + msg);
             for (auto& p : waiting) {
-                if (p.cb) p.cb(HttpResponse(), "DNS resolution failed: " + msg);
+                if (p.cb) {
+                    p.cb(HttpResponse(), "DNS resolution failed: " + msg);
+                }
             }
             return;
         }
@@ -363,13 +391,19 @@ private:
         // delete.
         std::weak_ptr<Impl> weak = weak_from_this();
         c->on_ready = [weak](const ConnPtr& conn) {
-            if (auto self = weak.lock()) self->onReady(conn);
+            if (auto self = weak.lock()) {
+                self->onReady(conn);
+            }
         };
         c->on_free = [weak](const ConnPtr& conn) {
-            if (auto self = weak.lock()) self->onFree(conn);
+            if (auto self = weak.lock()) {
+                self->onFree(conn);
+            }
         };
         c->on_closed = [weak](const ConnPtr& conn) {
-            if (auto self = weak.lock()) self->onClosed(conn);
+            if (auto self = weak.lock()) {
+                self->onClosed(conn);
+            }
         };
     }
 
@@ -522,7 +556,9 @@ ConnectionPool::ConnectionPool(reactor::EventLoop* loop,
 ConnectionPool::~ConnectionPool() {
     // Stop the eviction timer so the loop drops its reference to Impl;
     // otherwise the pool outlives the ConnectionPool facade.
-    if (impl_) impl_->stopEviction();
+    if (impl_) {
+        impl_->stopEviction();
+    }
 }
 
 void ConnectionPool::request(const HttpRequest& req, ResponseCallback cb) {

@@ -114,7 +114,9 @@ TEST(ThreadPoolTest, TryRunRejectsWhenFull) {
     // Block the single worker so the queue fills up and stays full.
     std::atomic<bool> release{false};
     pool.run([&] {
-        while (!release.load()) std::this_thread::sleep_for(1ms);
+        while (!release.load()) {
+            std::this_thread::sleep_for(1ms);
+        }
     });
     // Give the worker a moment to pick up the blocking task.
     std::this_thread::sleep_for(20ms);
@@ -139,7 +141,9 @@ TEST(ThreadPoolTest, RunBlocksWhenFullThenProceeds) {
 
     // Occupy the worker.
     pool.run([&] {
-        while (!release.load()) std::this_thread::sleep_for(1ms);
+        while (!release.load()) {
+            std::this_thread::sleep_for(1ms);
+        }
         done++;
     });
     std::this_thread::sleep_for(20ms);
@@ -201,7 +205,9 @@ TEST(ThreadPoolTest, ConcurrentProducers) {
         });
     }
 
-    for (auto& t : producers) t.join();
+    for (auto& t : producers) {
+        t.join();
+    }
     pool.stop();
     EXPECT_EQ(counter.load(), kProducers * kPerProducer);
 }

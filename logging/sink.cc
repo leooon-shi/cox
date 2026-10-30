@@ -47,7 +47,9 @@ public:
 
     void append(const std::string& line) override {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (!fp_) return;  // open failed; drop rather than crash
+        if (!fp_) {
+            return;  // open failed; drop rather than crash
+        }
 
         std::fwrite(line.data(), 1, line.size(), fp_);
         std::fputc('\n', fp_);
@@ -55,7 +57,9 @@ public:
 
     void flush() override {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (fp_) std::fflush(fp_);
+        if (fp_) {
+            std::fflush(fp_);
+        }
     }
 
 private:
@@ -82,7 +86,9 @@ public:
 
     void append(const std::string& line) override {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (!fp_) return;
+        if (!fp_) {
+            return;
+        }
 
         // Rotate BEFORE writing when this line would exceed the cap, so the
         // limit is never overshot by more than one line.
@@ -97,7 +103,9 @@ public:
 
     void flush() override {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (fp_) std::fflush(fp_);
+        if (fp_) {
+            std::fflush(fp_);
+        }
     }
 
 private:
@@ -107,7 +115,9 @@ private:
         if (fp_) {
             std::fseek(fp_, 0, SEEK_END);
             long pos = std::ftell(fp_);
-            if (pos > 0) written_ = static_cast<size_t>(pos);
+            if (pos > 0) {
+                written_ = static_cast<size_t>(pos);
+            }
         }
     }
 
@@ -128,7 +138,9 @@ private:
         if (max_files_ == 0) {
             // No history kept: just truncate.
             std::FILE* t = std::fopen(path_.c_str(), "we");
-            if (t) std::fclose(t);
+            if (t) {
+                std::fclose(t);
+            }
             open();
             return;
         }
@@ -161,11 +173,15 @@ public:
         : sinks_(std::move(sinks)) {}
 
     void append(const std::string& line) override {
-        for (auto& s : sinks_) s->append(line);
+        for (auto& s : sinks_) {
+            s->append(line);
+        }
     }
 
     void flush() override {
-        for (auto& s : sinks_) s->flush();
+        for (auto& s : sinks_) {
+            s->flush();
+        }
     }
 
 private:
@@ -215,7 +231,9 @@ std::string MemorySink::text() const {
     std::lock_guard<std::mutex> lock(mutex_);
     std::string out;
     for (const auto& l : lines_) {
-        if (!out.empty()) out += "\n";
+        if (!out.empty()) {
+            out += "\n";
+        }
         out += l;
     }
     return out;

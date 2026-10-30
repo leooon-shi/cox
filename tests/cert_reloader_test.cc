@@ -65,17 +65,20 @@ TEST(CertReloaderTest, ReloadsOnFileChange) {
         ctx->useCertificateAndKey(cert, key);
         CertReloader reloader(&loop, ctx);
         reloader.setReloadCallback([&](bool ok) {
-            if (ok)
+            if (ok) {
                 reload_ok++;
-            else
+            } else {
                 reload_fail++;
+            }
         });
         reloader.startWatching(dir);
         started = true;
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     // Rotate: generate a new cert/key over the same paths (Secret update).
@@ -118,10 +121,11 @@ TEST(CertReloaderTest, BadCertKeepsPreviousViaPoll) {
 
         CertReloader reloader(&loop, ctx);
         reloader.setReloadCallback([&](bool ok) {
-            if (ok)
+            if (ok) {
                 reload_ok++;
-            else
+            } else {
                 reload_fail++;
+            }
         });
         // Poll mode: check every 50ms.
         reloader.startPolling(cert, key, "", 50);
@@ -129,7 +133,9 @@ TEST(CertReloaderTest, BadCertKeepsPreviousViaPoll) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     // Write a corrupt cert file (simulate a partial/bad rotation).

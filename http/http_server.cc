@@ -75,7 +75,9 @@ void HttpServer::onConnection(const net::TcpConnectionPtr& conn) {
                 [this, name](const tls::TlsConnectionPtr&, std::string& pt) {
                     // Route decrypted bytes; find state by connection name.
                     auto it = conns_.find(name);
-                    if (it == conns_.end()) return;
+                    if (it == conns_.end()) {
+                        return;
+                    }
                     auto pcp = it->second;
                     pcp->in.append(pt);
                     auto self_tls = pcp->tls;
@@ -94,12 +96,16 @@ void HttpServer::onConnection(const net::TcpConnectionPtr& conn) {
     } else {
         conns_.erase(conn->name());
     }
-    if (connection_observer_) connection_observer_(conn);
+    if (connection_observer_) {
+        connection_observer_(conn);
+    }
 }
 
 void HttpServer::onPlainMessage(const net::TcpConnectionPtr& conn,
                                 buffer::Buffer* buf) {
-    if (tls_ctx_) return;  // TLS path handles bytes via TlsConnection
+    if (tls_ctx_) {
+        return;  // TLS path handles bytes via TlsConnection
+    }
     std::string name = conn->name();
     net::TcpConnectionPtr c = conn;
     processInput(
@@ -112,7 +118,9 @@ void HttpServer::processInput(
     const std::function<void(const std::string&)>& send,
     const std::function<void()>& close) {
     auto it = conns_.find(conn_name);
-    if (it == conns_.end()) return;
+    if (it == conns_.end()) {
+        return;
+    }
 
     HttpContext& ctx = it->second->ctx;
 

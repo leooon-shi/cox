@@ -78,7 +78,9 @@ void runClient(uint16_t port, size_t msg_size, std::atomic<bool>* stop,
             }
             got += static_cast<size_t>(n);
         }
-        if (got != msg_size) break;
+        if (got != msg_size) {
+            break;
+        }
         auto t1 = Clock::now();
 
         out->requests++;
@@ -116,7 +118,9 @@ int main(int argc, char* argv[]) {
         srv_loop = &loop;
         InetAddress addr("127.0.0.1", port);
         TcpServer server(&loop, addr, "bench-echo");
-        if (server_threads > 1) server.setThreadNum(server_threads);
+        if (server_threads > 1) {
+            server.setThreadNum(server_threads);
+        }
         server.setMessageCallback(
             [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
                 conn->send(buf->retrieveAllAsString());
@@ -126,7 +130,9 @@ int main(int argc, char* argv[]) {
         loop.loop();
     });
 
-    while (!srv_started.load()) std::this_thread::sleep_for(milliseconds(1));
+    while (!srv_started.load()) {
+        std::this_thread::sleep_for(milliseconds(1));
+    }
     std::this_thread::sleep_for(milliseconds(50));
 
     // ---- Clients ----

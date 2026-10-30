@@ -64,7 +64,9 @@ struct MiniPki {
 
     bool build() {
         runCmd("rm -rf " + dir);
-        if (runCmd("mkdir -p " + dir) != 0) return false;
+        if (runCmd("mkdir -p " + dir) != 0) {
+            return false;
+        }
 
         // CA.
         if (runCmd("openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
@@ -83,7 +85,9 @@ struct MiniPki {
         // The AIA extension advertises the responder URL; this is what
         // responderUrl() must discover.
         std::ofstream e(ext);
-        if (!e.good()) return false;
+        if (!e.good()) {
+            return false;
+        }
         e << "basicConstraints=CA:FALSE\n"
           << "subjectAltName=DNS:ocsp.example.com\n"
           << "authorityInfoAccess=OCSP;URI:http://127.0.0.1:" << kResponderPort
@@ -151,7 +155,9 @@ struct Responder {
 size_t pump(TlsEngine& from, TlsEngine& to) {
     std::string enc;
     from.takeEncrypted(enc);
-    if (!enc.empty()) to.feedEncrypted(enc.data(), enc.size());
+    if (!enc.empty()) {
+        to.feedEncrypted(enc.data(), enc.size());
+    }
     return enc.size();
 }
 
@@ -161,7 +167,9 @@ bool driveHandshake(TlsEngine& client, TlsEngine& server) {
         pump(client, server);
         server.handshake();
         pump(server, client);
-        if (client.handshakeDone() && server.handshakeDone()) return true;
+        if (client.handshakeDone() && server.handshakeDone()) {
+            return true;
+        }
     }
     return client.handshakeDone() && server.handshakeDone();
 }
@@ -238,7 +246,9 @@ TEST(OcspTest, HandshakeSucceedsWithoutStaple) {
 
 TEST(OcspTest, DiscoversResponderUrlFromAia) {
     MiniPki pki;
-    if (!pki.ok) GTEST_SKIP() << "openssl CLI could not build the test PKI";
+    if (!pki.ok) {
+        GTEST_SKIP() << "openssl CLI could not build the test PKI";
+    }
 
     OcspStapler stapler(pki.leaf_cert, pki.ca_cert);
     // The URL must come from the certificate's AIA extension, not be guessed.
@@ -248,7 +258,9 @@ TEST(OcspTest, DiscoversResponderUrlFromAia) {
 
 TEST(OcspTest, FetchesAndCachesRealResponse) {
     MiniPki pki;
-    if (!pki.ok) GTEST_SKIP() << "openssl CLI could not build the test PKI";
+    if (!pki.ok) {
+        GTEST_SKIP() << "openssl CLI could not build the test PKI";
+    }
     Responder responder(pki);
 
     OcspStapler stapler(pki.leaf_cert, pki.ca_cert);
@@ -265,7 +277,9 @@ TEST(OcspTest, FetchesAndCachesRealResponse) {
 
 TEST(OcspTest, AbsentNextUpdateIsReportedDistinctly) {
     MiniPki pki;
-    if (!pki.ok) GTEST_SKIP() << "openssl CLI could not build the test PKI";
+    if (!pki.ok) {
+        GTEST_SKIP() << "openssl CLI could not build the test PKI";
+    }
     Responder responder(pki, /*nmin=*/0);  // omit nextUpdate (OpenSSL default)
 
     OcspStapler stapler(pki.leaf_cert, pki.ca_cert);
@@ -283,7 +297,9 @@ TEST(OcspTest, AbsentNextUpdateIsReportedDistinctly) {
 
 TEST(OcspTest, LoadsResponseFromFile) {
     MiniPki pki;
-    if (!pki.ok) GTEST_SKIP() << "openssl CLI could not build the test PKI";
+    if (!pki.ok) {
+        GTEST_SKIP() << "openssl CLI could not build the test PKI";
+    }
     Responder responder(pki);
 
     // The common production shape: an external agent writes the DER, the server
@@ -304,7 +320,9 @@ TEST(OcspTest, LoadsResponseFromFile) {
 
 TEST(OcspTest, ClientReceivesStapledResponse) {
     MiniPki pki;
-    if (!pki.ok) GTEST_SKIP() << "openssl CLI could not build the test PKI";
+    if (!pki.ok) {
+        GTEST_SKIP() << "openssl CLI could not build the test PKI";
+    }
     Responder responder(pki);
 
     OcspStapler stapler(pki.leaf_cert, pki.ca_cert);

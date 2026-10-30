@@ -83,7 +83,9 @@ TEST(ThreadPoolIntegrationTest, OffloadKeepsLoopResponsive) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     // Two clients issue requests at nearly the same time. If the handler ran

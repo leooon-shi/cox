@@ -249,7 +249,9 @@ void Connector::retry(int sockfd) {
         log().info("Connector::retry failing over to " +
                    candidates_[current_].toIpPort());
         loop_->queueInLoop([self = shared_from_this()]() {
-            if (self->connect_) self->connect();
+            if (self->connect_) {
+                self->connect();
+            }
         });
         return;
     }

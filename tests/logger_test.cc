@@ -178,7 +178,9 @@ TEST(SinkTest, FileSinkWritesLines) {
     ASSERT_NE(fp, nullptr);
     std::string content;
     char buf[256];
-    while (std::fgets(buf, sizeof(buf), fp)) content += buf;
+    while (std::fgets(buf, sizeof(buf), fp)) {
+        content += buf;
+    }
     std::fclose(fp);
     std::remove(path.c_str());
 
@@ -261,7 +263,9 @@ TEST(AsyncSinkTest, DeliversAllLinesToDownstream) {
         auto async = std::make_shared<AsyncSink>(
             std::make_unique<Forward>(captured), /*max_buffered_lines=*/4096);
         Logger log(LogLevel::Info, Formatter::newDefaultFormatter(), async);
-        for (int i = 0; i < kLines; ++i) log.info("msg " + std::to_string(i));
+        for (int i = 0; i < kLines; ++i) {
+            log.info("msg " + std::to_string(i));
+        }
         async->flush();
         EXPECT_EQ(async->droppedCount(), 0u);
     }  // stop() drains the remainder
@@ -326,7 +330,9 @@ TEST(AsyncSinkTest, StopDrainsPendingLines) {
 
     auto async = std::make_unique<AsyncSink>(
         std::make_unique<Forward>(captured), 4096, /*flush_interval_ms=*/10000);
-    for (int i = 0; i < 50; ++i) async->append("pending " + std::to_string(i));
+    for (int i = 0; i < 50; ++i) {
+        async->append("pending " + std::to_string(i));
+    }
     async->stop();  // must not lose anything still queued.
 
     EXPECT_EQ(captured->lines().size(), 50u);

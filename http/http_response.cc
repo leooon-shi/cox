@@ -67,7 +67,9 @@ void HttpResponse::appendTo(buffer::Buffer* buf) const {
 
     for (const auto& [key, value] : headers_) {
         // Skip headers we manage ourselves to avoid duplicates.
-        if (key == "Content-Length" || key == "Connection") continue;
+        if (key == "Content-Length" || key == "Connection") {
+            continue;
+        }
         head += key;
         head += ": ";
         head += value;

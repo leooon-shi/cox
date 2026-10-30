@@ -89,7 +89,9 @@ Options parse(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         auto val = [&]() -> const char* {
-            if (i + 1 >= argc) usage(argv[0]);
+            if (i + 1 >= argc) {
+                usage(argv[0]);
+            }
             return argv[++i];
         };
         if (a == "--port") {
@@ -101,7 +103,7 @@ Options parse(int argc, char** argv) {
         } else if (a == "--max-conns") {
             o.max_conns = std::strtoul(val(), nullptr, 10);
         } else if (a == "--idle") {
-            o.idle = static_cast<uint32_t>(std::atof(val()));
+            o.idle = static_cast<uint32_t>(std::atoi(val()));
         } else if (a == "--accept-qps") {
             o.accept_qps = std::atof(val());
         } else if (a == "--nodelay") {
@@ -112,23 +114,35 @@ Options parse(int argc, char** argv) {
             usage(argv[0]);
         }
     }
-    if (o.threads > 0 && o.reuseport > 0) usage(argv[0]);
+    if (o.threads > 0 && o.reuseport > 0) {
+        usage(argv[0]);
+    }
     return o;
 }
 
 // Configure one TcpServer as an echo endpoint that updates the shared stats.
 void configure(TcpServer& server, const Options& o, Stats& st) {
-    if (o.threads > 0) server.setThreadNum(o.threads);
-    if (o.max_conns > 0) server.setMaxConnections(o.max_conns);
-    if (o.idle > 0) server.setIdleTimeout(o.idle);
-    if (o.accept_qps > 0) server.setAcceptRateLimit(o.accept_qps, o.accept_qps);
+    if (o.threads > 0) {
+        server.setThreadNum(o.threads);
+    }
+    if (o.max_conns > 0) {
+        server.setMaxConnections(o.max_conns);
+    }
+    if (o.idle > 0) {
+        server.setIdleTimeout(o.idle);
+    }
+    if (o.accept_qps > 0) {
+        server.setAcceptRateLimit(o.accept_qps, o.accept_qps);
+    }
     server.setOverloadCallback([&st](const InetAddress&) { ++st.rejected; });
     const bool nodelay = o.nodelay;
     server.setConnectionCallback([&st, nodelay](const TcpConnectionPtr& c) {
         if (c->connected()) {
             ++st.accepted;
             ++st.live;
-            if (nodelay) c->setTcpNoDelay(true);
+            if (nodelay) {
+                c->setTcpNoDelay(true);
+            }
         } else {
             ++st.closed;
             --st.live;
@@ -182,7 +196,9 @@ int main(int argc, char** argv) {
                 srv->start();
                 ready = true;
             });
-            while (!ready) std::this_thread::yield();
+            while (!ready) {
+                std::this_thread::yield();
+            }
             servers.emplace_back(srv);
             listener_threads.push_back(std::move(t));
         }
@@ -233,7 +249,9 @@ int main(int argc, char** argv) {
                 delete srv;
                 done = true;
             });
-            while (!done) std::this_thread::yield();
+            while (!done) {
+                std::this_thread::yield();
+            }
         }
         listener_threads.clear();  // quits and joins each loop thread
     }

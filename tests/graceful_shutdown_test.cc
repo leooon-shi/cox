@@ -77,7 +77,9 @@ TEST(GracefulShutdownTest, DrainCompletesWhenClientsClose) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     // Connect a client, exchange a message, then close it after shutdown
@@ -117,7 +119,9 @@ TEST(GracefulShutdownTest, RejectsNewConnectionsWhileDraining) {
         InetAddress addr("127.0.0.1", kPort);
         TcpServer server(&loop, addr, "drain-reject");
         server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
-            if (conn->connected()) accepted++;
+            if (conn->connected()) {
+                accepted++;
+            }
         });
         server.start();
         started = true;
@@ -127,7 +131,9 @@ TEST(GracefulShutdownTest, RejectsNewConnectionsWhileDraining) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     // Wait until draining has begun.
     std::this_thread::sleep_for(80ms);
 
@@ -171,7 +177,9 @@ TEST(GracefulShutdownTest, ForceCloseAtDeadline) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     // Connect and keep the client open (never close), so only the server's

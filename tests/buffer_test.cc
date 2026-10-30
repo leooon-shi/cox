@@ -92,7 +92,9 @@ TEST(BufferTest, ReadFdReadsAllData) {
     int err = 0;
     while (buf.readableBytes() < payload.size()) {
         ssize_t n = buf.readFd(fds[0], &err);
-        if (n <= 0) break;
+        if (n <= 0) {
+            break;
+        }
     }
 
     EXPECT_EQ(buf.readableBytes(), payload.size());

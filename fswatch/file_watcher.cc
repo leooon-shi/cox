@@ -51,7 +51,9 @@ FileWatcher::~FileWatcher() {
 }
 
 bool FileWatcher::watchDirectory(const std::string& dir_path, Callback cb) {
-    if (inotify_fd_ < 0) return false;
+    if (inotify_fd_ < 0) {
+        return false;
+    }
     int wd = ::inotify_add_watch(inotify_fd_, dir_path.c_str(), kDirMask);
     if (wd < 0) {
         log().error("FileWatcher::watchDirectory " + dir_path +
@@ -64,7 +66,9 @@ bool FileWatcher::watchDirectory(const std::string& dir_path, Callback cb) {
 }
 
 bool FileWatcher::watchFile(const std::string& file_path, Callback cb) {
-    if (inotify_fd_ < 0) return false;
+    if (inotify_fd_ < 0) {
+        return false;
+    }
     int wd = ::inotify_add_watch(inotify_fd_, file_path.c_str(), kFileMask);
     if (wd < 0) {
         log().error("FileWatcher::watchFile " + file_path +
@@ -79,7 +83,9 @@ bool FileWatcher::watchFile(const std::string& file_path, Callback cb) {
 
 void FileWatcher::unwatch(const std::string& path) {
     auto it = by_path_.find(path);
-    if (it == by_path_.end()) return;
+    if (it == by_path_.end()) {
+        return;
+    }
     int wd = it->second;
     ::inotify_rm_watch(inotify_fd_, wd);
     watches_.erase(wd);
@@ -97,7 +103,9 @@ void FileWatcher::handleRead() {
     for (;;) {
         ssize_t len = ::read(inotify_fd_, buf, sizeof(buf));
         if (len <= 0) {
-            if (len < 0 && errno == EINTR) continue;
+            if (len < 0 && errno == EINTR) {
+                continue;
+            }
             break;  // EAGAIN: drained
         }
         for (char* p = buf; p < buf + len;) {

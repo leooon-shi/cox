@@ -46,16 +46,22 @@ std::string readAll(int fd, int ms) {
     char buf[4096];
     // Read until we have headers + body or timeout.
     for (int i = 0; i < 20; ++i) {
-        if (!waitReadable(fd, ms)) break;
+        if (!waitReadable(fd, ms)) {
+            break;
+        }
         ssize_t n = ::read(fd, buf, sizeof(buf));
-        if (n <= 0) break;
+        if (n <= 0) {
+            break;
+        }
         out.append(buf, n);
         if (out.find("\r\n\r\n") != std::string::npos) {
             // crude: assume small body arrives together
             std::this_thread::sleep_for(10ms);
             while (waitReadable(fd, 10)) {
                 n = ::read(fd, buf, sizeof(buf));
-                if (n <= 0) break;
+                if (n <= 0) {
+                    break;
+                }
                 out.append(buf, n);
             }
             break;
@@ -84,7 +90,9 @@ TEST(HttpServerTest, GetRequestResponse) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(30ms);
 
     int client = connectClient(kPort);
@@ -121,7 +129,9 @@ TEST(HttpServerTest, KeepAliveTwoRequests) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(30ms);
 
     int client = connectClient(kPort);
@@ -162,7 +172,9 @@ TEST(HttpServerTest, PostEcho) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(30ms);
 
     int client = connectClient(kPort);

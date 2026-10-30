@@ -12,7 +12,9 @@ namespace {
 const char* findCrlf(const char* begin, const char* end) {
     const char* p = begin;
     while (p + 1 < end) {
-        if (p[0] == '\r' && p[1] == '\n') return p;
+        if (p[0] == '\r' && p[1] == '\n') {
+            return p;
+        }
         ++p;
     }
     return nullptr;
@@ -93,7 +95,9 @@ bool ResponseParser::parse(buffer::Buffer* buf) {
                     }
                     std::string key(buf->peek(), colon);
                     const char* vb = colon + 1;
-                    while (vb < crlf && *vb == ' ') ++vb;
+                    while (vb < crlf && *vb == ' ') {
+                        ++vb;
+                    }
                     std::string value(vb, crlf);
                     response_.addHeader(key, value);
                     std::string lkey = toLower(key);
@@ -160,7 +164,9 @@ bool ResponseParser::parse(buffer::Buffer* buf) {
                 chunk_remaining_ -= take;
                 progress = true;
             }
-            if (chunk_remaining_ == 0) state_ = State::kExpectChunkCrlf;
+            if (chunk_remaining_ == 0) {
+                state_ = State::kExpectChunkCrlf;
+            }
         } else if (state_ == State::kExpectChunkCrlf) {
             if (buf->readableBytes() >= 2) {
                 buf->retrieve(2);

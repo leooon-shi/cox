@@ -102,6 +102,30 @@ jobs:
           echo "checking $(echo "$files" | wc -l) files"
           clang-format --dry-run --Werror $files
 
+  clang-tidy:
+    name: clang-tidy (braces)
+    runs-on: ubuntu-24.04
+    # NON-BLOCKING: enforces readability-braces-around-statements (braces on)
+    # every if/else/loop body) to kill the "goto fail" class of bug.
+    # continue-on-error: true
+    # BLOCKING: Any new brace-less if/else/loop body is a regression and fails the build.
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build clang clang-tidy libssl-dev libc-ares-dev openssl
+      - name: Configure (generates compile_commands.json)
+        run: cmake --preset clang-debug
+      - name: Run clang-tidy
+        run: |
+          # Only Cox's own source; googletest/ is vendored and has its own style.
+          files=$(git ls-files '*.cc' '*.h' | grep -v '^googletest/')
+          echo "checking $(echo "$files" | wc -l) files"
+          clang-tidy -p build/clang-debug $files
   sanitizers:
     name: ${{ matrix.preset }}
     runs-on: ubuntu-24.04

@@ -29,13 +29,27 @@ const char* methodToString(Method m) {
 }
 
 Method methodFromString(const std::string& s) {
-    if (s == "GET") return Method::kGet;
-    if (s == "POST") return Method::kPost;
-    if (s == "PUT") return Method::kPut;
-    if (s == "DELETE") return Method::kDelete;
-    if (s == "HEAD") return Method::kHead;
-    if (s == "OPTIONS") return Method::kOptions;
-    if (s == "PATCH") return Method::kPatch;
+    if (s == "GET") {
+        return Method::kGet;
+    }
+    if (s == "POST") {
+        return Method::kPost;
+    }
+    if (s == "PUT") {
+        return Method::kPut;
+    }
+    if (s == "DELETE") {
+        return Method::kDelete;
+    }
+    if (s == "HEAD") {
+        return Method::kHead;
+    }
+    if (s == "OPTIONS") {
+        return Method::kOptions;
+    }
+    if (s == "PATCH") {
+        return Method::kPatch;
+    }
     return Method::kInvalid;
 }
 
@@ -125,7 +139,9 @@ void HttpRequest::appendTo(buffer::Buffer* buf, const std::string& host) const {
         head += "\r\n";
     }
     for (const auto& [key, value] : headers_) {
-        if (key == "content-length") continue;  // we set it below
+        if (key == "content-length") {
+            continue;  // we set it below
+        }
         head += key;
         head += ": ";
         head += value;

@@ -47,7 +47,9 @@ TEST(ResolverTest, ThreadPoolResolvesLocalhost) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     for (int i = 0; i < 200 && !done.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
@@ -85,7 +87,9 @@ TEST(ResolverTest, ThreadPoolResolvesNumericIp) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     for (int i = 0; i < 200 && !done.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
@@ -121,7 +125,9 @@ TEST(ResolverTest, ThreadPoolResolveAllReturnsList) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
 
     for (int i = 0; i < 200 && !done.load(); ++i) {
         std::this_thread::sleep_for(5ms);
@@ -164,7 +170,9 @@ TEST(ResolverTest, ThreadPoolReportsErrorForBogusHost) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     for (int i = 0; i < 400 && !done.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
@@ -197,7 +205,9 @@ TEST(ResolverTest, CaresResolvesLocalhost) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     for (int i = 0; i < 400 && !done.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }

@@ -32,7 +32,9 @@ void onSignal(int) {
 
 int main(int argc, char* argv[]) {
     uint16_t port = 8080;
-    if (argc > 1) port = static_cast<uint16_t>(std::atoi(argv[1]));
+    if (argc > 1) {
+        port = static_cast<uint16_t>(std::atoi(argv[1]));
+    }
 
     reactor::EventLoop loop;
     HttpServer server(&loop, net::InetAddress(port), "rest");
@@ -90,7 +92,9 @@ int main(int argc, char* argv[]) {
     server.start();
 
     loop.runEvery(200, [&loop] {
-        if (g_stop) loop.quit();
+        if (g_stop) {
+            loop.quit();
+        }
     });
     loop.loop();
     std::cout << "stopped" << std::endl;

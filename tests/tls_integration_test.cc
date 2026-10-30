@@ -111,7 +111,9 @@ TEST(TlsIntegrationTest, HandshakeAndEncryptedEcho) {
         loop.loop();
     });
 
-    while (!srv_started.load()) std::this_thread::sleep_for(1ms);
+    while (!srv_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     // ---- Client thread ----
@@ -151,7 +153,9 @@ TEST(TlsIntegrationTest, HandshakeAndEncryptedEcho) {
         loop.loop();
     });
 
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
 
     for (int i = 0; i < 300 && !got_reply.load(); ++i) {
         std::this_thread::sleep_for(10ms);

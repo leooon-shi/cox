@@ -52,7 +52,9 @@ TEST(UnixSocketTest, EchoOverUnixDomain) {
         loop.loop();
     });
 
-    while (!srv_started.load()) std::this_thread::sleep_for(1ms);
+    while (!srv_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     std::atomic<bool> cli_started{false};
@@ -83,7 +85,9 @@ TEST(UnixSocketTest, EchoOverUnixDomain) {
         loop.loop();
     });
 
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     for (int i = 0; i < 200 && !got_reply.load(); ++i) {
         std::this_thread::sleep_for(5ms);
     }
@@ -133,7 +137,9 @@ TEST(UnixSocketTest, RetryUntilServerAvailable) {
         loop.loop();
     });
 
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
 
     // Let the client fail at least once and enter backoff.
     std::this_thread::sleep_for(200ms);
@@ -156,7 +162,9 @@ TEST(UnixSocketTest, RetryUntilServerAvailable) {
         srv_started = true;
         loop.loop();
     });
-    while (!srv_started.load()) std::this_thread::sleep_for(1ms);
+    while (!srv_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
 
     // The client's retry should eventually connect and complete the round-trip.
     for (int i = 0; i < 400 && !got_reply.load(); ++i) {
@@ -187,7 +195,9 @@ TEST(UnixSocketTest, MultipleClientsOverUnixDomain) {
         InetAddress addr = InetAddress::unixDomain(path);
         TcpServer server(&loop, addr, "uds-multi");
         server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
-            if (conn->connected()) accepted++;
+            if (conn->connected()) {
+                accepted++;
+            }
         });
         server.setMessageCallback(
             [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
@@ -199,7 +209,9 @@ TEST(UnixSocketTest, MultipleClientsOverUnixDomain) {
         loop.loop();
     });
 
-    while (!srv_started.load()) std::this_thread::sleep_for(1ms);
+    while (!srv_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     constexpr int kNumClients = 3;
@@ -214,7 +226,9 @@ TEST(UnixSocketTest, MultipleClientsOverUnixDomain) {
             InetAddress addr = InetAddress::unixDomain(path);
             TcpClient client(&loop, addr, "uds-cli-" + std::to_string(i));
             client.setConnectionCallback([&](const TcpConnectionPtr& conn) {
-                if (conn->connected()) conn->send("hi");
+                if (conn->connected()) {
+                    conn->send("hi");
+                }
             });
             client.setMessageCallback(
                 [&](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
@@ -234,7 +248,9 @@ TEST(UnixSocketTest, MultipleClientsOverUnixDomain) {
     EXPECT_EQ(replies.load(), kNumClients);
 
     for (int i = 0; i < kNumClients; ++i) {
-        while (!client_loops[i]) std::this_thread::sleep_for(1ms);
+        while (!client_loops[i]) {
+            std::this_thread::sleep_for(1ms);
+        }
         client_loops[i]->quit();
         client_threads[i].join();
     }

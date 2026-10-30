@@ -143,7 +143,9 @@ void TlsContext::setVerifyPeer(bool verify) {
 namespace {
 std::string toLowerAscii(std::string s) {
     for (char& c : s) {
-        if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
+        if (c >= 'A' && c <= 'Z') {
+            c = static_cast<char>(c - 'A' + 'a');
+        }
     }
     return s;
 }
@@ -179,7 +181,9 @@ TlsContext* TlsContext::findSniContext(const std::string& hostname) const {
 
     // Exact match wins over any wildcard.
     auto it = sni_contexts_.find(host);
-    if (it != sni_contexts_.end()) return it->second.get();
+    if (it != sni_contexts_.end()) {
+        return it->second.get();
+    }
 
     // Single-level wildcard: "*.example.com" matches "a.example.com" but NOT
     // "example.com" nor "a.b.example.com" (RFC 6125 semantics).
@@ -187,7 +191,9 @@ TlsContext* TlsContext::findSniContext(const std::string& hostname) const {
     if (dot != std::string::npos && dot + 1 < host.size()) {
         std::string wildcard = "*" + host.substr(dot);
         auto w = sni_contexts_.find(wildcard);
-        if (w != sni_contexts_.end()) return w->second.get();
+        if (w != sni_contexts_.end()) {
+            return w->second.get();
+        }
     }
     return nullptr;  // caller keeps the default context
 }
@@ -197,14 +203,18 @@ size_t TlsContext::sniCount() const {
 }
 
 std::string TlsContext::requestedServerName(struct ssl_st* ssl) {
-    if (ssl == nullptr) return std::string();
+    if (ssl == nullptr) {
+        return std::string();
+    }
     const char* name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
     return name ? std::string(name) : std::string();
 }
 
 int TlsContext::sniCallback(struct ssl_st* ssl, int* /*alert*/, void* arg) {
     auto* self = static_cast<TlsContext*>(arg);
-    if (self == nullptr || ssl == nullptr) return SSL_TLSEXT_ERR_OK;
+    if (self == nullptr || ssl == nullptr) {
+        return SSL_TLSEXT_ERR_OK;
+    }
 
     const char* servername = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
     if (servername == nullptr) {

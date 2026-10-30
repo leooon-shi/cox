@@ -63,8 +63,12 @@ private:
         uint16_t port;
         bool tls;
         bool operator<(const Origin& o) const {
-            if (host != o.host) return host < o.host;
-            if (port != o.port) return port < o.port;
+            if (host != o.host) {
+                return host < o.host;
+            }
+            if (port != o.port) {
+                return port < o.port;
+            }
             return tls < o.tls;
         }
     };

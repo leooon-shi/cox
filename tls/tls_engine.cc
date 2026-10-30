@@ -19,7 +19,9 @@ std::string opensslError(const std::string& what) {
 // SNI must carry a DNS name, never an IP address (RFC 6066 §3). Cheap check:
 // an IPv4 literal is all digits and dots; an IPv6 literal contains ':'.
 bool looksLikeIpLiteral(const std::string& host) {
-    if (host.find(':') != std::string::npos) return true;  // IPv6
+    if (host.find(':') != std::string::npos) {
+        return true;  // IPv6
+    }
 
     bool all_digits_dots = true;
     for (char c : host) {
@@ -96,7 +98,9 @@ TlsEngine::~TlsEngine() {
 }
 
 size_t TlsEngine::feedEncrypted(const char* data, size_t len) {
-    if (len == 0) return 0;
+    if (len == 0) {
+        return 0;
+    }
     int n = BIO_write(rbio_, data, static_cast<int>(len));
     return n > 0 ? static_cast<size_t>(n) : 0;
 }
@@ -149,7 +153,9 @@ bool TlsEngine::handshakeDone() const {
 TlsEngine::Status TlsEngine::writePlaintext(const char* data, size_t len,
                                             size_t* consumed) {
     *consumed = 0;
-    if (len == 0) return Status::kOk;
+    if (len == 0) {
+        return Status::kOk;
+    }
     int ret = SSL_write(ssl_, data, static_cast<int>(len));
     if (ret > 0) {
         *consumed = static_cast<size_t>(ret);

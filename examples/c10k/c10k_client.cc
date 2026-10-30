@@ -78,7 +78,9 @@ Options parse(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         auto val = [&]() -> const char* {
-            if (i + 1 >= argc) usage(argv[0]);
+            if (i + 1 >= argc) {
+                usage(argv[0]);
+            }
             return argv[++i];
         };
         if (a == "--host") {
@@ -124,7 +126,9 @@ struct Conn {
 };
 
 double pct(std::vector<double>& v, double p) {
-    if (v.empty()) return 0;
+    if (v.empty()) {
+        return 0;
+    }
     size_t i = static_cast<size_t>(p * static_cast<double>(v.size() - 1));
     std::nth_element(v.begin(), v.begin() + static_cast<long>(i), v.end());
     return v[i];
@@ -183,7 +187,9 @@ int main(int argc, char** argv) {
         if (c.st != St::kDead) {
             ++errors[err];
             ++failed;
-            if (c.st == St::kOpen) --connected;
+            if (c.st == St::kOpen) {
+                --connected;
+            }
             c.st = St::kDead;
             ::close(c.fd);
         }
@@ -209,7 +215,9 @@ int main(int argc, char** argv) {
                 c.to_write -= static_cast<size_t>(n);
                 continue;
             }
-            if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) return;
+            if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                return;
+            }
             fail(c, n < 0 ? errno : EPIPE);
             return;
         }
@@ -295,7 +303,9 @@ int main(int argc, char** argv) {
         for (int i = 0; i < n; ++i) {
             Conn& c = conns[evs[static_cast<size_t>(i)].data.u32];
             uint32_t e = evs[static_cast<size_t>(i)].events;
-            if (c.st == St::kDead) continue;
+            if (c.st == St::kDead) {
+                continue;
+            }
             if (c.st == St::kConnecting &&
                 (e & (EPOLLOUT | EPOLLERR | EPOLLHUP))) {
                 int err = 0;
@@ -308,9 +318,10 @@ int main(int argc, char** argv) {
                 c.st = St::kOpen;
                 ++connected;
                 int one = 1;
-                if (!o.client_nagle)
+                if (!o.client_nagle) {
                     ::setsockopt(c.fd, IPPROTO_TCP, TCP_NODELAY, &one,
                                  sizeof one);
+                }
                 connect_us.push_back(std::chrono::duration<double, std::micro>(
                                          Clock::now() - c.connect_start)
                                          .count());
@@ -319,7 +330,9 @@ int main(int argc, char** argv) {
                     flushWrite(c);
                 }
             }
-            if (c.st != St::kOpen) continue;
+            if (c.st != St::kOpen) {
+                continue;
+            }
             if (e & EPOLLIN) {
                 for (;;) {  // edge-triggered: drain until EAGAIN
                     ssize_t r = ::recv(c.fd, rbuf.data(), rbuf.size(), 0);
@@ -341,16 +354,21 @@ int main(int argc, char** argv) {
                         fail(c, ECONNRESET);
                         break;
                     }  // server closed
-                    if (errno == EAGAIN || errno == EWOULDBLOCK) break;
+                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                        break;
+                    }
                     fail(c, errno);
                     break;
                 }
             }
-            if (c.st == St::kOpen && (e & EPOLLOUT) && c.to_write > 0)
+            if (c.st == St::kOpen && (e & EPOLLOUT) && c.to_write > 0) {
                 flushWrite(c);
+            }
+
             if (c.st == St::kOpen && (e & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) &&
-                !(e & EPOLLIN))
+                !(e & EPOLLIN)) {
                 fail(c, ECONNRESET);
+            }
         }
     }
 

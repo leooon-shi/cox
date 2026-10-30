@@ -45,7 +45,9 @@ TEST(ConnectionPoolTest, ConcurrentRequestsRespectCap) {
 
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "srv");
         server.setConnectionObserver([&](const net::TcpConnectionPtr& c) {
-            if (c->connected()) server_conns++;
+            if (c->connected()) {
+                server_conns++;
+            }
         });
         server.setHttpHandler([](const HttpRequest& req, HttpResponse* resp) {
             resp->setStatus(200);
@@ -56,7 +58,9 @@ TEST(ConnectionPoolTest, ConcurrentRequestsRespectCap) {
         loop.loop();
     });
 
-    while (!srv_started.load()) std::this_thread::sleep_for(1ms);
+    while (!srv_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(30ms);
 
     constexpr int kNumRequests = 12;
@@ -88,7 +92,9 @@ TEST(ConnectionPoolTest, ConcurrentRequestsRespectCap) {
         (void)pool;
     });
 
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
 
     for (int i = 0; i < 400 && completed.load() < kNumRequests; ++i) {
         std::this_thread::sleep_for(5ms);
@@ -128,7 +134,9 @@ TEST(ConnectionPoolTest, SequentialReuseSingleConnection) {
         loop.loop();
     });
 
-    while (!srv_started.load()) std::this_thread::sleep_for(1ms);
+    while (!srv_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(30ms);
 
     std::atomic<int> completed{0};
@@ -148,7 +156,9 @@ TEST(ConnectionPoolTest, SequentialReuseSingleConnection) {
             }
             pool->request(getReq("/s"),
                           [&, n](const HttpResponse&, const std::string& err) {
-                              if (err.empty()) completed++;
+                              if (err.empty()) {
+                                  completed++;
+                              }
                               fire(n - 1);
                           });
         };
@@ -158,7 +168,9 @@ TEST(ConnectionPoolTest, SequentialReuseSingleConnection) {
         (void)pool;
     });
 
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     for (int i = 0; i < 400 && completed.load() < 3; ++i) {
         std::this_thread::sleep_for(5ms);
     }

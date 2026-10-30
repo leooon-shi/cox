@@ -45,7 +45,9 @@ TEST(AcceptorTest, CallbackFiresOnConnect) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);  // ensure listen() ran in loop.
 
     // Connect from the test thread.
@@ -84,7 +86,9 @@ TEST(AcceptorTest, MultipleConnections) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     constexpr int kNumClients = 5;

@@ -98,7 +98,9 @@ TEST(HttpClientTest, GetAgainstCoxServer) {
         loop.loop();
     });
 
-    while (!srv_started.load()) std::this_thread::sleep_for(1ms);
+    while (!srv_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(30ms);
 
     std::atomic<bool> cli_started{false};
@@ -125,9 +127,12 @@ TEST(HttpClientTest, GetAgainstCoxServer) {
         loop.loop();
     });
 
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
-    for (int i = 0; i < 200 && !got.load(); ++i)
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
+    for (int i = 0; i < 200 && !got.load(); ++i) {
         std::this_thread::sleep_for(5ms);
+    }
 
     EXPECT_TRUE(got.load());
     EXPECT_EQ(status, 200);
@@ -159,7 +164,9 @@ TEST(HttpClientTest, PostAgainstCoxServer) {
         loop.loop();
     });
 
-    while (!srv_started.load()) std::this_thread::sleep_for(1ms);
+    while (!srv_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(30ms);
 
     std::atomic<bool> got{false};
@@ -188,9 +195,12 @@ TEST(HttpClientTest, PostAgainstCoxServer) {
         loop.loop();
     });
 
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
-    for (int i = 0; i < 200 && !got.load(); ++i)
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
+    for (int i = 0; i < 200 && !got.load(); ++i) {
         std::this_thread::sleep_for(5ms);
+    }
 
     EXPECT_TRUE(got.load());
     EXPECT_EQ(body, "echo:payload123");
@@ -214,7 +224,9 @@ TEST(HttpClientTest, KeepAliveReusesConnection) {
         HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "srv");
         // Observe connections WITHOUT hijacking HttpServer's internal callback.
         server.setConnectionObserver([&](const net::TcpConnectionPtr& c) {
-            if (c->connected()) server_conns++;
+            if (c->connected()) {
+                server_conns++;
+            }
         });
         server.setHttpHandler([&](const HttpRequest& req, HttpResponse* resp) {
             server_reqs++;
@@ -227,7 +239,9 @@ TEST(HttpClientTest, KeepAliveReusesConnection) {
         loop.loop();
     });
 
-    while (!srv_started.load()) std::this_thread::sleep_for(1ms);
+    while (!srv_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(30ms);
 
     std::atomic<int> replies{0};
@@ -253,7 +267,9 @@ TEST(HttpClientTest, KeepAliveReusesConnection) {
 
             client->get(
                 "/b", [&](const HttpResponse& resp2, const std::string& err2) {
-                    if (err2.empty()) body2 = resp2.body();
+                    if (err2.empty()) {
+                        body2 = resp2.body();
+                    }
                     replies++;
                     loop.quit();
                 });
@@ -262,9 +278,12 @@ TEST(HttpClientTest, KeepAliveReusesConnection) {
         loop.loop();
     });
 
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
-    for (int i = 0; i < 300 && replies.load() < 2; ++i)
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
+    for (int i = 0; i < 300 && replies.load() < 2; ++i) {
         std::this_thread::sleep_for(5ms);
+    }
 
     EXPECT_EQ(replies.load(), 2);
     EXPECT_EQ(body1, "r:/a");

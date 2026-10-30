@@ -1,0 +1,11 @@
+# clang-tidy configuraiton for Cox.
+# To flip it to blocking once the tree is converted with:
+# clang-tidy -p build/clang-debug --fix \
+# $(git ls-files '*.cc' '*.h' | grep -v '^googletest/')
+
+Checks: >
+  readability-braces-around-statements
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*'
+FormatStyle: file

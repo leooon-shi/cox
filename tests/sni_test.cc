@@ -62,7 +62,9 @@ TlsContextPtr makeServerCtx(const NamedCert& cert) {
 size_t pump(TlsEngine& from, TlsEngine& to) {
     std::string enc;
     from.takeEncrypted(enc);
-    if (!enc.empty()) to.feedEncrypted(enc.data(), enc.size());
+    if (!enc.empty()) {
+        to.feedEncrypted(enc.data(), enc.size());
+    }
     return enc.size();
 }
 
@@ -72,7 +74,9 @@ bool driveHandshake(TlsEngine& client, TlsEngine& server) {
         pump(client, server);
         server.handshake();
         pump(server, client);
-        if (client.handshakeDone() && server.handshakeDone()) return true;
+        if (client.handshakeDone() && server.handshakeDone()) {
+            return true;
+        }
     }
 
     return client.handshakeDone() && server.handshakeDone();

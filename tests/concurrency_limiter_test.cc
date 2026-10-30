@@ -92,8 +92,12 @@ TEST(ConcurrencyLimiterTest, ConcurrentNeverExceedsMax) {
     };
 
     std::vector<std::thread> threads;
-    for (int t = 0; t < 8; ++t) threads.emplace_back(worker);
-    for (auto& t : threads) t.join();
+    for (int t = 0; t < 8; ++t) {
+        threads.emplace_back(worker);
+    }
+    for (auto& t : threads) {
+        t.join();
+    }
 
     EXPECT_LE(peak.load(), kMax);  // invariant: never exceed max concurrency
     EXPECT_GT(admitted.load(), 0);

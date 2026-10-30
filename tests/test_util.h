@@ -26,7 +26,9 @@ inline bool sendAll(int fd, const void* data, size_t len) {
     size_t sent = 0;
     while (sent < len) {
         ssize_t n = ::write(fd, p + sent, len - sent);
-        if (n <= 0) return false;
+        if (n <= 0) {
+            return false;
+        }
         sent += static_cast<size_t>(n);
     }
     return true;

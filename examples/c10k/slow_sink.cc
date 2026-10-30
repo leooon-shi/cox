@@ -96,7 +96,9 @@ int main(int argc, char** argv) {
                         static_cast<double>(total) / (1024.0 * 1024.0));
             std::fflush(stdout);
         }
-        if (g_stop) loop.quit();
+        if (g_stop) {
+            loop.quit();
+        }
     });
 
     loop.loop();

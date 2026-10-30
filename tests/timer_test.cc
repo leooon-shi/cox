@@ -37,7 +37,9 @@ public:
     reactor::EventLoop* loop() { return loop_; }
 
     void quit() {
-        if (loop_) loop_->quit();
+        if (loop_) {
+            loop_->quit();
+        }
     }
 
 private:
@@ -124,7 +126,9 @@ TEST(TimerTest, CancelPreventsFiring) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(300ms);
     loop_ptr->quit();
     t.join();

@@ -13,7 +13,9 @@ namespace {
 const char* findCrlf(const char* begin, const char* end) {
     const char* p = begin;
     while (p + 1 < end) {
-        if (p[0] == '\r' && p[1] == '\n') return p;
+        if (p[0] == '\r' && p[1] == '\n') {
+            return p;
+        }
         ++p;
     }
     return nullptr;
@@ -23,14 +25,20 @@ const char* findCrlf(const char* begin, const char* end) {
 bool HttpContext::parseRequestLine(const char* begin, const char* end) {
     // METHOD SP path[?query] SP HTTP/x.y
     const char* space1 = std::find(begin, end, ' ');
-    if (space1 == end) return false;
+    if (space1 == end) {
+        return false;
+    }
     Method m = methodFromString(std::string(begin, space1));
-    if (m == Method::kInvalid) return false;
+    if (m == Method::kInvalid) {
+        return false;
+    }
     request_.setMethod(m);
 
     const char* target = space1 + 1;
     const char* space2 = std::find(target, end, ' ');
-    if (space2 == end) return false;
+    if (space2 == end) {
+        return false;
+    }
 
     // Split path and optional query.
     const char* q = std::find(target, space2, '?');
@@ -40,7 +48,9 @@ bool HttpContext::parseRequestLine(const char* begin, const char* end) {
     }
 
     std::string version(space2 + 1, end);
-    if (version != "HTTP/1.0" && version != "HTTP/1.1") return false;
+    if (version != "HTTP/1.0" && version != "HTTP/1.1") {
+        return false;
+    }
     request_.setVersion(version);
     return true;
 }
@@ -96,8 +106,9 @@ bool HttpContext::parseRequest(buffer::Buffer* buf) {
                     }
                     std::string key(buf->peek(), colon);
                     const char* vbegin = colon + 1;
-                    while (vbegin < crlf && *vbegin == ' ')
+                    while (vbegin < crlf && *vbegin == ' ') {
                         ++vbegin;  // trim SP
+                    }
                     request_.addHeader(std::move(key),
                                        std::string(vbegin, crlf));
                     header_bytes_ += (crlf + 2) - buf->peek();

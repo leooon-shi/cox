@@ -59,7 +59,9 @@ TEST(OverloadControlTest, AcceptRateLimitShedsAndNotifies) {
         // Very low budget: 2 tokens, ~0 refill during the test window.
         server.setAcceptRateLimit(/*qps=*/1, /*burst=*/2);
         server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
-            if (conn->connected()) accepted++;
+            if (conn->connected()) {
+                accepted++;
+            }
         });
         server.setOverloadCallback([&](const InetAddress&) { overloads++; });
         server.start();
@@ -67,7 +69,9 @@ TEST(OverloadControlTest, AcceptRateLimitShedsAndNotifies) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     // Fire many connections quickly; only ~burst should be admitted.
@@ -84,7 +88,9 @@ TEST(OverloadControlTest, AcceptRateLimitShedsAndNotifies) {
     EXPECT_GT(overloads.load(), 0);
     EXPECT_EQ(accepted.load() + overloads.load(), kNumClients);
 
-    for (int fd : clients) ::close(fd);
+    for (int fd : clients) {
+        ::close(fd);
+    }
     loop_ptr->quit();
     server_thread.join();
 }
@@ -124,7 +130,9 @@ TEST(OverloadControlTest, IngressBackpressurePausesAndResumes) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     int client = connectClient(kPort);
@@ -140,7 +148,9 @@ TEST(OverloadControlTest, IngressBackpressurePausesAndResumes) {
     // Resume reading; the buffered data should now be delivered.
     {
         std::lock_guard<std::mutex> lock(held_m);
-        if (held) held->startRead();
+        if (held) {
+            held->startRead();
+        }
     }
 
     for (int i = 0; i < 100 && bytes_seen.load() == 0; ++i) {

@@ -43,13 +43,19 @@ struct EchoServerThread {
             started = true;
             lp.loop();
         });
-        while (!started.load()) std::this_thread::sleep_for(1ms);
+        while (!started.load()) {
+            std::this_thread::sleep_for(1ms);
+        }
         std::this_thread::sleep_for(20ms);
     }
 
     void stop() {
-        if (loop) loop->quit();
-        if (thread.joinable()) thread.join();
+        if (loop) {
+            loop->quit();
+        }
+        if (thread.joinable()) {
+            thread.join();
+        }
     }
 };
 }  // namespace
@@ -86,7 +92,9 @@ TEST(TcpClientTest, ConnectAndEcho) {
         cli_started = true;
         loop.loop();
     });
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
 
     for (int i = 0; i < 200 && !got_reply.load(); ++i) {
         std::this_thread::sleep_for(5ms);
@@ -116,13 +124,17 @@ TEST(TcpClientTest, RetryUntilServerAvailable) {
         TcpClient client(&loop, server_addr, "retry-cli");
         client.enableRetry();
         client.setConnectionCallback([&](const TcpConnectionPtr& conn) {
-            if (conn->connected()) connected = true;
+            if (conn->connected()) {
+                connected = true;
+            }
         });
         client.connect();
         cli_started = true;
         loop.loop();
     });
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
 
     // Let the client fail at least once and enter backoff.
     std::this_thread::sleep_for(200ms);
@@ -180,7 +192,9 @@ TEST(TcpClientTest, FailsOverToReachableCandidate) {
         cli_started = true;
         loop.loop();
     });
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
 
     // Failover is immediate (no backoff), so a short window suffices. The
     // initial backoff delay is 500 ms; we expect to connect well under that.
@@ -217,7 +231,9 @@ TEST(TcpClientTest, FailsOverFromIpv6ToIpv4) {
             InetAddress("127.0.0.1", kPort)};
         TcpClient client(&loop, std::move(candidates), "v6v4-cli");
         client.setConnectionCallback([&](const TcpConnectionPtr& conn) {
-            if (conn->connected()) conn->send("x");
+            if (conn->connected()) {
+                conn->send("x");
+            }
         });
         client.setMessageCallback(
             [&](const TcpConnectionPtr&, buffer::Buffer* buf) {
@@ -228,7 +244,9 @@ TEST(TcpClientTest, FailsOverFromIpv6ToIpv4) {
         cli_started = true;
         loop.loop();
     });
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
 
     for (int i = 0; i < 60 && !got_reply.load(); ++i) {
         std::this_thread::sleep_for(5ms);

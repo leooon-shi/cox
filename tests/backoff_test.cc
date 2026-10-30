@@ -27,7 +27,9 @@ TEST(BackoffTest, ExponentialGrowth) {
 TEST(BackoffTest, CapsAtMax) {
     Backoff bo(100ms, 500ms, /*jitter=*/0.0);
     const std::string key = "k";
-    for (int i = 0; i < 20; ++i) bo.next(key);
+    for (int i = 0; i < 20; ++i) {
+        bo.next(key);
+    }
 
     EXPECT_EQ(bo.baseDelay(key), 500ms);  // capped
 }

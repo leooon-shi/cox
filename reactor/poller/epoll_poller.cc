@@ -16,17 +16,27 @@ namespace {
 // Translate the library's IOEvent bitmask into epoll event flags.
 uint32_t toEpollEvents(int events) {
     uint32_t ep = 0;
-    if (events & IO_READ) ep |= EPOLLIN;
-    if (events & IO_WRITE) ep |= EPOLLOUT;
+    if (events & IO_READ) {
+        ep |= EPOLLIN;
+    }
+    if (events & IO_WRITE) {
+        ep |= EPOLLOUT;
+    }
     return ep;
 }
 
 // Translate epoll event flags back into the library's IOEvent bitmask.
 int toIOEvents(uint32_t ep) {
     int events = IO_NONE;
-    if (ep & (EPOLLERR | EPOLLHUP)) events |= IO_ERROR;
-    if (ep & (EPOLLIN | EPOLLPRI)) events |= IO_READ;
-    if (ep & EPOLLOUT) events |= IO_WRITE;
+    if (ep & (EPOLLERR | EPOLLHUP)) {
+        events |= IO_ERROR;
+    }
+    if (ep & (EPOLLIN | EPOLLPRI)) {
+        events |= IO_READ;
+    }
+    if (ep & EPOLLOUT) {
+        events |= IO_WRITE;
+    }
     return events;
 }
 

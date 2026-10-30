@@ -46,7 +46,9 @@ TEST(FileWatcherTest, DirectoryChangeFiresCallback) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     // Create a file in the watched directory -> should fire.
@@ -81,7 +83,9 @@ TEST(FileWatcherTest, AtomicSymlinkSwapDetected) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     // Create ..data_tmp then rename to ..data (the K8s pattern).

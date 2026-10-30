@@ -77,7 +77,9 @@ TEST(HttpsTest, ServerAndClientEndToEnd) {
         loop.loop();
     });
 
-    while (!srv_started.load()) std::this_thread::sleep_for(1ms);
+    while (!srv_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(30ms);
 
     std::atomic<bool> got{false};
@@ -104,9 +106,12 @@ TEST(HttpsTest, ServerAndClientEndToEnd) {
         loop.loop();
     });
 
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
-    for (int i = 0; i < 300 && !got.load(); ++i)
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
+    for (int i = 0; i < 300 && !got.load(); ++i) {
         std::this_thread::sleep_for(5ms);
+    }
 
     EXPECT_TRUE(got.load());
     EXPECT_EQ(status, 200);

@@ -81,19 +81,25 @@ void pipe(const TcpConnectionPtr& from, const TcpConnectionPtr& to, size_t hwm,
                 self->shutdown();
             }
         });
-    if (!backpressure) return;
+    if (!backpressure) {
+        return;
+    }
     // When `to` backs up past hwm, stop reading from `from`.
     to->setHighWaterMarkCallback(
         [weak_from = std::weak_ptr<net::TcpConnection>(from)](
             const TcpConnectionPtr&, size_t) {
-            if (auto f = weak_from.lock()) f->stopRead();
+            if (auto f = weak_from.lock()) {
+                f->stopRead();
+            }
         },
         hwm);
     // When `to` has flushed everything, resume reading from `from`.
     to->setWriteCompleteCallback([weak_from = std::weak_ptr<net::TcpConnection>(
                                       from)](const TcpConnectionPtr&) {
         if (auto f = weak_from.lock()) {
-            if (!f->isReading()) f->startRead();
+            if (!f->isReading()) {
+                f->startRead();
+            }
         }
     });
 }
@@ -174,11 +180,15 @@ int main(int argc, char** argv) {
     loop.runEvery(1000, [&]() {
         std::printf("pairs=%zu rss=%ld KiB\n", upstreams.size(), rssKb());
         std::fflush(stdout);
-        if (g_stop) loop.quit();
+        if (g_stop) {
+            loop.quit();
+        }
     });
 
     loop.runEvery(100, [&]() {
-        if (g_stop) loop.quit();
+        if (g_stop) {
+            loop.quit();
+        }
     });
 
     loop.loop();

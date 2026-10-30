@@ -49,13 +49,19 @@ public:
             ready_ = true;
             loop.loop();
         });
-        while (!ready_.load()) std::this_thread::sleep_for(1ms);
+        while (!ready_.load()) {
+            std::this_thread::sleep_for(1ms);
+        }
         std::this_thread::sleep_for(20ms);  // let the listen socket settle
     }
 
     void stop() {
-        if (loop_) loop_->runInLoop([this] { loop_->quit(); });
-        if (thread_.joinable()) thread_.join();
+        if (loop_) {
+            loop_->runInLoop([this] { loop_->quit(); });
+        }
+        if (thread_.joinable()) {
+            thread_.join();
+        }
     }
 
 private:
@@ -171,9 +177,12 @@ TEST(DnsClientTest, PoolQueuesRequestsDuringResolution) {
         for (int i = 0; i < 3; ++i) {
             pool.request(req,
                          [&](const HttpResponse& resp, const std::string& err) {
-                             if (!err.empty() && first_error.empty())
+                             if (!err.empty() && first_error.empty()) {
                                  first_error = err;
-                             if (resp.statusCode() == 200) ++completed;
+                             }
+                             if (resp.statusCode() == 200) {
+                                 ++completed;
+                             }
                              if (completed.load() == 3) {
                                  resolved_after = pool.resolved();
                                  finished = true;

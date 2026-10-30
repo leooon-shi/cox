@@ -41,7 +41,9 @@ int main() {
     buffer::Buffer big;
     for (int i = 0; i < kIters; ++i) {
         big.append(chunk);
-        if (big.readableBytes() > (8u << 20)) big.retrieveAll();  // cap ~8MB
+        if (big.readableBytes() > (8u << 20)) {
+            big.retrieveAll();  // cap ~8MB
+        }
     }
     auto t3 = steady_clock::now();
     double s2 = duration_cast<duration<double>>(t3 - t2).count();

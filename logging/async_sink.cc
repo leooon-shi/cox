@@ -21,7 +21,9 @@ AsyncSink::~AsyncSink() {
 void AsyncSink::append(const std::string& line) {
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (!running_) return;
+        if (!running_) {
+            return;
+        }
         // Bounded: shed rather than block a (possibly event-loop) producer.
         if (current_.size() + writing_.size() >= max_lines_) {
             dropped_.fetch_add(1);
@@ -53,23 +55,31 @@ void AsyncSink::flush() {
 void AsyncSink::stop() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (!running_) return;
+        if (!running_) {
+            return;
+        }
         running_ = false;
     }
     not_empty_.notify_all();
     drained_.notify_all();
-    if (thread_.joinable()) thread_.join();
+    if (thread_.joinable()) {
+        thread_.join();
+    }
 
     // Drain anything the writer did not get to, so shutdown loses nothing.
     std::vector<std::string> leftover;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         leftover.swap(writing_);
-        for (auto& l : current_) leftover.push_back(std::move(l));
+        for (auto& l : current_) {
+            leftover.push_back(std::move(l));
+        }
         current_.clear();
     }
 
-    for (const auto& line : leftover) downstream_->append(line);
+    for (const auto& line : leftover) {
+        downstream_->append(line);
+    }
     downstream_->flush();
 }
 
@@ -104,7 +114,9 @@ void AsyncSink::writerThread() {
             }
         }
 
-        for (const auto& line : batch) downstream_->append(line);
+        for (const auto& line : batch) {
+            downstream_->append(line);
+        }
         // Make shedding visible in the log itself, not just via the counter.
         if (drops_to_report > 0) {
             downstream_->append("AsyncSink: dropped " +
@@ -116,7 +128,9 @@ void AsyncSink::writerThread() {
 
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            if (current_.empty() && writing_.empty()) drained_.notify_all();
+            if (current_.empty() && writing_.empty()) {
+                drained_.notify_all();
+            }
         }
     }
 }

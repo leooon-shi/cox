@@ -68,7 +68,9 @@ TEST(TcpServerTest, EchoRoundTrip) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     int client = connectClient(kPort);
@@ -109,7 +111,9 @@ TEST(TcpServerTest, ConnectionCallbackFires) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     int client = connectClient(kPort);
@@ -142,7 +146,9 @@ TEST(TcpServerTest, MultipleClientsEcho) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     constexpr int kNumClients = 4;
@@ -192,7 +198,9 @@ TEST(TcpServerTest, IdleTimeoutClosesSilentClient) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     int client = connectClient(kPort);
@@ -243,7 +251,9 @@ TEST(TcpServerTest, IdleTimeoutResetOnActivity) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     // Connect but send nothing (slowloris-style silent hold).
@@ -294,7 +304,9 @@ TEST(TcpServerTest, MaxConnectionsCap) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     // Open more clients than the cap allows.
@@ -338,7 +350,9 @@ TEST(TcpServerTest, WriteToClosedClientDoesNotCrash) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     int client = connectClient(kPort);
@@ -378,7 +392,9 @@ TEST(TcpServerTest, ServerDetectsClientClose) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     int client = connectClient(kPort);
@@ -414,7 +430,9 @@ TEST(TcpServerTest, MultiThreadedEcho) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(30ms);
 
     // Many concurrent clients; each should get its own message echoed back,
@@ -472,7 +490,9 @@ TEST(TcpServerTest, MultiThreadedConnectionsUseDistinctLoops) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(30ms);
 
     // Enough clients to very likely hit all 3 io loops via round-robin.

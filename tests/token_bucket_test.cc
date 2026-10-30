@@ -54,7 +54,9 @@ TEST(TokenBucketTest, AverageRateIsBounded) {
     int admitted = 0;
     auto start = std::chrono::steady_clock::now();
     while (std::chrono::steady_clock::now() - start < 100ms) {
-        if (tb.tryAcquire()) admitted++;
+        if (tb.tryAcquire()) {
+            admitted++;
+        }
         std::this_thread::sleep_for(200us);
     }
     // Expected ~ 200*0.1 + 10 = 30, allow generous slack for scheduling.

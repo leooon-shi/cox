@@ -22,7 +22,9 @@ public:
           sequence_(++s_num_created_) {}
 
     void run() const {
-        if (callback_) callback_();
+        if (callback_) {
+            callback_();
+        }
     }
 
     logging::Timestamp expiration() const { return expiration_; }

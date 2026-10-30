@@ -62,7 +62,9 @@ TEST(HardeningTest, MaxConnectionAgeRecyclesConnection) {
         TcpServer server(&loop, addr, "maxage");
         server.setMaxConnectionAge(1);  // 1 second lifetime
         server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
-            if (!conn->connected()) disconnects++;
+            if (!conn->connected()) {
+                disconnects++;
+            }
         });
         server.setMessageCallback(
             [](const TcpConnectionPtr& conn, buffer::Buffer* buf) {
@@ -74,7 +76,9 @@ TEST(HardeningTest, MaxConnectionAgeRecyclesConnection) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     int client = connectClient(kPort);
@@ -87,8 +91,9 @@ TEST(HardeningTest, MaxConnectionAgeRecyclesConnection) {
            disconnects.load() == 0) {
         ASSERT_TRUE(test_util::sendAll(client, "x", 1));
         char b[8];
-        if (waitReadable(client, 100))
+        if (waitReadable(client, 100)) {
             test_util::drainSome(client, b, sizeof(b));
+        }
         std::this_thread::sleep_for(100ms);
     }
 
@@ -114,7 +119,9 @@ TEST(HardeningTest, MaxInputBufferClosesFlood) {
         TcpServer server(&loop, addr, "maxinput");
         server.setMaxInputBufferSize(4096);  // small cap.
         server.setConnectionCallback([&](const TcpConnectionPtr& conn) {
-            if (!conn->connected()) disconnects++;
+            if (!conn->connected()) {
+                disconnects++;
+            }
         });
         // Message callback that does NOT consume the buffer -> it grows.
         server.setMessageCallback([](const TcpConnectionPtr&, buffer::Buffer*) {
@@ -126,7 +133,9 @@ TEST(HardeningTest, MaxInputBufferClosesFlood) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     int client = connectClient(kPort);
@@ -173,7 +182,9 @@ TEST(HardeningTest, WriteTimeoutClosesSlowConsumer) {
         loop.loop();
     });
 
-    while (!started.load()) std::this_thread::sleep_for(1ms);
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(20ms);
 
     // Connect but never read: the server's socket send buffer fills, output

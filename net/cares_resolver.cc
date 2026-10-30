@@ -46,7 +46,9 @@ public:
     }
 
     ~Impl() {
-        if (channel_) ares_destroy(channel_);
+        if (channel_) {
+            ares_destroy(channel_);
+        }
         // Channels are cleaned up as they're removed.
     }
 
@@ -92,7 +94,9 @@ private:
             std::string err = ares_strerror(status);
             self->loop_->runInLoop(
                 [cb, err]() { cb(std::vector<InetAddress>(), err); });
-            if (result) ares_freeaddrinfo(result);
+            if (result) {
+                ares_freeaddrinfo(result);
+            }
             return;
         }
 
@@ -132,7 +136,9 @@ private:
         for (int i = 0; i < ARES_GETSOCK_MAXNUM; ++i) {
             bool readable = ARES_GETSOCK_READABLE(bitmask, i);
             bool writable = ARES_GETSOCK_WRITABLE(bitmask, i);
-            if (!readable && !writable) continue;
+            if (!readable && !writable) {
+                continue;
+            }
             int fd = socks[i];
             auto it = channels_.find(fd);
             std::unique_ptr<reactor::Channel> ch;
@@ -153,14 +159,16 @@ private:
             }
 
             // Set interest.
-            if (readable)
+            if (readable) {
                 ch->enableRead();
-            else
+            } else {
                 ch->disableRead();
-            if (writable)
+            }
+            if (writable) {
                 ch->enableWrite();
-            else
+            } else {
                 ch->disableWrite();
+            }
 
             next[fd] = std::move(ch);
         }
@@ -176,10 +184,14 @@ private:
     void armTimer() {
         struct timeval tv;
         struct timeval* t = ares_timeout(channel_, nullptr, &tv);
-        if (!t) return;
+        if (!t) {
+            return;
+        }
         uint64_t ms =
             static_cast<uint64_t>(t->tv_sec) * 1000 + t->tv_usec / 1000;
-        if (ms == 0) ms = 1;
+        if (ms == 0) {
+            ms = 1;
+        }
 
         auto self = shared_from_this();
         loop_->runAfter(ms, [self]() {

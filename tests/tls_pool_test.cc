@@ -130,7 +130,9 @@ TEST(TlsPoolTest, ReusesTlsConnectionAcrossRequests) {
         loop.loop();
     });
 
-    while (!srv_started.load()) std::this_thread::sleep_for(1ms);
+    while (!srv_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(30ms);
 
     std::atomic<int> completed{0};
@@ -168,7 +170,9 @@ TEST(TlsPoolTest, ReusesTlsConnectionAcrossRequests) {
         (void)pool;
     });
 
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
 
     for (int i = 0; i < 400 && completed.load() < 3; ++i) {
         std::this_thread::sleep_for(5ms);
@@ -211,8 +215,9 @@ TEST(MultiOriginPoolTest, RoutesToDistinctOrigins) {
     std::thread ta = make_server(kPortA, "A", &a_started, &a_loop);
     std::thread tb = make_server(kPortB, "B", &b_started, &b_loop);
 
-    while (!a_started.load() || !b_started.load())
+    while (!a_started.load() || !b_started.load()) {
         std::this_thread::sleep_for(1ms);
+    }
     std::this_thread::sleep_for(30ms);
 
     std::atomic<int> got{0};
@@ -225,14 +230,22 @@ TEST(MultiOriginPoolTest, RoutesToDistinctOrigins) {
 
         pool->request("127.0.0.1", kPortA, getReq("/"),
                       [&](const HttpResponse& resp, const std::string& err) {
-                          if (err.empty()) body_a = resp.body();
-                          if (++got == 2) loop.quit();
+                          if (err.empty()) {
+                              body_a = resp.body();
+                          }
+                          if (++got == 2) {
+                              loop.quit();
+                          }
                       });
 
         pool->request("127.0.0.1", kPortB, getReq("/"),
                       [&](const HttpResponse& resp, const std::string& err) {
-                          if (err.empty()) body_b = resp.body();
-                          if (++got == 2) loop.quit();
+                          if (err.empty()) {
+                              body_b = resp.body();
+                          }
+                          if (++got == 2) {
+                              loop.quit();
+                          }
                       });
 
         // Two distinct origins -> two sub-pools.
@@ -242,7 +255,9 @@ TEST(MultiOriginPoolTest, RoutesToDistinctOrigins) {
         (void)pool;
     });
 
-    while (!cli_started.load()) std::this_thread::sleep_for(1ms);
+    while (!cli_started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
     for (int i = 0; i < 400 && got.load() < 2; ++i) {
         std::this_thread::sleep_for(5ms);
     }

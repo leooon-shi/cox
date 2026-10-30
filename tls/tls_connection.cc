@@ -38,11 +38,15 @@ void TlsConnection::start() {
     std::weak_ptr<TlsConnection> weak = weak_from_this();
     conn_->setMessageCallback(
         [weak](const net::TcpConnectionPtr&, buffer::Buffer* buf) {
-            if (auto self = weak.lock()) self->onTcpMessage(buf);
+            if (auto self = weak.lock()) {
+                self->onTcpMessage(buf);
+            }
         });
     conn_->setConnectionCallback([weak](const net::TcpConnectionPtr& c) {
         if (c->connected()) return;
-        if (auto self = weak.lock()) self->onTcpClose();
+        if (auto self = weak.lock()) {
+            self->onTcpClose();
+        }
     });
 
     // A TLS client drives the handshake first (ClientHello); a server waits for
@@ -113,7 +117,9 @@ void TlsConnection::onTcpMessage(buffer::Buffer* buf) {
 }
 
 void TlsConnection::onTcpClose() {
-    if (closed_) return;
+    if (closed_) {
+        return;
+    }
     closed_ = true;
     if (close_callback_) {
         close_callback_(shared_from_this());
@@ -144,7 +150,9 @@ void TlsConnection::send(const std::string& data) {
 }
 
 void TlsConnection::shutdown() {
-    if (closed_) return;
+    if (closed_) {
+        return;
+    }
     engine_.shutdown();  // queue close_notify
     flushOutbound();
     conn_->shutdown();  // half-close the TCP side after flushing
