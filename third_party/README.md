@@ -8,16 +8,16 @@ dependency so the tree stays consistent as the dependency count grows
 
 ## Principles
 
-1. **Pin by commit, not by branch.** A submodule records as exact SHA, so every
+1. **Pin by commit, not by branch.** A submodule records an exact SHA, so every
    checkout and every CI run builds against identical source. Never track a
    moving branch.
 2. **Depend on targets, not paths.** The rest of the tree links
    `GTest::gtest_main`, `nghttp2::nghttp2`, etc. -- never a relative path into
-   `third_part/`. This keeps the integration method (submodule vs system
+   `third_party/`. This keeps the integration method (submodule vs system
    package vs ExternalProject) swappable.
-3. **Isolate warning.** Vendored code must no inherit Cox's `-Werror`. The
+3. **Isolate warnings.** Vendored code must not inherit Cox's `-Werror`. The
    `cox_add_vendored` helper clears and restores Cox's directory
-   `COMPILE_OPTIONS` around each `add_subdirectory`. Do not hand-inline this.
+   `COMPILE_OPTIONS` around each `add_subdirectory()`. Do not hand-inline this.
 4. **Optional deps are feature-gated.** Anything that is not core (HTTP/2) sits
    behind a `COX_WITH_*` option, defaulted OFF, so a plain build needs none of
    them.
@@ -27,19 +27,19 @@ dependency so the tree stays consistent as the dependency count grows
 ## Adding a CMake-native dependency (e.g. nghttp2)
 
 ```bash
-git submodule add https://github.com/nghttp2/nghttp2.git third_part/nghttp2
-cd third_part/nghttp2 && git checkout <release-tag-sha> && cd -
+git submodule add https://github.com/nghttp2/nghttp2.git third_party/nghttp2
+cd third_party/nghttp2 && git checkout <release-tag-sha> && cd -
 git add .gitmodules third_part/nghttp2
 ```
 
 Then, in `third_part/CMakeLists.txt`, inside the relevant `COX_WITH_*` block:
 
 ```cmake
-set(ENABLE_LIB_ONLY ON CACHE BOOL "" FORCE)     # trim the dependency's own apps/tests
+set(ENABLE_LIB_ONLY ON CACHE BOOL "" FORCE)   # trim the dependency's own apps/tests
 cox_add_vendored(nghttp2 EXCLUDE_FROM_ALL)
 ```
 
-Consumers then `target_link_libraries(http PRIVATE nghttp2::nghttp2).
+Consumers then `target_link_libraries(http PRIVATE nghttp2::nghttp2)`.
 
 ## Non-CMake dependencies (autotools, Rust, prebuilt)
 
@@ -53,7 +53,7 @@ one wiring point.
 ## Updating a dependency
 
 ```bash
-cd third_part/<de>
+cd third_party/<dep>
 git fetch origin
 git checkout <new-release-sha>
 cd -
@@ -67,7 +67,7 @@ The bump is one reviewable commit that moves only the recorded SHA.
 
 ```bash
 git clone --recurse-submodules <url>
-# or, after a plain close
+# or, after a plain clone:
 git submodule update --init --recursive
 ```
 

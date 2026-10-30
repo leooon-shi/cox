@@ -1,6 +1,6 @@
 # CoxAddVendored.cmake
 #
-# One place for the rule that vendored third-party code must NOT inheirt Cox's
+# One place for the rule that vendored third-party code must NOT inherit Cox's
 # own warning policy. -Werror on code we do not control means a compiler or
 # dependency upgrade can break our build for reasons unrelated to our sources.
 #

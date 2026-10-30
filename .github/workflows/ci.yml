@@ -127,11 +127,11 @@ jobs:
           # list from compile_commands.json (not `git ls-files`) excludes
           # examples (a separate preset) and platform-specific sources such as
           # kqueue_poller.cc (macOS/BSD), which would otherwise produce spurious
-          # "file not found" errors. Vendored code under third_part/ is
+          # "file not found" errors. Vendored code under third_party/ is
           # filtered out.
           files=$(sed -n 's/.*"file": "\(.*\)".*/\1/p' \
-                    build/clang-debug/compile_commands.json |
-                    grep -v /third_party/' | sort -u)
+                    build/clang-debug/compile_commands.json \
+                  | grep -v /third_party/' | sort -u)
           echo "checking $(echo "$files" | wc -l) files"
           clang-tidy -p build/clang-debug $files
   sanitizers:

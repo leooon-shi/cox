@@ -13,7 +13,7 @@ option(BUILD_TESTS "To enable compile tests" OFF)
 # build pulls in no extra dependencies. See third_party/README.md.
 opton(COX_WITH_HTTP2 "Enable HTTP/2 support via nghttp2" OFF)
 
-# Project-local CMake modules (cox_add_vendored, ...)
+# Project-local CMake modules (cox_add_vendored, ...).
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR/cmake}")
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -150,6 +150,10 @@ endif()
 # Wire in third-party dependencies from one place (see third_party/README.md).
 set(COX_THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_part")
 add_subdirectory(third_part)
+
+if (BUILD_TESTS STREQUAL ON)
+    add_subdirectory(tests)
+endif()
 
 if (BUILD_EXAMPLES STREQUAL ON)
     # Add examples

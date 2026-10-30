@@ -95,7 +95,9 @@ void runClient(uint16_t port, size_t msg_size, std::atomic<bool>* stop,
 }
 
 double percentile(std::vector<double>& v, double p) {
-    if (v.empty()) return 0;
+    if (v.empty()) {
+        return 0;
+    }
     size_t idx = static_cast<size_t>(p * (v.size() - 1));
     std::nth_element(v.begin(), v.begin() + idx, v.end());
     return v[idx];
@@ -146,7 +148,9 @@ int main(int argc, char* argv[]) {
 
     std::this_thread::sleep_for(seconds(duration_s));
     stop = true;
-    for (auto& c : clients) c.join();
+    for (auto& c : clients) {
+        c.join();
+    }
     auto bench_end = Clock::now();
 
     // ---- Aggregate ----

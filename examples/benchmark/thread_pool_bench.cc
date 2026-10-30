@@ -106,7 +106,9 @@ double runOnce(int num_threads, size_t batch_size, int num_tasks,
         producers.emplace_back(producer,
                                per_producer + (p < remainder ? 1 : 0));
     }
-    for (auto& t : producers) t.join();
+    for (auto& t : producers) {
+        t.join();
+    }
     pool.stop();  // drains all queued tasks before joining
     auto t1 = steady_clock::now();
 
@@ -140,7 +142,9 @@ int main(int argc, char** argv) {
     double baseline_s = 0.0;  // batch-1 is the one-lock-per-task reference
     for (size_t batch : batch_sizes) {
         double s = runOnce(threads, batch, num_tasks, producers);
-        if (batch == 1) baseline_s = s;
+        if (batch == 1) {
+            baseline_s = s;
+        }
         double tasks_per_s = static_cast<double>(num_tasks) / s;
         double speedup = baseline_s > 0.0 ? baseline_s / s : 1.0;
         std::printf("%5zu   %10.4f   %12.0f %6.2fx\n", batch, s, tasks_per_s,
