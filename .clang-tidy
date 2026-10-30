@@ -37,7 +37,7 @@
 #   braces, so the two tools never disagree.
 #
 # MAINTENANCE
-#   Apply fixes in place after a large-merge (over DB files only):
+#   Apply fixes in place after a large merge (over DB files only):
 #     clang-tidy -p build/examples --fix \
 #       $(sed -n 's/.*"file": "\(.*\)".*/\1/p' \
 #            build/examples/compile_commands.json | grep -v /third_party/)

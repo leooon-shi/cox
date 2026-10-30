@@ -22,13 +22,13 @@ function(cox_add_vendored _name)
     set(oneValue SOURCE_DIR BINARY_DIR)
     cmake_parse_arguments(ARG "${options}" "${oneValue}" "" ${ARGN})
 
-    if (NOT ARG_SOURCE_DIR)
+    if(NOT ARG_SOURCE_DIR)
         set(ARG_SOURCE_DIR "${COX_THIRD_PARTY_DIR}/${_name}")
     endif()
 
-    if (NOT EXISTS "${ARG_SOURCE_DIR}/CMakeLists.txt}")
+    if(NOT EXISTS "${ARG_SOURCE_DIR}/CMakeLists.txt}")
         message(FATAL_ERROR
-            "Cox_add_vendored(${_name}): '${ARG_SOURCE_DIR}/CMakeLists.txt' not"
+            "cox_add_vendored(${_name}): '${ARG_SOURCE_DIR}/CMakeLists.txt' not"
             "found. Did you run `git submodule update --init --recursive`?")
     endif()
 

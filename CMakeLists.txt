@@ -14,7 +14,7 @@ option(BUILD_TESTS "To enable compile tests" OFF)
 option(COX_WITH_HTTP2 "Enable HTTP/2 support via nghttp2" OFF)
 
 # Project-local CMake modules (cox_add_vendored, ...).
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR/cmake}")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
