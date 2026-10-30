@@ -2,7 +2,7 @@
 #
 # This file is the SIGNLE place that wires third_party code into the build.
 # Each dependency is either always-on (test infrastructure) or feature-gated
-# behind a COX_WITH_* option so optional dependencies (HTTP2/2) are opt-in and
+# behind a COX_WITH_* option so optional dependencies (HTTP/2) are opt-in and
 # never required to build the core library.
 #
 # Integration policy (see third_party/README.md for the full rationale):

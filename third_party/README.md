@@ -16,7 +16,7 @@ dependency so the tree stays consistent as the dependency count grows
    `third_party/`. This keeps the integration method (submodule vs system
    package vs ExternalProject) swappable.
 3. **Isolate warnings.** Vendored code must not inherit Cox's `-Werror`. The
-   `cox_add_vendored` helper clears and restores Cox's directory
+   `cox_add_vendored()` helper clears and restores Cox's directory
    `COMPILE_OPTIONS` around each `add_subdirectory()`. Do not hand-inline this.
 4. **Optional deps are feature-gated.** Anything that is not core (HTTP/2) sits
    behind a `COX_WITH_*` option, defaulted OFF, so a plain build needs none of
@@ -29,10 +29,10 @@ dependency so the tree stays consistent as the dependency count grows
 ```bash
 git submodule add https://github.com/nghttp2/nghttp2.git third_party/nghttp2
 cd third_party/nghttp2 && git checkout <release-tag-sha> && cd -
-git add .gitmodules third_part/nghttp2
+git add .gitmodules third_party/nghttp2
 ```
 
-Then, in `third_part/CMakeLists.txt`, inside the relevant `COX_WITH_*` block:
+Then, in `third_party/CMakeLists.txt`, inside the relevant `COX_WITH_*` block:
 
 ```cmake
 set(ENABLE_LIB_ONLY ON CACHE BOOL "" FORCE)   # trim the dependency's own apps/tests

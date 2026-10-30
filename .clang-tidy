@@ -67,4 +67,6 @@ WarningsAsErrors: 'readability-*'
 # you must support clang-tidy < 14, replace with an explicit allowlist).
 HeaderFilterRegex: '^(?!.*/thrid_party/).*$'
 
+# When a fix inserts braces, reformat the touched region with the project's
+# .clang-format rules so --fix output needs no manul cleanup.
 FormatStyle: file

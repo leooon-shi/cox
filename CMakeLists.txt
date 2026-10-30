@@ -11,7 +11,7 @@ option(BUILD_TESTS "To enable compile tests" OFF)
 
 # Optional, feature-gated third-party integrations. Default OFF so a plain
 # build pulls in no extra dependencies. See third_party/README.md.
-opton(COX_WITH_HTTP2 "Enable HTTP/2 support via nghttp2" OFF)
+option(COX_WITH_HTTP2 "Enable HTTP/2 support via nghttp2" OFF)
 
 # Project-local CMake modules (cox_add_vendored, ...).
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR/cmake}")

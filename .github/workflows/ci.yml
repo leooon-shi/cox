@@ -131,7 +131,7 @@ jobs:
           # filtered out.
           files=$(sed -n 's/.*"file": "\(.*\)".*/\1/p' \
                     build/clang-debug/compile_commands.json \
-                  | grep -v /third_party/' | sort -u)
+                  | grep -v /third_party/ | sort -u)
           echo "checking $(echo "$files" | wc -l) files"
           clang-tidy -p build/clang-debug $files
   sanitizers:

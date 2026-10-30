@@ -7,7 +7,7 @@
 # Directory COMPILE_OPTIONS are captured by a subdirectory when it is added, so
 # we clear them before add_subdirectory() and restore afterwards. This used to
 # be hand-inlined around googletest; centralising it keeps every future
-# dpendency (googletest, nghttp2, ...) consistent and keeps the top
+# dependency (googletest, nghttp2, ...) consistent and keeps the top
 # CMakeLists readable.
 #
 # Usage:
