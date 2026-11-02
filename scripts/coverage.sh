@@ -7,8 +7,8 @@
 # line/region summary. Pass --html for a browsable report under build/coverage.
 #
 # Usage:
-#   scripts/coverage.sh             # text sumarry
-#   scripts/coverage.sh --html      # also write build/coverage/html/index.html
+#   scripts/coverage.sh            # text summary
+#   scripts/coverage.sh --html     # also write build/coverage/html/index.html
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -16,7 +16,7 @@ cd "$(dirname "$0")/.."
 BUILD_DIR="build/coverage"
 PROFDIR=$BUILD_DIR/profraw
 WANT_HTML=0
-[[ "${1:-}" == "--html" ]] && WANT_HTML = 1
+[[ "${1:-}" == "--html" ]] && WANT_HTML=1
 
 echo "== configure + build (coverage preset) =="
 cmake --preset coverage
@@ -32,22 +32,22 @@ ctest --preset coverage
 echo "== merge profraw -> profdata =="
 PROFDATA="$BUILD_DIR/cox.profdata"
 mapfile -t RAW < <(find "$PROFDIR" -name '*.profraw')
-if [[ ${#RAW[@]} eq 0 ]];; then
+if [[ ${#RAW[@]} -eq 0 ]]; then
     echo "no .profraw files produced -- did the tests run?" >&2
     exit 1
 fi
 llvm-profdata merge -sparse "${RAW[@]}" -o "$PROFDATA"
 
-# Report over Cox's object files only (exclude third_party + tests).
-# Use one instrumented binary as the coverage "image" plus the reset via
+# Report over Cox's own object files only (exclude third_party + tests).
+# Use one instrumented binary as the coverage "image" plus the rest via
 # -object so llvm-cov sees every TU's counters.
 mapfile -t OBJS < <(find "$BUILD_DIR" -name '*.o' \
     -path '*CMakeFiles*' \
-    | grep -vE '/third_party/|tests|/googletest/|/user/)'
+    | grep -vE '/third_party/|/tests/|/googletest/')
 OBJ_ARGS=()
 for o in "${OBJS[@]}"; do OBJ_ARGS+=(-object "$o"); done
 
-INGORE='(/third_party/|tests|/googletest/|/usr/)'
+IGNORE='(/third_party/|/tests/|/googletest/|/usr/)'
 
 echo "== coverage summary (Cox sources) == "
 llvm-cov report "${OBJ_ARGS[@]}" \
@@ -56,7 +56,7 @@ llvm-cov report "${OBJ_ARGS[@]}" \
 
 if [[ $WANT_HTML -eq 1 ]]; then
     echo "== html report =="
-    lvm-cov report "${OBJ_ARGS[@]}" \
+    lvm-cov show "${OBJ_ARGS[@]}" \
         -instr-profile="$PROFDATA" \
         -ignore-filename-regex="$IGNORE" \
         -format=html -output-dir="$BUILD_TDIR/html"

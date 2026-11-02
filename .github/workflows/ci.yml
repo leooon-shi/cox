@@ -153,7 +153,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-          cmake ninja-build clang llvm libssl-dev libc-ares-dev openssl
+            cmake ninja-build clang llvm libssl-dev libc-ares-dev openssl
       - name: Measure coverage
         run: ./scripts/coverage.sh
 

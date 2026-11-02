@@ -5,7 +5,7 @@
 #
 # Design:
 #   * Each module calls cox_install_module(<target> HEADERS <h1> <h2> ...).
-#     That swtiches the target's include directories to the BUILD_INTERFACE /
+#     That switches the target's include directories to the BUILD_INTERFACE /
 #     INSTALL_INTERFACE form (so the same target works in-tree and installed),
 #     adds the target to the shared CoxTargets export set, and installes its
 #     headers under include/cox/ preserving any subdirectory (e.g. poller/).
@@ -14,7 +14,7 @@
 #     cox:: ALIAS namespace for in-tree consumers.
 #
 # Headers are installed FLAT under a single include/cox/ root (preserving
-# relative subdirs), matching how the sources include them ("event_loop.h"
+# relative subdirs), matching how the sources include them ("event_loop.h",
 # "poller/epoll_poller.h"). Consumers add one include dir: <prefix>/include/cox.
 
 include(GNUInstallDirs)
@@ -26,7 +26,7 @@ function(cox_install_module _target)
     
     # Export under the short name: internal target cox_http -> cox::http (not
     # cox::cox_http). EXPORT_NAME strips the cox_ prefix for the public alias
-    # while keepting the internal target name collision-free.
+    # while keeping the internal target name collision-free.
     string(REGEX REPLACE "^cox_" "" _short "${_target}")
     set_target_properties(${_target} PROPERTIES EXPORT_NAME "${_short}")
 
@@ -34,8 +34,8 @@ function(cox_install_module _target)
     # installed. Without the generator-expression split, an installed target
     # would still point at the (absent) build-tree path.
     target_include_directories(${_target} PUBLIC
-        $<BUILD_INTERFACE::${CMAKE_CURRENT_SOURCE_DIR}>
-        $<INSTALL_INTERFACE::${CMAKE_INSTALL_INCLUDEDIR}/cox>)
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/cox>)
 
     # Add to the shared export set; install the archive.
     install(TARGETS ${_target}
@@ -58,7 +58,7 @@ function(cox_install_package)
 
     set(_cmake_dir "${CMAKE_INSTALL_LIBDIR}/cmake/Cox")
 
-    # Export the targets under the cox:: namespace for install consumers
+    # Export the targets under the cox:: namespace for installed consumers.
     install(EXPORT CoxTargets
             FILE CoxTargets.cmake
             NAMESPACE cox::
@@ -66,7 +66,7 @@ function(cox_install_package)
 
     # Generate CoxConfig.cmake from the template; it re-finds transitive
     # external dependencies (OpenSSL always; c-ares when Cox was built with it)
-    # before including the exported targets
+    # before including the exported targets.
     configure_package_config_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/CoxConfig.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/CoxConfig.cmake"
@@ -76,10 +76,8 @@ function(cox_install_package)
         "${CMAKE_CURRENT_BINARY_DIR}/CoxConfigVersion.cmake"
         VERSION "${PROJECT_VERSION}"
         COMPATIBILITY SameMajorVersion)
-    
     install(FILES
             "${CMAKE_CURRENT_BINARY_DIR}/CoxConfig.cmake"
             "${CMAKE_CURRENT_BINARY_DIR}/CoxConfigVersion.cmake"
             DESTINATION "${_cmake_dir}")
 endfunction()
-

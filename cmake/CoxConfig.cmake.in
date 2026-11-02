@@ -7,7 +7,7 @@
 # Without this, consuming CoxTargets.cmake would reference targets that have
 # not been defined in the consumer's project.
 
-include (CMakeFindDependencyMacro)
+include(CMakeFindDependencyMacro)
 
 # TLS is a core capability; OpenSSL is always required.
 find_dependency(Threads)
@@ -17,7 +17,7 @@ find_dependency(OpenSSL)
 # The flag is baked in at configure time via @COX_HAVE_CARES@.
 if(@COX_HAVE_CARES@)
     # c-ares has no standard config package name across distros; the library
-    # was found by path at build time. Consumers linkng cox_net inerit the
+    # was found by path at build time. Consumers linking cox_net inherit the
     # absolute path recorded in the export set, so no re-find is required here.
 endif()
 
