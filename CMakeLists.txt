@@ -166,7 +166,7 @@ add_subdirectory(http)
 
 # Namespaced ALIAS targets so in-tree consumers (examples/tests) can link the
 # same Cox::<module> names that installed consumers use via find_package(Cox).
-foreach(_m reacotor logging utilities buffer concurrent flowcontrol fswatch
+foreach(_m reactor logging utilities buffer concurrent flowcontrol fswatch
            net tls http)
     if(NOT TARGET cox::${_m})
         add_library(cox::${_m} ALIAS cox_${_m})

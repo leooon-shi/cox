@@ -7,7 +7,7 @@
 #   * Each module calls cox_install_module(<target> HEADERS <h1> <h2> ...).
 #     That switches the target's include directories to the BUILD_INTERFACE /
 #     INSTALL_INTERFACE form (so the same target works in-tree and installed),
-#     adds the target to the shared CoxTargets export set, and installes its
+#     adds the target to the shared CoxTargets export set, and installs its
 #     headers under include/cox/ preserving any subdirectory (e.g. poller/).
 #   * The top-level CMakeLists then calls cox_install_package() once to install
 #     the export set, generate CoxConfig.cmake + version file, and create the
@@ -23,7 +23,7 @@ include(GNUInstallDirs)
 #   cox_install_module(cox_reactor HEADERS a.h poller/b.h ...)
 function(cox_install_module _target)
     cmake_parse_arguments(ARG "" "" "HEADERS" ${ARGN})
-    
+
     # Export under the short name: internal target cox_http -> cox::http (not
     # cox::cox_http). EXPORT_NAME strips the cox_ prefix for the public alias
     # while keeping the internal target name collision-free.
