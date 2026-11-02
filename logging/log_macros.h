@@ -21,7 +21,7 @@
 //   COX_LOG_DEFINE();                 // defines a file-local log() accessor
 //
 //   void Foo::bar() {
-//       COX_LOG_ERROR("accept failed: " + std::string(std::strerror(errno)));
+//       COX_LOG_ERROR("accept failed: " + std::string(strerror(errno)));
 //       COX_LOG_INFO("connected", {{"peer", addr.toIpPort()}});
 //   }
 //   }  // namespace net
