@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
@@ -203,8 +204,8 @@ void OcspStapler::doRefreshCycle() {
     reactor::EventLoop* loop = auto_->loop;
     AutoRefresh* ar = auto_.get();
 
-    // refresh() blocks no network I/O, so it must not run on the loop thread.
-    // if the pool is saturated (tryRun == false), skip this cycle and just
+    // refresh() blocks on network I/O, so it must not run on the loop thread.
+    // If the pool is saturated (tryRun == false), skip this cycle and just
     // reschedule a retry rather than blocking the loop.
     bool queued = auto_->pool->tryRun([this, loop, ar] {
         (void)refresh();  // blocking; result observed via secondsUntilExpiry()

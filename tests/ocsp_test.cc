@@ -8,6 +8,8 @@
 
 #include "ocsp_stapler.h"
 
+#include "event_loop.h"
+#include "thread_pool.h"
 #include "tls_context.h"
 #include "tls_engine.h"
 
