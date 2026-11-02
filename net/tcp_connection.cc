@@ -1,6 +1,7 @@
 #include "tcp_connection.h"
 
 #include "event_loop.h"
+#include "log_macros.h"
 #include "logger.h"
 
 #include <unistd.h>
@@ -10,12 +11,7 @@
 #include <string>
 
 namespace net {
-namespace {
-logging::Logger& log() {
-    static logging::Logger logger;
-    return logger;
-}
-}  // namespace
+COX_LOG_DEFINE();
 
 TcpConnection::TcpConnection(reactor::EventLoop* loop, std::string name,
                              int sockfd, const InetAddress& local,
@@ -34,8 +30,7 @@ TcpConnection::TcpConnection(reactor::EventLoop* loop, std::string name,
 }
 
 TcpConnection::~TcpConnection() {
-    log().debug("TcpConnection::dtor [" + name_ +
-                "] state=" + std::string(stateToString()));
+    COX_LOG_DEBUG("[" + name_ + "] state=" + std::string(stateToString()));
 }
 
 const char* TcpConnection::stateToString() const {
@@ -109,9 +104,9 @@ void TcpConnection::handleRead() {
         // read-side memory.
         if (max_input_buffer_size_ > 0 &&
             input_buffer_.readableBytes() > max_input_buffer_size_) {
-            log().warning(
-                "TcpConnection [" + name_ + "] input buffer exceeded " +
-                std::to_string(max_input_buffer_size_) + " bytes; closing");
+            COX_LOG_WARNING("[" + name_ + "] input buffer exceeded " +
+                            std::to_string(max_input_buffer_size_) +
+                            " bytes; closing");
             forceClose();
         }
     } else if (n == 0) {
@@ -119,8 +114,7 @@ void TcpConnection::handleRead() {
         handleClose();
     } else {
         errno = saved_errno;
-        log().error("TcpConnection::handleRead [" + name_ + "] " +
-                    std::string(std::strerror(errno)));
+        COX_LOG_ERROR("[" + name_ + "] " + std::string(std::strerror(errno)));
         handleError();
     }
 }
@@ -137,8 +131,7 @@ void TcpConnection::resetIdleTimer() {
     auto self = shared_from_this();
     idle_timer_ =
         loop_->runAfter(static_cast<uint64_t>(idle_seconds_) * 1000, [self]() {
-            log().warning("TcpConnection [" + self->name_ +
-                          "] idle timeout; closing");
+            COX_LOG_WARNING("[" + self->name_ + "] idle timeout; closing");
             self->forceClose();
         });
     idle_timer_armed_ = true;
@@ -164,8 +157,8 @@ void TcpConnection::armWriteTimer() {
             self->write_timer_armed_ = false;
             // Still backed up after the deadline -> slow consumer; force-close.
             if (self->output_buffer_.readableBytes() > 0) {
-                log().warning("TcpConnection [" + self->name_ +
-                              "] write timeout (slow consumer); closing");
+                COX_LOG_WARNING("[" + self->name_ +
+                                "] write timeout (slow consumer); closing");
                 self->forceClose();
             }
         });
@@ -189,8 +182,7 @@ void TcpConnection::armMaxAgeTimer() {
     max_age_timer_ = loop_->runAfter(
         static_cast<uint64_t>(max_age_seconds_) * 1000, [self]() {
             self->max_age_timer_armed_ = false;
-            log().info("TcpConnection [" + self->name_ +
-                       "] max age reached; closing");
+            COX_LOG_INFO("[" + self->name_ + "] max age reached; closing");
             self->forceClose();
         });
     max_age_timer_armed_ = true;
@@ -217,8 +209,7 @@ void TcpConnection::handleWrite() {
             }
         }
     } else {
-        log().error("TcpConnection::handleWrite [" + name_ + "] " +
-                    std::string(std::strerror(errno)));
+        COX_LOG_ERROR("[" + name_ + "] " + std::string(std::strerror(errno)));
     }
 }
 
@@ -248,9 +239,8 @@ void TcpConnection::handleError() {
     // A hangup (EPOLLHUP) surfaces as an error revent with no pending SO_ERROR.
     // Treat that as a normal close rather than logging a misleading error.
     if (err != 0) {
-        log().error("TcpConnection::handleError [" + name_ +
-                    "] SO_ERROR=" + std::to_string(err) + " " +
-                    std::string(std::strerror(err)));
+        COX_LOG_ERROR("[" + name_ + "] SO_ERROR=" + std::to_string(err) + " " +
+                      std::string(std::strerror(err)));
     }
     handleClose();
 }
@@ -294,8 +284,8 @@ void TcpConnection::sendInLoop(const char* data, size_t len) {
         } else {
             nwrote = 0;
             if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                log().error("TcpConnection::sendInLoop [" + name_ + "] " +
-                            std::string(std::strerror(errno)));
+                COX_LOG_ERROR("[" + name_ + "] " +
+                              std::string(std::strerror(errno)));
             }
         }
     }

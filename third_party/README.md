@@ -71,5 +71,11 @@ git clone --recurse-submodules <url>
 git submodule update --init --recursive
 ```
 
-`.gitmodules` sets `shallow = true` where upstream history is large, so
-submodule clones fetch only the pinned commit's history.
+Submodules are **not** cloned shallow. A shallow submodule fetch
+(`shallow = true`, or `actions/checkout` with a shallow default) only retrieves
+the tip of the default branch, which does not contain a pinned commit that sits
+deep in history -- e.g. googletest is pinned to a SHA ~200 commits past its
+latest release tag. The checkout then fails to populate the submodule
+("CMakeLists.txt not found" at configure time). Full submodule history is the
+safe default for commit-pinned dependencies; only set `shallow = true` for a
+submodule pinned at or very near a fetchable branch/tag tip.
