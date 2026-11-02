@@ -99,7 +99,7 @@ public:
     // If the client offers nothing, or client and server share no protocol,
     // the handshake still completes with no ALPN protocol selected
     // (negotiatedProtocol() returns ""); the caller decides how to treat that
-    // (typically: assume HTTP/1.1). Call creating connections.
+    // (typically: assume HTTP/1.1). Call before creating connections.
     void setAlpnProtocols(const std::vector<std::string>& protocols);
 
     Role role() const { return role_; }
@@ -111,7 +111,7 @@ private:
     // OpenSSL server-side ALPN selection callback.
     static int alpnSelectCallback(struct ssl_st* ssl, const unsigned char** out,
                                   unsigned char* outlen,
-                                  const unsigned char* in, unsigned in inlen,
+                                  const unsigned char* in, unsigned int inlen,
                                   void* arg);
 
     Role role_;

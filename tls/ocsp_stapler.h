@@ -9,7 +9,6 @@
 namespace reactor {
 class EventLoop;
 }
-
 namespace concurrent {
 class ThreadPool;
 }
@@ -82,12 +81,12 @@ public:
     bool hasResponse() const;
 
     // Seconds until the cached response's nextUpdate.
-    //   > 0  : time remaining before the staple goes stale.
-    //     0  : no response cached, or the cached one has expired.
-    //    -1  : cached, but the response carries NO nextUpdate field. That is
-    //          legal (nextUpdate is OPTIONAL in RFC 6960 §4.2.1) and means the
-    //          responder gives no expiry hint, so the caller must pick its own
-    //          refresh interval rather than treating it as expired.
+    //    > 0  : time remaining before the staple goes stale.
+    //      0  : no response cached, or the cached one has expired.
+    //     -1  : cached, but the response carries NO nextUpdate field. That is
+    //           legal (nextUpdate is OPTIONAL in RFC 6960 §4.2.1) and means the
+    //           responder gives no expiry hint, so the caller must pick its own
+    //           refresh interval rather than treating it as expired.
     // Use it to schedule the next refresh well before expiry.
     int64_t secondsUntilExpiry() const;
 
@@ -131,13 +130,12 @@ private:
     int64_t next_update_epoch_{0};
 
     // Auto-refresh scheduling state. Defined in the .cc (pimpl) so this header
-    // need not full in the reactor/timer types. Null unless startAutoRefresh
+    // need not pull in the reactor/timer types. Null unless startAutoRefresh
     // was called.
     struct AutoRefresh;
     std::unique_ptr<AutoRefresh> auto_;
 
-    // Internal: compuete the next refresh delay (ms) and (re)arm the loop
-    // timer.
+    // Internal: compute the next refresh delay (ms) and (re)arm the loop timer.
     void scheduleNextRefresh();
     // Internal: run the blocking fetch on the pool, then reschedule on the
     // loop.

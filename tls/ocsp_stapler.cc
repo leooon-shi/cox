@@ -112,7 +112,7 @@ void clearErrors() {
 // Scheduling state for automatic refresh (pimpl; keeps the reactor/timer types
 // out of the public header). Raw pointers: the loop and pool are owned by the
 // caller and, by contract, outlive the stapler.
-struct OcspStapler::AutoRefresh() {
+struct OcspStapler::AutoRefresh {
     reactor::EventLoop* loop{nullptr};
     concurrent::ThreadPool* pool{nullptr};
     OcspRefreshOptions opts;
@@ -159,16 +159,6 @@ void OcspStapler::stopAutoRefresh() {
         auto_->loop->cancel(auto_->timer);
         auto_->timer_armed = false;
     }
-}
-std::string OcspStapler::responderUrl() const {
-    if (!responder_url_.empty()) {
-        return responder_url_;
-    }
-    X509Ptr cert = loadPemCert(cert_path_);
-    if (!cert) {
-        return std::string();
-    }
-    return aiaOcspUrl(cert.get());
 }
 
 // Runs on the loop thread. Computes the next delay from the cached response's
@@ -228,6 +218,17 @@ void OcspStapler::doRefreshCycle() {
         // Pool full: do not block the loop; retry after retry_seconds.
         scheduleNextRefresh();
     }
+}
+
+std::string OcspStapler::responderUrl() const {
+    if (!responder_url_.empty()) {
+        return responder_url_;
+    }
+    X509Ptr cert = loadPemCert(cert_path_);
+    if (!cert) {
+        return std::string();
+    }
+    return aiaOcspUrl(cert.get());
 }
 
 bool OcspStapler::setResponseDer(const std::string& der) {

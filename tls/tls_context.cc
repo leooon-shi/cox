@@ -246,7 +246,7 @@ int TlsContext::sniCallback(struct ssl_st* ssl, int* /*alert*/, void* arg) {
 
 void TlsContext::setAlpnProtocols(const std::vector<std::string>& protocols) {
     // Encode to ALPN wire format: each entry is a 1-byte length followed by the
-    // protocol name (RFC 7301). e.g. {"h2", "http/1.1"} ->
+    // protocol name (RFC 7301). e.g. {"h2","http/1.1"} ->
     // \x02 h 2 \x08 h t t p / 1 . 1
     alpn_wire_.clear();
     for (const std::string& p : protocols) {
@@ -285,7 +285,7 @@ int TlsContext::alpnSelectCallback(struct ssl_st* /*ssl*/,
     }
 
     // SSL_select_next_proto picks the first of the SERVER list that also
-    // appears in the CLIEnT list (server preference wins, matching nghttp2 /
+    // appears in the CLIENT list (server preference wins, matching nghttp2 /
     // nginx behavior). Both buffers are ALPN wire format.
     unsigned char* selected = nullptr;
     unsigned char* selected_len = 0;

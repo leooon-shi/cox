@@ -378,9 +378,9 @@ TEST(OcspTest, ClientReceivesStapledResponse) {
 // Helper: run a loop on a background thread, invoke `body` on the loop thread,
 // let it spin briefly, then quit and join. Mirrors the pattern other tests use.
 namespace {
-vod withLoop(const std::function<void(reactor::EventLoop&,
-                                      concurrent::ThreadPool&)>& body,
-             std::chrono::milliseconds spin) {
+void withLoop(const std::function<void(reactor::EventLoop&,
+                                       concurrent::ThreadPool&)>& body,
+              std::chrono::milliseconds spin) {
     reactor::EventLoop* loop = nullptr;
     std::atomic<bool> started{false};
     concurrent::ThreadPool pool;
@@ -423,7 +423,7 @@ TEST(OcspAutoRefreshTest, DestructionWhileScheduledIsClean) {
     // armed; the dtor must cancel the timer without touching freed state.
     tls::OcspRefreshOptions opts;
     opts.refresh_now = false;  // just arm the timer, do not fetch
-    opts.retry_seconds = 1;    // keep the scheduler lively during the test
+    opts.retry_seconds = 1;
     withLoop(
         [&](reactor::EventLoop& loop, concurrent::ThreadPool& pool) {
             auto stapler = std::make_shared<OcspStapler>("/nonexistent.pem",
@@ -432,7 +432,7 @@ TEST(OcspAutoRefreshTest, DestructionWhileScheduledIsClean) {
             stapler->startAutoRefresh(loop, pool, opts);
             // Drop the last reference on the loop thread while the timer is
             // armed. shared_ptr is copyable (timer Task is std::function);
-            // reseting here runs ~OcspStapler -> stopAutoRefresh.
+            // resetting here runs ~OcspStapler -> stopAutoRefresh.
             loop.runAfter(30, [stapler, &loop]() mutable {
                 stapler.reset();
                 (void)loop;
