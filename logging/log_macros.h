@@ -1,15 +1,15 @@
 #pragma once
 
-// Convenience macros over logging::Logger (Option A: thin wrapper, not a
+// Convenience macros over logging::Logger (Option A: thin wrappers, not a
 // stream redesign). They solve three things the bare API does not:
 //
-//   1. Lazy evalution. The level is checked BEFORE the message string is
+//   1. Lazy evaluation. The level is checked BEFORE the message string is
 //      built, so a suppressed record (e.g. COX_LOG_DEBUG when level is Info)
-//      costs one comparison isntead of a full concatenation. This closes the
-//      "arguments are evaluated even when droppped" gap noted in the roadmap.
+//      costs one comparison instead of a full concatenation. This closes the
+//      "arguments are evaluated even when dropped" gap noted in the roadmap.
 //   2. Automatic `__func__` prefix. Call sites no longer hand-type
 //      "ClassName::method " into every message (which drifts from reality
-//      after a rename). Only function name is added -- deliberately NOT
+//      after a rename). Only the function name is added -- deliberately NOT
 //      __FILE__:__LINE__, which is redundant with it.
 //   3. Less boilerplate. COX_LOG_DEFINE() replaces the per-translation-unit
 //      anonymous-namespace `log()` accessor that was copy-pasted across ~14
@@ -18,16 +18,16 @@
 // Usage:
 //   #include "log_macros.h"
 //   namespace net {
-//   COX_LOG_DEFINE();                // defines a file-local log() accessor
+//   COX_LOG_DEFINE();                 // defines a file-local log() accessor
 //
 //   void Foo::bar() {
-//      COX_LOG_ERROR("accept failed: " + std::string(std::strerror(errno)));
-//      COX_LOG_INFO("connected", {{"peer", addr.toIpPort()}});
+//       COX_LOG_ERROR("accept failed: " + std::string(std::strerror(errno)));
+//       COX_LOG_INFO("connected", {{"peer", addr.toIpPort()}});
 //   }
 //   }  // namespace net
 //
 // The message expression is whatever the Logger accepts (a std::string), so
-// existing`"a" + b + std::to_string(n)` call sites move over unchanged.
+// existing `"a" + b + std::to_string(n)` call sites move over unchanged.
 
 #include "logger.h"
 
@@ -47,7 +47,7 @@
 
 // Core macro: guard on level, then emit "<func>: <message>". Wrapped in
 // do/while(0) so it is a single statement and composes with if/else without
-// braces surprise.
+// braces surprises.
 #define COX_LOG_EMIT(LEVEL_ENUM, METHOD, MESSAGE)                      \
     do {                                                               \
         ::logging::Logger& _cox_log = log();                           \

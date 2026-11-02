@@ -16,6 +16,7 @@ set(LOGGING_HEADERS
     sink.h
     async_sink.h
     logger.h
+    log_macros.h
     timestamp.h
 )
 
