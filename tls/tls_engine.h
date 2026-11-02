@@ -74,6 +74,10 @@ public:
     std::string protocolVersion() const;
     std::string cipherName() const;
 
+    // The ALPN protocol negotiated during the handshake (e.g. "h2",
+    // "http/1.1"), or "" if ALPN was not used or no protocol was agreed. Valid
+    // after handshakeDone(). Both roles can query it.
+    std::string negotiatedProtocol() const;
     // Server role: the hostname the client requested via SNI, or "" if none.
     std::string requestedServerName() const;
 

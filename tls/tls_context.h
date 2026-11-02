@@ -3,6 +3,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 // Forward-declare OpenSSL types to keep the header free of <openssl/*> so
 // callers don't need OpenSSL include paths just to hold a context.
@@ -83,12 +84,35 @@ public:
     // once the handshake has progressed past ClientHello.
     static std::string requestedServerName(struct ssl_st* ssl);
 
+    // ---- ALPN (Application-Layer Protocol Negotiation, RFC 7301) ----
+    //
+    // ALPN lets client and server agree on the application protocol (e.g.
+    // "h2" for HTTP/2, "http/1.1") DURING the TLS handshake, with no extra
+    // round trip. Set the protocol list on both roles:
+    //   * Client: the list is ADVERTISED, in preference order.
+    //   * Server: the list is the server's PREFERENCE order; a selection
+    //     callback picks the first server-preferred protocol the client also
+    //     offered.
+    // Protocol identifiers are the ALPN wire names ("h2", "http/1.1"), without
+    // length prefixes -- this method encodes the wire format.
+    //
+    // If the client offers nothing, or client and server share no protocol,
+    // the handshake still completes with no ALPN protocol selected
+    // (negotiatedProtocol() returns ""); the caller decides how to treat that
+    // (typically: assume HTTP/1.1). Call creating connections.
+    void setAlpnProtocols(const std::vector<std::string>& protocols);
+
     Role role() const { return role_; }
     SSL_CTX* nativeHandle() const { return ctx_; }
 
 private:
     // OpenSSL callback invoked during ClientHello with the requested name.
     static int sniCallback(struct ssl_st* ssl, int* alert, void* arg);
+    // OpenSSL server-side ALPN selection callback.
+    static int alpnSelectCallback(struct ssl_st* ssl, const unsigned char** out,
+                                  unsigned char* outlen,
+                                  const unsigned char* in, unsigned in inlen,
+                                  void* arg);
 
     Role role_;
     SSL_CTX* ctx_;
@@ -96,6 +120,10 @@ private:
     std::string cert_path_;
     std::string key_path_;
     std::string ca_path_;
+    // ALPN protocol list in wire format (length-prefixed), used by the server
+    // selection callback and retained so the client advertisement outlives the
+    // set call. Empty when ALPN is not configured.
+    std::string alpn_wire_;
     // SNI registry: lowercased hostname -> context. Held by shared_ptr because
     // a selected context must outlive the handshake that selected it.
     std::map<std::string, TlsContextPtr> sni_contexts_;

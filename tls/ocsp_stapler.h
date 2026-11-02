@@ -6,8 +6,25 @@
 #include <mutex>
 #include <string>
 
+namespace reactor {
+class EventLoop;
+}
+
+namespace concurrent {
+class ThreadPool;
+}
 namespace tls {
 class TlsContext;
+// Options controlling OcspStapler::startAutoRefresh (namespace-scope so its
+// default member initializers are usable as a default argument).
+struct OcspRefreshOptions {
+    double refresh_ratio = 0.5;       // fraction of remaining lifetime
+    int64_t min_seconds = 300;        // never refresh more often than 5m
+    int64_t max_seconds = 24 * 3600;  // nor less often than daily
+    int64_t fallback_seconds = 3600;  // used when nextUpdate is absent
+    int64_t retry_seconds = 300;      // used after a failed/empty fetch
+    bool refresh_now = true;          // kick an immediate fetch on start
+};
 
 // OCSP stapling (RFC 6961 / RFC 6066 "status_request"): the SERVER fetches a
 // signed, time-stamped "this certificate is not revoked" proof from the CA's
@@ -78,6 +95,27 @@ public:
     // the cached response. The stapler must outlive the context.
     void attachTo(TlsContext& ctx);
 
+    // --- Automatic refresh -------------------------------------------------
+    // Drive refresh() on a schedule so the staple never goes stale in
+    // production (the roadmap calls manual refresh a footgun). The blocking
+    // network fetch runs on `pool` (never the loop); rescheduling happens on
+    //`loop`. The next delay is derived from secondsUntilExpiry():
+    //  > 0 : refresh at `refresh_ratio` of the remaining lifetime (default
+    //        0.5, i.e. halfway to nextUpdate), clamped to [min, max].
+    //   -1 : no nextUpdate hint in the response -> use `fallback_seconds`.
+    //    0 : nothing cached / expired / fetch failed -> retry after
+    //        `retry_seconds`.
+    // Thread-safe to call once after construction. The stapler, loop and pool
+    // must all outlive the auto-refresh; call stopAutoRefresh() before any of
+    // them is destroyed.
+    void startAutoRefresh(reactor::EventLoop& loop,
+                          concurrent::ThreadPool& pool,
+                          OcspRefreshOptions opts = {});
+
+    // Cancel the scheduled refresh. Safe to call from the loop thread; safe to
+    // call if auto-refresh was never started. Must run before loop/pool die.
+    void stopAutoRefresh();
+
     // Validate and cache a DER response (exposed for testing).
     bool setResponseDer(const std::string& der);
 
@@ -91,6 +129,19 @@ private:
     mutable std::mutex mutex_;
     std::string response_der_;  // Cached DER, guarded by mutex_
     int64_t next_update_epoch_{0};
+
+    // Auto-refresh scheduling state. Defined in the .cc (pimpl) so this header
+    // need not full in the reactor/timer types. Null unless startAutoRefresh
+    // was called.
+    struct AutoRefresh;
+    std::unique_ptr<AutoRefresh> auto_;
+
+    // Internal: compuete the next refresh delay (ms) and (re)arm the loop
+    // timer.
+    void scheduleNextRefresh();
+    // Internal: run the blocking fetch on the pool, then reschedule on the
+    // loop.
+    void doRefreshCycle();
 };
 
 }  // namespace tls

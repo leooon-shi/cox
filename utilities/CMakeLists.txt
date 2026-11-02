@@ -6,6 +6,7 @@ set(SOURCES
 set(HEADERS 
     thread/current_thread.h
     thread/likely.h
+    file/file_opts.h
 )
 
 add_library(cox_utilities STATIC ${SOURCES} ${HEADERS})

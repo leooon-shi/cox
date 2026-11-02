@@ -18,10 +18,12 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <functional>
 #include <memory>
 #include <string>
 #include <thread>
@@ -364,4 +366,78 @@ TEST(OcspTest, ClientReceivesStapledResponse) {
     ASSERT_NE(parsed, nullptr);
     EXPECT_EQ(OCSP_response_status(parsed), OCSP_RESPONSE_STATUS_SUCCESSFUL);
     OCSP_RESPONSE_free(parsed);
+}
+
+// ---- automatic refresh scheduling (no live responder needed) ----
+//
+// These exercise the start/stop/reschedule mechanics without a PKI: with no
+// responder, each refresh() simply fails, so the stapler stays empty and the
+// scheduler keeps retrying. The point is that the cycle runs OFF the loop,
+// reschedules, and tears down cleanly -- the lifetime-sensitive part.
+
+// Helper: run a loop on a background thread, invoke `body` on the loop thread,
+// let it spin briefly, then quit and join. Mirrors the pattern other tests use.
+namespace {
+vod withLoop(const std::function<void(reactor::EventLoop&,
+                                      concurrent::ThreadPool&)>& body,
+             std::chrono::milliseconds spin) {
+    reactor::EventLoop* loop = nullptr;
+    std::atomic<bool> started{false};
+    concurrent::ThreadPool pool;
+    pool.start(1);
+    std::thread t([&] {
+        reactor::EventLoop l;
+        loop = &l;
+        started.store(true);
+        l.loop();
+    });
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
+    loop->runInLoop([&] { body(*loop, pool); });
+    std::this_thread::sleep_for(spin);
+    loop->runInLoop([&] { loop->quit(); });
+    t.join();
+    pool.stop();
+}
+}  // namespace
+
+TEST(OcspAutoRefreshTest, StartsAndStopsCleanlyWithoutResponder) {
+    OcspStapler stapler("/nonexistent.pem", "/nonexistent.pem");
+    tls::OcspRefreshOptions opts;
+    opts.refresh_now = true;
+    opts.retry_seconds = 1;  // keep the scheduler lively during the test
+    withLoop(
+        [&](reactor::EventLoop& loop, concurrent::ThreadPool& pool) {
+            stapler.startAutoRefresh(loop, pool, opts);
+            // Stop from the loop thread after a beat; must be race-free.
+            loop.runAfter(50, [&] { stapler.stopAutoRefresh(); });
+        },
+        150ms);
+    // No responder -> nothing cached, and we did not crash/leak.
+    EXPECT_FALSE(stapler.hasResponse());
+}
+
+TEST(OcspAutoRefreshTest, DestructionWhileScheduledIsClean) {
+    // The stapler is destroyed (end of scope) while a refresh schedule is
+    // armed; the dtor must cancel the timer without touching freed state.
+    tls::OcspRefreshOptions opts;
+    opts.refresh_now = false;  // just arm the timer, do not fetch
+    opts.retry_seconds = 1;    // keep the scheduler lively during the test
+    withLoop(
+        [&](reactor::EventLoop& loop, concurrent::ThreadPool& pool) {
+            auto stapler = std::make_shared<OcspStapler>("/nonexistent.pem",
+                                                         "/nonexistent.pem");
+
+            stapler->startAutoRefresh(loop, pool, opts);
+            // Drop the last reference on the loop thread while the timer is
+            // armed. shared_ptr is copyable (timer Task is std::function);
+            // reseting here runs ~OcspStapler -> stopAutoRefresh.
+            loop.runAfter(30, [stapler, &loop]() mutable {
+                stapler.reset();
+                (void)loop;
+            });
+        },
+        120ms);
+    SUCCEED();  // reaching here without an abort/sanitizer report is the test
 }

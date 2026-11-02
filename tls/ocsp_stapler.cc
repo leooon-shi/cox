@@ -1,5 +1,8 @@
 #include "ocsp_stapler.h"
 
+#include "event_loop.h"
+#include "thread_pool.h"
+#include "timer.h"
 #include "tls_context.h"
 
 #include <openssl/bio.h>
@@ -106,11 +109,57 @@ void clearErrors() {
 }
 }  // namespace
 
+// Scheduling state for automatic refresh (pimpl; keeps the reactor/timer types
+// out of the public header). Raw pointers: the loop and pool are owned by the
+// caller and, by contract, outlive the stapler.
+struct OcspStapler::AutoRefresh() {
+    reactor::EventLoop* loop{nullptr};
+    concurrent::ThreadPool* pool{nullptr};
+    OcspRefreshOptions opts;
+    reactor::TimerId timer;
+    bool timer_armed{false};
+    // Set on stopAutoRefresh(); checked by an in-flight pool task before it
+    // re-arms the loop timer, so a fetch that was already running when stop was
+    // called cannot resurrect the schedule.
+    std::atomic<bool> stopped{false};
+};
+
 OcspStapler::OcspStapler(std::string cert_path, std::string issuer_path)
     : cert_path_(std::move(cert_path)), issuer_path_(std::move(issuer_path)) {}
 
-OcspStapler::~OcspStapler() = default;
+OcspStapler::~OcspStapler() {
+    // Cancel any armed timer so a pending callback cannot fire into a
+    // destroyed stapler. The loop must still be alive here (documented
+    // contract); stopAutoRefresh() is a no-op if refresh was never started.
+    stopAutoRefresh();
+}
 
+void OcspStapler::startAutoRefresh(reactor::EventLoop& loop,
+                                   concurrent::ThreadPool& pool,
+                                   OcspRefreshOptions opts) {
+    auto_ = std::make_unique<AutoRefresh>();
+    auto_->loop = &loop;
+    auto_->pool = &pool;
+    auto_->opts = opts;
+
+    if (opts.refresh_now) {
+        // First fetch immediately (off the loop), then self-schedule.
+        loop.runInLoop([this] { doRefreshCycle(); });
+    } else {
+        scheduleNextRefresh();
+    }
+}
+
+void OcspStapler::stopAutoRefresh() {
+    if (!auto_) {
+        return;
+    }
+    auto_->stopped.store(true, std::memory_order_relaxed);
+    if (auto_->timer_armed) {
+        auto_->loop->cancel(auto_->timer);
+        auto_->timer_armed = false;
+    }
+}
 std::string OcspStapler::responderUrl() const {
     if (!responder_url_.empty()) {
         return responder_url_;
@@ -120,6 +169,65 @@ std::string OcspStapler::responderUrl() const {
         return std::string();
     }
     return aiaOcspUrl(cert.get());
+}
+
+// Runs on the loop thread. Computes the next delay from the cached response's
+// remaining lifetime and arms a one-shot timer whose callback starts the next
+// fetch cycle.
+void OcspStapler::scheduleNextRefresh() {
+    if (!auto_ || auto_->stopped.load(std::memory_order_relaxed)) {
+        return;
+    }
+    const OcspRefreshOptions& o = auto_->opts;
+
+    int64_t remaining = secondsUntilExpiry();
+    int64_t delay_s;
+    if (remaining > 0) {
+        delay_s = static_cast<int64_t>(static_cast<double>(remaining) *
+                                       o.refresh_ratio);
+        delay_s = std::clamp(delay_s, o.min_seconds, o.max_seconds);
+    } else if (remaining < 0) {
+        // Response has no nextUpdate hint: use the fixed callback interval.
+        delay_s = o.fallback_seconds;
+    } else {
+        // Nothing cached / expired / last fetch failed: retry soon
+        delay_s = o.retry_seconds;
+    }
+
+    auto_->timer = auto_->loop->runAfter(static_cast<uint64_t>(delay_s) * 1000,
+                                         [this] { doRefreshCycle(); });
+    auto_->timer_armed = true;
+}
+
+// Entry point for one refresh cycle. Offloads the BLOCKING fetch to the pool,
+// then hops back to the loop thead to reschedule. Must be called on the loop
+// thread (runInLoop / timer callback guarantee this).
+void OcspStapler::doRefreshCycle() {
+    if (!auto_ || auto_->stopped.load(std::memory_order_relaxed)) {
+        return;
+    }
+    auto_->timer_armed = false;  // the timer that led here has fired
+
+    reactor::EventLoop* loop = auto_->loop;
+    AutoRefresh* ar = auto_.get();
+
+    // refresh() blocks no network I/O, so it must not run on the loop thread.
+    // if the pool is saturated (tryRun == false), skip this cycle and just
+    // reschedule a retry rather than blocking the loop.
+    bool queued = auto_->pool->tryRun([this, loop, ar] {
+        (void)refresh();  // blocking; result observed via secondUntilExpiry()
+        if (ar->stopped.load(std::memory_order_relaxed)) {
+            return;
+        }
+        // Reschedule on the loop thread (timer API is thread-safe, but keeping
+        // all scheduling on the loop keeps timer_armed single-threaded).
+        loop->runInLoop([this] { scheduleNextRefresh(); });
+    });
+
+    if (queued) {
+        // Pool full: do not block the loop; retry after retry_seconds.
+        scheduleNextRefresh();
+    }
 }
 
 bool OcspStapler::setResponseDer(const std::string& der) {

@@ -198,6 +198,14 @@ std::string TlsEngine::cipherName() const {
     return n ? n : "";
 }
 
+std::string TlsEngine::negotiatedProtocol() const {
+    const unsigned char* proto = nullptr;
+    unsigned int len = 0;
+    SSL_get0_alpn_selected(ssl_, &proto, &len);
+    return (proto && len > 0)
+               ? std::string(reinterpret_cast<const char*>(proto), len)
+               : std::string();
+}
 std::string TlsEngine::requestedServerName() const {
     return TlsContext::requestedServerName(ssl_);
 }

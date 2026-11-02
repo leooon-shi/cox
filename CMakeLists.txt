@@ -164,8 +164,9 @@ add_subdirectory(net)
 add_subdirectory(tls)
 add_subdirectory(http)
 
-# Namespaced ALIAS targets so in-tree consumers (examples/tests) can link the
-# same Cox::<module> names that installed consumers use via find_package(Cox).
+# Namespaced ALIAS targets so examples (and any in-tree consumers) link the same
+# cox::<module> names external consumers use via find_package(Cox). Internal
+# unit tests link the plain cox_<module> targets directly.
 foreach(_m reactor logging utilities buffer concurrent flowcontrol fswatch
            net tls http)
     if(NOT TARGET cox::${_m})
@@ -173,7 +174,7 @@ foreach(_m reactor logging utilities buffer concurrent flowcontrol fswatch
     endif()
 endforeach()
 
-# Generate install/export + find_package(cox) support.
+# Generate install/export + find_package(Cox) support.
 if(COX_INSTALL)
     include(CoxInstall)
     cox_install_package()

@@ -244,4 +244,65 @@ int TlsContext::sniCallback(struct ssl_st* ssl, int* /*alert*/, void* arg) {
     return SSL_TLSEXT_ERR_OK;
 }
 
+void TlsContext::setAlpnProtocols(const std::vector<std::string>& protocols) {
+    // Encode to ALPN wire format: each entry is a 1-byte length followed by the
+    // protocol name (RFC 7301). e.g. {"h2", "http/1.1"} ->
+    // \x02 h 2 \x08 h t t p / 1 . 1
+    alpn_wire_.clear();
+    for (const std::string& p : protocols) {
+        if (p.empty() || p.size() > 255) {
+            throw std::runtime_error(
+                "ALPN protocol name must be 1..255 bytes: '" + p + "'");
+        }
+        alpn_wire_.push_back(static_cast<char>(p.size()));
+        alpn_wire_.append(p);
+    }
+
+    if (role_ == Role::kClient) {
+        // Client advertises the list directly. OpenSSL copies the buffer, so it
+        // need not outlive the call -- but we keep alpn_wire_ anyway for parity
+        // and possible reload.
+        SSL_CTX_set_alpn_protos(
+            ctx_, reinterpret_cast<const unsigned char*>(alpn_wire_.data()),
+            static_cast<unsigned int>(alpn_wire_.size()));
+    } else {
+        // Server installs a selection callback; `this` carries the preference
+        // list (alpn_wire_) into the callback.
+        SSL_CTX_set_alpn_select_cb(ctx_, &TlsContext::alpnSelectCallback, this);
+    }
+}
+
+int TlsContext::alpnSelectCallback(struct ssl_st* /*ssl*/,
+                                   const unsigned char** out,
+                                   unsigned char* outlen,
+                                   const unsigned char* in, unsigned int inlen,
+                                   void* arg) {
+    auto* self = static_cast<TlsContext*>(arg);
+    if (self == nullptr || self->alpn_wire_.empty()) {
+        // No server preference configured: decline, handshake proceeds with no
+        // ALPN protocol selected.
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+
+    // SSL_select_next_proto picks the first of the SERVER list that also
+    // appears in the CLIEnT list (server preference wins, matching nghttp2 /
+    // nginx behavior). Both buffers are ALPN wire format.
+    unsigned char* selected = nullptr;
+    unsigned char* selected_len = 0;
+    const auto* server =
+        reinterpret_cast<const unsigned char*>(self->alpn_wire_.data());
+    const auto server_len = static_cast<unsigned int>(self->alpn_wire_.size());
+
+    int rc = SSL_select_next_proto(&selected, &selected_len, server, server_len,
+                                   in, inlen);
+    if (rc != OPENSSL_NPN_NEGOTIATED) {
+        // No overlap: do not fail the handshake, just select nothing (the peer
+        // falls back, typically to HTTP/1.1).
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+    *out = selected;
+    *outlen = selected_len;
+    return SSL_TLSEXT_ERR_OK;
+}
+
 }  // namespace tls

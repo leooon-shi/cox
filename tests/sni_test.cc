@@ -303,3 +303,78 @@ TEST(SniTest, WildcardContextServesSubdomain) {
     EXPECT_TRUE(driveHandshake(client, server))
         << "wildcard handshake failed: " << client.lastError();
 }
+
+// ---- ALPN negotiation (RFC 7301) ----
+
+TEST(AlpnTest, NegotiatesSharedProtocol) {
+    NamedCert base("alpn.test", "alpn_shared");
+    ASSERT_TRUE(base.valid());
+    auto server_ctx = makeServerCtx(base);
+    server_ctx->setAlpnProtocols({"h2", "http/1.1"});
+    auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
+    client_ctx->setVerifyPeer(false);
+    client_ctx->setAlpnProtocols({"h2", "http/1.1"});
+
+    TlsEngine client(*client_ctx, Role::kClient, "alpn.test");
+    TlsEngine server(*server_ctx, Role::kServer);
+    ASSERT_TRUE(driveHandshake(client, server))
+        << "handshake failed: " << client.lastError();
+
+    // Both ends see the same negotiated protocol.
+    EXPECT_EQ(client.negotiatedProtocol(), "h2");
+    EXPECT_EQ(server.negotiatedProtocol(), "h2");
+}
+
+TEST(AlpnTest, ServerPreferenceWinsOnOverlap) {
+    NamedCert base("alpn.test", "alpn_pref");
+    ASSERT_TRUE(base.valid());
+    auto server_ctx = makeServerCtx(base);
+    // Server prefers h2, but the client only offers http/1.1 -> http/1.1.
+    server_ctx->setAlpnProtocols({"h2", "http/1.1"});
+    auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
+    client_ctx->setVerifyPeer(false);
+    client_ctx->setAlpnProtocols({"http/1.1"});
+
+    TlsEngine client(*client_ctx, Role::kClient, "alpn.test");
+    TlsEngine server(*server_ctx, Role::kServer);
+    ASSERT_TRUE(driveHandshake(client, server))
+        << "handshake failed: " << client.lastError();
+
+    EXPECT_EQ(client.negotiatedProtocol(), "http/1.1");
+    EXPECT_EQ(server.negotiatedProtocol(), "http/1.1");
+}
+
+TEST(AlpnTest, NoOverlapSelectsNothingButHandshakeSucceeds) {
+    NamedCert base("alpn.test", "alpn_none");
+    ASSERT_TRUE(base.valid());
+    auto server_ctx = makeServerCtx(base);
+    server_ctx->setAlpnProtocols({"h2"});
+    auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
+    client_ctx->setVerifyPeer(false);
+    client_ctx->setAlpnProtocols({"spdy/3.1"});  // disjoint from server
+
+    TlsEngine client(*client_ctx, Role::kClient, "alpn.test");
+    TlsEngine server(*server_ctx, Role::kServer);
+    // No shared protocol must NOT abort the handshake (fall back, e.g. HTTP/1).
+    ASSERT_TRUE(driveHandshake(client, server))
+        << "handshake failed: " << client.lastError();
+
+    EXPECT_EQ(client.negotiatedProtocol(), "");
+    EXPECT_EQ(server.negotiatedProtocol(), "");
+}
+
+TEST(AlpnTest, NoAlpnConfiguredMeansNoProtocol) {
+    NamedCert base("alpn.test", "alpn_off");
+    ASSERT_TRUE(base.valid());
+    auto server_ctx = makeServerCtx(base);  // no setAlpnProtocols
+    auto client_ctx = std::make_shared<TlsContext>(Role::kClient);
+    client_ctx->setVerifyPeer(false);  // no setAlpnProtocols
+
+    TlsEngine client(*client_ctx, Role::kClient, "alpn.test");
+    TlsEngine server(*server_ctx, Role::kServer);
+    ASSERT_TRUE(driveHandshake(client, server))
+        << "handshake failed: " << client.lastError();
+
+    EXPECT_EQ(client.negotiatedProtocol(), "");
+    EXPECT_EQ(server.negotiatedProtocol(), "");
+}
