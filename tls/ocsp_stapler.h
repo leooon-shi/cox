@@ -14,6 +14,7 @@ class ThreadPool;
 }
 namespace tls {
 class TlsContext;
+
 // Options controlling OcspStapler::startAutoRefresh (namespace-scope so its
 // default member initializers are usable as a default argument).
 struct OcspRefreshOptions {
@@ -99,11 +100,11 @@ public:
     // production (the roadmap calls manual refresh a footgun). The blocking
     // network fetch runs on `pool` (never the loop); rescheduling happens on
     //`loop`. The next delay is derived from secondsUntilExpiry():
-    //  > 0 : refresh at `refresh_ratio` of the remaining lifetime (default
-    //        0.5, i.e. halfway to nextUpdate), clamped to [min, max].
-    //   -1 : no nextUpdate hint in the response -> use `fallback_seconds`.
-    //    0 : nothing cached / expired / fetch failed -> retry after
-    //        `retry_seconds`.
+    //   > 0 : refresh at `refresh_ratio` of the remaining lifetime (default
+    //         0.5, i.e. halfway to nextUpdate), clamped to [min, max].
+    //    -1 : no nextUpdate hint in the response -> use `fallback_seconds`.
+    //     0 : nothing cached / expired / fetch failed -> retry after
+    //         `retry_seconds`.
     // Thread-safe to call once after construction. The stapler, loop and pool
     // must all outlive the auto-refresh; call stopAutoRefresh() before any of
     // them is destroyed.

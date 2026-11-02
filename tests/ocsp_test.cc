@@ -428,7 +428,6 @@ TEST(OcspAutoRefreshTest, DestructionWhileScheduledIsClean) {
         [&](reactor::EventLoop& loop, concurrent::ThreadPool& pool) {
             auto stapler = std::make_shared<OcspStapler>("/nonexistent.pem",
                                                          "/nonexistent.pem");
-
             stapler->startAutoRefresh(loop, pool, opts);
             // Drop the last reference on the loop thread while the timer is
             // armed. shared_ptr is copyable (timer Task is std::function);

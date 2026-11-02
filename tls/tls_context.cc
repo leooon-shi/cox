@@ -288,7 +288,7 @@ int TlsContext::alpnSelectCallback(struct ssl_st* /*ssl*/,
     // appears in the CLIENT list (server preference wins, matching nghttp2 /
     // nginx behavior). Both buffers are ALPN wire format.
     unsigned char* selected = nullptr;
-    unsigned char* selected_len = 0;
+    unsigned char selected_len = 0;
     const auto* server =
         reinterpret_cast<const unsigned char*>(self->alpn_wire_.data());
     const auto server_len = static_cast<unsigned int>(self->alpn_wire_.size());

@@ -177,10 +177,10 @@ void OcspStapler::scheduleNextRefresh() {
                                        o.refresh_ratio);
         delay_s = std::clamp(delay_s, o.min_seconds, o.max_seconds);
     } else if (remaining < 0) {
-        // Response has no nextUpdate hint: use the fixed callback interval.
+        // Response has no nextUpdate hint: use the fixed fallback interval.
         delay_s = o.fallback_seconds;
     } else {
-        // Nothing cached / expired / last fetch failed: retry soon
+        // Nothing cached / expired / last fetch failed: retry soon.
         delay_s = o.retry_seconds;
     }
 
@@ -190,7 +190,7 @@ void OcspStapler::scheduleNextRefresh() {
 }
 
 // Entry point for one refresh cycle. Offloads the BLOCKING fetch to the pool,
-// then hops back to the loop thead to reschedule. Must be called on the loop
+// then hops back to the loop thread to reschedule. Must be called on the loop
 // thread (runInLoop / timer callback guarantee this).
 void OcspStapler::doRefreshCycle() {
     if (!auto_ || auto_->stopped.load(std::memory_order_relaxed)) {
@@ -205,7 +205,7 @@ void OcspStapler::doRefreshCycle() {
     // if the pool is saturated (tryRun == false), skip this cycle and just
     // reschedule a retry rather than blocking the loop.
     bool queued = auto_->pool->tryRun([this, loop, ar] {
-        (void)refresh();  // blocking; result observed via secondUntilExpiry()
+        (void)refresh();  // blocking; result observed via secondsUntilExpiry()
         if (ar->stopped.load(std::memory_order_relaxed)) {
             return;
         }
@@ -213,8 +213,7 @@ void OcspStapler::doRefreshCycle() {
         // all scheduling on the loop keeps timer_armed single-threaded).
         loop->runInLoop([this] { scheduleNextRefresh(); });
     });
-
-    if (queued) {
+    if (!queued) {
         // Pool full: do not block the loop; retry after retry_seconds.
         scheduleNextRefresh();
     }
