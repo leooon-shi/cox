@@ -29,15 +29,15 @@ if (COX_HAVE_CARES)
     list(APPEND NET_HEADERS cares_resolver.h)
 endif()
 
-add_library(cow_net STATIC ${NET_SOURCES} ${NET_HEADERS})
+add_library(cox_net STATIC ${NET_SOURCES} ${NET_HEADERS})
 
-target_link_libraries(cow_net PUBLIC cow_reactor cow_buffer cow_logging
-                       cow_utilities cow_flowcontrol cow_concurrent)
+target_link_libraries(cox_net PUBLIC cox_reactor cox_buffer cox_logging
+                       cox_utilities cox_flowcontrol cox_concurrent)
 
 if (COX_HAVE_CARES)
-    target_compile_definitions(cow_net PUBLIC COX_HAVE_CARES)
-    target_include_directories(cow_net PUBLIC ${CARES_INCLUDE_DIR})
-    target_link_libraries(cow_net PUBLIC ${CARES_LIB})
+    target_compile_definitions(cox_net PUBLIC COX_HAVE_CARES)
+    target_include_directories(cox_net PUBLIC ${CARES_INCLUDE_DIR})
+    target_link_libraries(cox_net PUBLIC ${CARES_LIB})
 endif()
 
-target_include_directories(cow_net PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(cox_net PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

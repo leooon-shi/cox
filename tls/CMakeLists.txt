@@ -15,8 +15,8 @@ set(TLS_HEADERS
     ocsp_stapler.h
 )
 
-add_library(cow_tls STATIC ${TLS_SOURCES} ${TLS_HEADERS})
+add_library(cox_tls STATIC ${TLS_SOURCES} ${TLS_HEADERS})
 
-target_link_libraries(cow_tls PUBLIC OpenSSL::SSL OpenSSL::Crypto cow_net cow_fswatch)
+target_link_libraries(cox_tls PUBLIC OpenSSL::SSL OpenSSL::Crypto cox_net cox_fswatch)
 
-target_include_directories(cow_tls PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(cox_tls PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

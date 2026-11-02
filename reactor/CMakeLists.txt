@@ -39,9 +39,9 @@ else()
     message(FATAL_ERROR "Unsupported platform: " ${CMAKE_SYSTEM_NAME})
 endif()
 
-add_library(cow_reactor STATIC ${REACTOR_SOURCES} ${REACTOR_HEADERS})
+add_library(cox_reactor STATIC ${REACTOR_SOURCES} ${REACTOR_HEADERS})
 
-target_link_libraries(cow_reactor PUBLIC cow_logging cow_utilities)
+target_link_libraries(cox_reactor PUBLIC cox_logging cox_utilities)
 message(STATUS "Include Path: " ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_include_directories(cow_reactor PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(cox_reactor PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

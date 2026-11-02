@@ -20,9 +20,9 @@ set(LOGGING_HEADERS
     timestamp.h
 )
 
-add_library(cow_logging STATIC ${LOGGING_SOURCES} ${LOGGING_HEADERS})
+add_library(cox_logging STATIC ${LOGGING_SOURCES} ${LOGGING_HEADERS})
 
 message(STATUS "Include Path: " ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(cow_logging PUBLIC cow_utilities)
+target_link_libraries(cox_logging PUBLIC cox_utilities)
 
-target_include_directories(cow_logging PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(cox_logging PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
