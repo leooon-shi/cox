@@ -56,7 +56,7 @@ llvm-cov report "${OBJ_ARGS[@]}" \
 
 if [[ $WANT_HTML -eq 1 ]]; then
     echo "== html report =="
-    lvm-cov show "${OBJ_ARGS[@]}" \
+    llvm-cov show "${OBJ_ARGS[@]}" \
         -instr-profile="$PROFDATA" \
         -ignore-filename-regex="$IGNORE" \
         -format=html -output-dir="$BUILD_TDIR/html"
