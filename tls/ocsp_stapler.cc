@@ -12,6 +12,8 @@
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
 
+#include <algorithm>
+#include <atomic>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
