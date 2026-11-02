@@ -51,7 +51,7 @@
 #define COX_LOG_EMIT(LEVEL_ENUM, METHOD, MESSAGE)                      \
     do {                                                               \
         ::logging::Logger& _cox_log = log();                           \
-        if (_cox_log.level <= ::logging::LogLevel::LEVEL_ENUM) {       \
+        if (_cox_log.level() <= ::logging::LogLevel::LEVEL_ENUM) {     \
             _cox_log.METHOD(std::string(__func__) + ": " + (MESSAGE)); \
         }                                                              \
     } while (0)
@@ -60,7 +60,7 @@
 #define COX_LOG_EMIT_F(LEVEL_ENUM, METHOD, MESSAGE, FIELDS)           \
     do {                                                              \
         ::logging::Logger& _cox_log = log();                          \
-        if (_cox_log.level <= ::logging::LogLevel::LEVEL_ENUM) {      \
+        if (_cox_log.level() <= ::logging::LogLevel::LEVEL_ENUM) {    \
             _cox_log.METHOD(std::string(__func__) + ": " + (MESSAGE), \
                             (FIELDS));                                \
         }                                                             \
