@@ -54,59 +54,59 @@ function(cox_add_test name)
 endfunction()
 
 # ---- reactor core ----
-cox_add_test(event_loop_test          LIBS cow_reactor)
-cox_add_test(timer_test               LIBS cow_reactor)
-cox_add_test(event_loop_thread_test   LIBS cow_reactor)
+cox_add_test(event_loop_test          LIBS cox_reactor)
+cox_add_test(timer_test               LIBS cox_reactor)
+cox_add_test(event_loop_thread_test   LIBS cox_reactor)
 
 # ---- buffer / logging ----
-cox_add_test(buffer_test              LIBS cow_buffer)
-cox_add_test(logger_test              LIBS cow_logging SLOW)     # async sink timing
+cox_add_test(buffer_test              LIBS cox_buffer)
+cox_add_test(logger_test              LIBS cox_logging SLOW)     # async sink timing
 
 # ---- concurrency ----
-cox_add_test(thread_pool_test         LIBS cow_concurrent)
-cox_add_test(thread_pool_integration_test  LIBS cow_net cow_concurrent)
+cox_add_test(thread_pool_test         LIBS cox_concurrent)
+cox_add_test(thread_pool_integration_test  LIBS cox_net cox_concurrent)
 
 # ---- flow / overload control ----
-cox_add_test(token_bucket_test        LIBS cow_flowcontrol)
-cox_add_test(backoff_test             LIBS cow_flowcontrol)
-cox_add_test(concurrency_limiter_test LIBS cow_flowcontrol)
-cox_add_test(overload_control_test    LIBS cow_net)
+cox_add_test(token_bucket_test        LIBS cox_flowcontrol)
+cox_add_test(backoff_test             LIBS cox_flowcontrol)
+cox_add_test(concurrency_limiter_test LIBS cox_flowcontrol)
+cox_add_test(overload_control_test    LIBS cox_net)
 
 # ---- net / TCP ----
-cox_add_test(inet_address_test        LIBS cow_net)
-cox_add_test(socket_test              LIBS cow_net)
-cox_add_test(acceptor_test            LIBS cow_net)
-cox_add_test(tcp_client_test          LIBS cow_net)
-cox_add_test(tcp_server_test          LIBS cow_net SLOW)
-cox_add_test(unix_socket_test         LIBS cow_net)
-cox_add_test(graceful_shutdown_test   LIBS cow_net)
-cox_add_test(hardening_test           LIBS cow_net SLOW)
-cox_add_test(resolver_test            LIBS cow_net cow_concurrent)
+cox_add_test(inet_address_test        LIBS cox_net)
+cox_add_test(socket_test              LIBS cox_net)
+cox_add_test(acceptor_test            LIBS cox_net)
+cox_add_test(tcp_client_test          LIBS cox_net)
+cox_add_test(tcp_server_test          LIBS cox_net SLOW)
+cox_add_test(unix_socket_test         LIBS cox_net)
+cox_add_test(graceful_shutdown_test   LIBS cox_net)
+cox_add_test(hardening_test           LIBS cox_net SLOW)
+cox_add_test(resolver_test            LIBS cox_net cox_concurrent)
 
 # ---- TLS ----
 # OPAQUE: these invoke the openssl CLI to build certs/PKI and (for ocsp_test)
 # start a local responder, so they must not run at build/discovery time.
-cox_add_test(tls_engine_test          LIBS cow_tls OPAQUE)
-cox_add_test(tls_integration_test     LIBS cow_tls cow_net OPAQUE)
-cox_add_test(cert_reloader_test       LIBS cow_tls OPAQUE)
-cox_add_test(sni_test                 LIBS cow_tls OPAQUE SLOW)
-cox_add_test(ocsp_test                LIBS cow_tls OPAQUE SLOW)
-cox_add_test(file_watcher_test        LIBS cow_fswatch)
+cox_add_test(tls_engine_test          LIBS cox_tls OPAQUE)
+cox_add_test(tls_integration_test     LIBS cox_tls cox_net OPAQUE)
+cox_add_test(cert_reloader_test       LIBS cox_tls OPAQUE)
+cox_add_test(sni_test                 LIBS cox_tls OPAQUE SLOW)
+cox_add_test(ocsp_test                LIBS cox_tls OPAQUE SLOW)
+cox_add_test(file_watcher_test        LIBS cox_fswatch)
 
 # ---- HTTP ----
-cox_add_test(http_parser_test         LIBS cow_http)
-cox_add_test(http_server_test         LIBS cow_http)
-cox_add_test(router_test              LIBS cow_http)
-cox_add_test(url_test                 LIBS cow_http)
-cox_add_test(http_client_test         LIBS cow_http)
-cox_add_test(connection_pool_test     LIBS cow_http SLOW)
-cox_add_test(dns_client_test          LIBS cow_http cow_concurrent)
+cox_add_test(http_parser_test         LIBS cox_http)
+cox_add_test(http_server_test         LIBS cox_http)
+cox_add_test(router_test              LIBS cox_http)
+cox_add_test(url_test                 LIBS cox_http)
+cox_add_test(http_client_test         LIBS cox_http)
+cox_add_test(connection_pool_test     LIBS cox_http SLOW)
+cox_add_test(dns_client_test          LIBS cox_http cox_concurrent)
 # OPAQUE: generate certs via the openssl CLI
-cox_add_test(tls_pool_test            LIBS cow_http OPAQUE SLOW)
-cox_add_test(https_test               LIBS cow_http OPAQUE)
+cox_add_test(tls_pool_test            LIBS cox_http OPAQUE SLOW)
+cox_add_test(https_test               LIBS cox_http OPAQUE)
 
 # Guards the API snippets used in docs/ and insights/features/ (also shells out
 # to openssl for TLS/OCSP examples).
-cox_add_test(doc_snippets_test        LIBS cow_http cow_concurrent cow_logging cow_tls OPAQUE)
+cox_add_test(doc_snippets_test        LIBS cox_http cox_concurrent cox_logging cox_tls OPAQUE)
 
 

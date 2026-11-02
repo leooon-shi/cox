@@ -23,8 +23,8 @@ set(HTTP_HEADERS
     multi_origin_pool.h
 )
 
-add_library(cow_http STATIC ${HTTP_SOURCES} ${HTTP_HEADERS})
+add_library(cox_http STATIC ${HTTP_SOURCES} ${HTTP_HEADERS})
 
-target_link_libraries(cow_http PUBLIC cow_net cow_buffer cow_logging cow_tls)
+target_link_libraries(cox_http PUBLIC cox_net cox_buffer cox_logging cox_tls)
 
-target_include_directories(cow_http PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(cox_http PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
