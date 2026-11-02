@@ -27,4 +27,6 @@ add_library(cox_http STATIC ${HTTP_SOURCES} ${HTTP_HEADERS})
 
 target_link_libraries(cox_http PUBLIC cox_net cox_buffer cox_logging cox_tls)
 
-target_include_directories(cox_http PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if(COX_INSTALL)
+    cox_install_module(cox_http HEADERS ${HTTP_HEADERS})
+endif()

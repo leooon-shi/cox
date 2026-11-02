@@ -8,4 +8,6 @@ set(BUFFER_HEADERS
 
 add_library(cox_buffer STATIC ${BUFFER_SOURCES} ${BUFFER_HEADERS})
 
-target_include_directories(cox_buffer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if(COX_INSTALL)
+    cox_install_module(cox_buffer HEADERS ${BUFFER_HEADERS})
+endif()

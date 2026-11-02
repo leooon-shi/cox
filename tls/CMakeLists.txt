@@ -19,4 +19,6 @@ add_library(cox_tls STATIC ${TLS_SOURCES} ${TLS_HEADERS})
 
 target_link_libraries(cox_tls PUBLIC OpenSSL::SSL OpenSSL::Crypto cox_net cox_fswatch)
 
-target_include_directories(cox_tls PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if(COX_INSTALL)
+    cox_install_module(cox_tls HEADERS ${TLS_HEADERS})
+endif()

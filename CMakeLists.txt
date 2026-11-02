@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(Tutorial-Event LANGUAGES CXX)
+project(Cox VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,14 +8,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(USE_JEMALLOC "Use jemalloc instead of system malloc" OFF)
 option(BUILD_EXAMPLES "Compile project with examples" OFF)
 option(BUILD_TESTS "To enable compile tests" OFF)
-
+# Install + export rules. ON for a normal build; a parent project embedding Cox
+# via add_subdirectory can set -DCOX_INSTALL=OFF to suppress Cox's install().
+option(COX_INSTALL "Generate install and export (find_package) rules" ON)
 # Optional, feature-gated third-party integrations. Default OFF so a plain
 # build pulls in no extra dependencies. See third_party/README.md.
 option(COX_WITH_HTTP2 "Enable HTTP/2 support via nghttp2" OFF)
 
-# Project-local CMake modules (cox_add_vendored, ...).
+# Project-local CMake modules (cox_add_vendored, cox_install_module, ...).
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
+if(COX_INSTALL)
+    include(CoxInstall)
+endif()
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
 endif()
@@ -94,6 +98,24 @@ if (NOT COX_SANITIZE STREQUAL "OFF")
     message(STATUS "sanitizer enabled: ${COX_SANITIZE}")
 endif()
 
+# ---- Coverage ----
+#
+# COX_COVERAGE=ON instruments the build so the test suite's line/region
+# coverage can be measured, replacing unverified "the suite is thorough" claims
+# with a number (roadmap CI/CD item 6). Clang source-based coverage
+# (-fprofile-instr-generate -fcoverage-mapping) is used with llvm-cov;
+# scripts/coverage.sh builds, runs ctest, and emits the report.
+option(COX_COVERAGE "Instrument for llvm-cov source-based coverage" OFF)
+if (COX_COVERAGE)
+    if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        message(FATAL_ERROR
+            "COX_COVERAGE uses Clang source-based coverage; configure with "
+            "clang (e.g. the 'coverage' preset).")
+    endif()
+    add_compile_options(-fprofile-instr-generate -fcoverage-mapping -O0 -g)
+    add_link_options(-fprofile-instr-generate -fcoverage-mapping)
+    message(STATUS "coverage instrumentation enabled (llvm-cov)")
+endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "using gcc")
@@ -141,6 +163,21 @@ add_subdirectory(fswatch)
 add_subdirectory(net)
 add_subdirectory(tls)
 add_subdirectory(http)
+
+# Namespaced ALIAS targets so in-tree consumers (examples/tests) can link the
+# same Cox::<module> names that installed consumers use via find_package(Cox).
+foreach(_m reacotor logging utilities buffer concurrent flowcontrol fswatch
+           net tls http)
+    if(NOT TARGET cox::${_m})
+        add_library(cox::${_m} ALIAS cox_${_m})
+    endif()
+endforeach()
+
+# Generate install/export + find_package(cox) support.
+if(COX_INSTALL)
+    include(CoxInstall)
+    cox_install_package()
+endif()
 
 if (BUILD_TESTS STREQUAL ON)
     # Register tests with CTest so the whole suite runs via `ctest`.

@@ -10,4 +10,6 @@ set(HEADERS
 
 add_library(cox_utilities STATIC ${SOURCES} ${HEADERS})
 
-target_include_directories(cox_utilities PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if(COX_INSTALL)
+    cox_install_module(cox_utilities HEADERS ${HEADERS})
+endif()

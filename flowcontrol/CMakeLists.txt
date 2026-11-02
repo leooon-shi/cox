@@ -11,4 +11,6 @@ set(FLOWCONTROL_HEADERS
 
 add_library(cox_flowcontrol STATIC ${FLOWCONTROL_SOURCES} ${FLOWCONTROL_HEADERS})
 
-target_include_directories(cox_flowcontrol PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if(COX_INSTALL)
+    cox_install_module(cox_flowcontrol HEADERS ${FLOWCONTROL_HEADERS})
+endif()

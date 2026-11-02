@@ -137,6 +137,26 @@ jobs:
                   | grep -v /third_party/ | sort -u)
           echo "checking $(echo "$files" | wc -l) files"
           clang-tidy -p build/examples $files
+
+  coverage:
+    name: coverage (llvm-cov)
+    runs-on: ubuntu-24.04
+    # NON-BLOCKING / informational: reports suite line/region coverage so the
+    # number is visible on every run (roadmap CI/CD item 6). Not a gate -- a
+    # coverage threshold can be added later once a baseline is agreed.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+          cmake ninja-build clang llvm libssl-dev libc-ares-dev openssl
+      - name: Measure coverage
+        run: ./scripts/coverage.sh
+
   sanitizers:
     name: ${{ matrix.preset }}
     runs-on: ubuntu-24.04

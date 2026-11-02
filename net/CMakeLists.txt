@@ -36,8 +36,10 @@ target_link_libraries(cox_net PUBLIC cox_reactor cox_buffer cox_logging
 
 if (COX_HAVE_CARES)
     target_compile_definitions(cox_net PUBLIC COX_HAVE_CARES)
-    target_include_directories(cox_net PUBLIC ${CARES_INCLUDE_DIR})
+    target_include_directories(cox_net PUBLIC $<BUILD_INTERFACE:${CARES_INCLUDE_DIR}>)
     target_link_libraries(cox_net PUBLIC ${CARES_LIB})
 endif()
 
-target_include_directories(cox_net PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if(COX_INSTALL)
+    cox_install_module(cox_net HEADERS ${NET_HEADERS})
+endif()

@@ -1,7 +1,7 @@
-option(COW_BUILD_DOCS "Build project documentation from AsciiDoc" OFF)
+option(COX_BUILD_DOCS "Build project documentation from AsciiDoc" OFF)
 
-if (NOT COW_BUILD_DOCS)
-    message(STATUS "Documentation build disabled (COW_BUILD_DOCS=OFF)")
+if (NOT COX_BUILD_DOCS)
+    message(STATUS "Documentation build disabled (COX_BUILD_DOCS=OFF)")
     return()
 endif()
 

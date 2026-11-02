@@ -16,7 +16,10 @@ include(CoxAddVendored)
 
 # --- Test infrastructure (added only when BUILD_TESTS is ON) ----------------
 # googletest is CMake-native, so cox_add_vendored() handles it directly.
+# Suppress googletest's own install rules: it is a test-only dependency and
+# must not leak gtest/gmock headers and libs into Cox's install prefix.
 if(BUILD_TESTS)
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
     cox_add_vendored(googletest)
 endif()
 

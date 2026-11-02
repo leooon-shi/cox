@@ -11,6 +11,7 @@ set(REACTOR_SOURCES
 set(REACTOR_HEADERS 
     poller/io_poller.h
     poller/io_poller_factory.h
+    io_event.h
     io_channel.h
     event_loop.h
     timer.h
@@ -44,4 +45,6 @@ add_library(cox_reactor STATIC ${REACTOR_SOURCES} ${REACTOR_HEADERS})
 target_link_libraries(cox_reactor PUBLIC cox_logging cox_utilities)
 message(STATUS "Include Path: " ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_include_directories(cox_reactor PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if(COX_INSTALL)
+    cox_install_module(cox_reactor HEADERS ${REACTOR_HEADERS})
+endif()

@@ -9,4 +9,6 @@ add_library(cox_concurrent STATIC ${CONCURRENT_SOURCES} ${CONCURRENT_HEADERS})
 
 target_link_libraries(cox_concurrent PUBLIC pthread)
 
-target_include_directories(cox_concurrent PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if(COX_INSTALL)
+    cox_install_module(cox_concurrent HEADERS ${CONCURRENT_HEADERS})
+endif()

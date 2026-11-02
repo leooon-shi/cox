@@ -88,6 +88,15 @@
                 "CMAKE_BUILD_TYPE": "Release",
                 "BUILD_EXAMPLES": "ON"
             }
+        },
+        {
+            "name": "coverage",
+            "displayName": "Clang Debug + llvm-cov coverage instrumentation",
+            "inherits": "clang",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "COX_COVERAGE": "ON"
+            }
         }
     ],
     "buildPresets": [
@@ -98,7 +107,8 @@
         {"name": "asan", "configurePreset": "asan"},
         {"name": "tsan", "configurePreset": "tsan"},
         {"name": "ubsan", "configurePreset": "ubsan"},
-        {"name": "examples", "configurePreset": "examples"}
+        {"name": "examples", "configurePreset": "examples"},
+        {"name": "coverage", "configurePreset": "coverage"}
     ],
 
     "testPresets": [
@@ -131,6 +141,13 @@
             "inherits": "base",
             "configurePreset": "ubsan",
             "execution": {"jobs": 4, "noTestsAction": "error"}
+        },
+        {
+            "name": "coverage",
+            "displayName": "Coverage tests (serial: per-process profraw files)",
+            "inherits": "base",
+            "configurePreset": "coverage",
+            "execution": {"jobs": 1, "noTestsAction": "error"}
         }
     ]
 }

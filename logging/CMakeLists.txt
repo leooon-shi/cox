@@ -25,4 +25,6 @@ add_library(cox_logging STATIC ${LOGGING_SOURCES} ${LOGGING_HEADERS})
 message(STATUS "Include Path: " ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(cox_logging PUBLIC cox_utilities)
 
-target_include_directories(cox_logging PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if(COX_INSTALL)
+    cox_install_module(cox_logging HEADERS ${LOGGING_HEADERS})
+endif()
