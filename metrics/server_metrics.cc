@@ -100,10 +100,18 @@ namespace {
 // Map an HTTP status code to its class label, keeping metric cardinality
 // bounded (4 series instead of one per distinct code).
 const char* statusClass(int status) {
-    if (status >= 500) return "5xx";
-    if (status >= 400) return "4xx";
-    if (status >= 300) return "3xx";
-    if (status >= 200) return "2xx";
+    if (status >= 500) {
+        return "5xx";
+    }
+    if (status >= 400) {
+        return "4xx";
+    }
+    if (status >= 300) {
+        return "3xx";
+    }
+    if (status >= 200) {
+        return "2xx";
+    }
     return "1xx";
 }
 }  // namespace
