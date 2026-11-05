@@ -34,7 +34,7 @@ void installServerMetrics(Registry& reg, net::TcpServer& server) {
                     "Total application bytes sent (summed on close)");
     // Chain onto the user's connection callback rather than replacing it.
     // The connection callback fires on connect AND disconnect; distinguish via
-    // connected(). The disconnect notification is NOT guaranted exactly-once
+    // connected(). The disconnect notification is NOT guaranteed exactly-once
     // across teardown paths (handleClose and connectDestroyed can both fire for
     // the same connection during shutdown), so disconnect accounting is made
     // idempotent per connection.

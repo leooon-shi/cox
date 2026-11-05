@@ -82,7 +82,7 @@ TEST(HttpParserTest, ContentLengthAtLimitAccepted) {
         "POST /submit HTTP/1.1\r\nContent-Length: 11\r\n\r\nhellow world");
     ASSERT_TRUE(ctx.parseRequest(&buf));
     EXPECT_TRUE(ctx.gotAll());
-    EXPECT_EQ(ctx.request().body(), "hellow world");
+    EXPECT_EQ(ctx.request().body(), "hello world");
 }
 
 TEST(HttpParserTest, ChunkedOverLimitRejected) {
