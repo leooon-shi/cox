@@ -145,6 +145,7 @@ public:
     uint64_t bytesRead() const {
         return bytes_read_.load(std::memory_order_relaxed);
     }
+
     uint64_t bytesWritten() const {
         return bytes_written_.load(std::memory_order_relaxed);
     }

@@ -169,6 +169,7 @@ bool HttpContext::parseRequest(buffer::Buffer* buf) {
                 request_.appendBody(buf->peek(), take);
                 buf->retrieve(take);
                 chunk_remaining_ -= take;
+                body_received_ += take;
                 progress = true;
             }
             if (chunk_remaining_ == 0) {
@@ -188,6 +189,7 @@ bool HttpContext::parseRequest(buffer::Buffer* buf) {
 
 void HttpContext::reset() {
     state_ = State::kExpectRequestLine;
+    error_ = Error::kNone;
     request_.reset();
     content_length_ = 0;
     body_received_ = 0;

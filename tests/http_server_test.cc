@@ -211,6 +211,7 @@ TEST(HttpServerTest, OversizedBodyRejectedWith413) {
         started = true;
         loop.loop();
     });
+
     while (!started.load()) {
         std::this_thread::sleep_for(1ms);
     }

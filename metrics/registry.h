@@ -98,7 +98,7 @@ public:
     // Convenience overload: snapshot of ALL instruments (no filter).
     Snapshot scrape() const { return scrape(ScrapeFilter{}); }
 
-    // Process-wide default registry (mirrors the Logger's default instance)
+    // Process-wide default registry (mirrors the Logger's default instance).
     static Registry& global();
 
 private:
@@ -118,6 +118,7 @@ private:
 
     Entry& findOrCreate(const std::string& name, const std::string& help,
                         MetricPoint::Type type, const Labels& labels);
+
     mutable std::mutex mutex_;
     std::vector<std::unique_ptr<Entry>> entries_;  // stable addresses
 };

@@ -120,6 +120,7 @@ void EventLoop::loop() {
         iterations_.fetch_add(1, std::memory_order_relaxed);
         poll_wait_us_.fetch_add(static_cast<uint64_t>(poll_us),
                                 std::memory_order_relaxed);
+
         for (auto* channel : active_channels_) {
             processing_channel_.store(channel, std::memory_order_relaxed);
             channel->handleEvents();

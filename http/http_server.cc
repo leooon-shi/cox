@@ -66,6 +66,7 @@ void HttpServer::start() {
 void HttpServer::onConnection(const net::TcpConnectionPtr& conn) {
     if (conn->connected()) {
         auto pc = std::make_shared<PerConn>();
+        pc->ctx.setMaxBodyBytes(max_body_bytes_);
         if (tls_ctx_) {
             // Wrap in server-side TLS; feed decrypted plaintext to the parser.
             auto tc = std::make_shared<tls::TlsConnection>(conn, tls_ctx_,

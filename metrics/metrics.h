@@ -92,7 +92,7 @@ public:
     static std::vector<double> defaultLatencyBuckets();
 
 private:
-    std::vector<double> bounds_;  // ascending upper bounds (no +inf)
+    std::vector<double> bounds_;  // ascending upper bounds (no +Inf)
     std::vector<std::atomic<uint64_t>> counts_;  // per-bucket, size bounds_+1
     std::atomic<uint64_t> count_{0};
     // sum as atomic bits of a double (relaxed CAS loop in observe()).

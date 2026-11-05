@@ -68,8 +68,8 @@ TEST(HttpParserTest, ContentLengthOverLimitRejected) {
     HttpContext ctx;
     ctx.setMaxBodyBytes(8);
     // Declared length 11 > cap 8: rejected up front, before reading the body.
-    auto buf = bufOf(
-        "POST /submit HTTP/1.1\r\nContent-Length: 11\r\n\r\nhellow world");
+    auto buf =
+        bufOf("POST /submit HTTP/1.1\r\nContent-Length: 11\r\n\r\nhello world");
     EXPECT_FALSE(ctx.parseRequest(&buf));
     EXPECT_TRUE(ctx.hasError());
     EXPECT_EQ(ctx.error(), HttpContext::Error::kTooLarge);
@@ -77,9 +77,9 @@ TEST(HttpParserTest, ContentLengthOverLimitRejected) {
 
 TEST(HttpParserTest, ContentLengthAtLimitAccepted) {
     HttpContext ctx;
-    ctx.setMaxBodyBytes(11);  // exacly the body length
-    auto buf = bufOf(
-        "POST /submit HTTP/1.1\r\nContent-Length: 11\r\n\r\nhellow world");
+    ctx.setMaxBodyBytes(11);  // exactly the body length
+    auto buf =
+        bufOf("POST /submit HTTP/1.1\r\nContent-Length: 11\r\n\r\nhello world");
     ASSERT_TRUE(ctx.parseRequest(&buf));
     EXPECT_TRUE(ctx.gotAll());
     EXPECT_EQ(ctx.request().body(), "hello world");
