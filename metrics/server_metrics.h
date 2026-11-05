@@ -29,7 +29,7 @@ namespace metrics {
 //   cox_connections_accepted_total  (counter)
 //   cox_connections_closed_total    (counter)
 //   cox_connections_live            (gauge)
-//   cox_connection_rejected_total   (counter)  -- overload / cap / rate-limit
+//   cox_connections_rejected_total  (counter)  -- overload / cap / rate-limit
 //   cox_connection_bytes_in_total   (counter)  -- summed from each connection
 //   cox_connection_bytes_out_total  (counter)     on close (captures churn)
 //
@@ -50,8 +50,8 @@ void installHttpMetrics(Registry& reg, http::HttpServer& server);
 // (reactor has no dependency on this module). Registers SAMPLED instruments
 // read at scrape time:
 //   cox_loop_iterations_total     (counter; loop.iterations())
-//   cox_loop_poll_wait_seconds_total (counter; loop.pollWaitMicros/1e6)
-// `labels` lets a multi-loop server distinguish loops (e.g. {{"loop", "io0"}}).
+//   cox_loop_poll_wait_seconds_total (counter; loop.pollWaitMicros()/1e6)
+// `labels` lets a multi-loop server distinguish loops (e.g. {{"loop","io0"}}).
 void installLoopMetrics(Registry& reg, reactor::EventLoop& loop,
                         Labels labels = {});
 

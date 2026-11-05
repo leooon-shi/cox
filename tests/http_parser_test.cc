@@ -80,7 +80,7 @@ TEST(HttpParserTest, ContentLengthAtLimitAccepted) {
     ctx.setMaxBodyBytes(11);  // exacly the body length
     auto buf = bufOf(
         "POST /submit HTTP/1.1\r\nContent-Length: 11\r\n\r\nhellow world");
-    EXPECT_TRUE(ctx.parseRequest(&buf));
+    ASSERT_TRUE(ctx.parseRequest(&buf));
     EXPECT_TRUE(ctx.gotAll());
     EXPECT_EQ(ctx.request().body(), "hellow world");
 }

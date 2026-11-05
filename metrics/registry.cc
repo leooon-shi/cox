@@ -5,7 +5,7 @@
 
 namespace metrics {
 namespace {
-// Two Instruments are the same iff name AND label set match. Labels are
+// Two instruments are the same iff name AND label set match. Labels are
 // compared in the order given (callers use a consistent order).
 bool sameLabels(const Labels& a, const Labels& b) {
     if (a.size() != b.size()) {

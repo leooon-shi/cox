@@ -21,7 +21,7 @@ void installServerMetrics(Registry& reg, net::TcpServer& server) {
                                     "Total connections accepted by the server");
     Counter& closed =
         reg.counter("cox_connections_closed_total", "Total connections closed");
-    Counter& live =
+    Gauge& live =
         reg.gauge("cox_connections_live", "Currently open connections");
     Counter& rejected =
         reg.counter("cox_connections_rejected_total",
@@ -34,7 +34,7 @@ void installServerMetrics(Registry& reg, net::TcpServer& server) {
                     "Total application bytes sent (summed on close)");
     // Chain onto the user's connection callback rather than replacing it.
     // The connection callback fires on connect AND disconnect; distinguish via
-    // connected(). The disconnect notification is NOT guranteed exactly-once
+    // connected(). The disconnect notification is NOT guaranted exactly-once
     // across teardown paths (handleClose and connectDestroyed can both fire for
     // the same connection during shutdown), so disconnect accounting is made
     // idempotent per connection.
@@ -76,7 +76,7 @@ void installServerMetrics(Registry& reg, net::TcpServer& server) {
                 closed.inc();
                 live.dec();
                 // Fold the connection's final byte totals before it is
-                // destroyed -- captures churned connections a live-iteration
+                // destroyed -- captures churned connection a live-iteration
                 // scrape would miss.
                 bytes_in.inc(conn->bytesRead());
                 bytes_out.inc(conn->bytesWritten());
