@@ -230,7 +230,7 @@ TEST(MetricsServerTest, HttpRequestMetricsByStatusClassAndDuration) {
                           " HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n";
         ASSERT_TRUE(test_util::sendAll(fd, req));
         char buf[256];
-        (void)::read(fd, buf, sizeof(buf));  // drain response
+        (void)test_util::drainSome(fd, buf, sizeof(buf));  // drain response
         ::close(fd);
     }
     std::this_thread::sleep_for(50ms);
@@ -278,7 +278,7 @@ TEST(MetricsServerTest, ByteCountersSummedOnClose) {
     int fd = connectClient(kPort);
     ASSERT_TRUE(test_util::sendAll(fd, msg));
     char buf[64];
-    (void)::read(fd, buf, sizeof(buf));  // read the echo back
+    (void)test_util::drainSome(fd, buf, sizeof(buf));  // read the echo back
     std::this_thread::sleep_for(30ms);
     ::close(fd);  // triggers the close-time fold
     std::this_thread::sleep_for(50ms);
