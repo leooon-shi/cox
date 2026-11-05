@@ -6,14 +6,14 @@
 #include <vector>
 
 namespace metrics {
-// Metrics instrument primitives: Counter, Gauge, Histogram.
+// Metric instrument primitives: Counter, Gauge, Histogram.
 //
 // Design (see docs/insights/features/metrics-design.md):
 //   * Hot-path operations (inc/dec/observe) are lock-free relaxed atomics --
 //     correct for metrics (atomicity, not ordering) and cheap. No instrument
 //     takes a lock to record a value.
 //   * Reads (value/snapshot) run off the hot path, at scrape time.
-//   * Instruments are non-copable, non-movable: the Registry owns them and
+//   * Instruments are non-copyable, non-movable: the Registry owns them and
 //     hands out stable references, so callers cache the reference and never
 //     look up by name on the hot path.
 
@@ -66,7 +66,7 @@ private:
 // quantile summaries are deliberately NOT provided (they do not aggregate).
 class Histogram {
 public:
-    // upper_bounds: asceding, finite, and WITHOUT the implicit +Inf bucket
+    // upper_bounds: ascending, finite, and WITHOUT the implicit +Inf bucket
     // (which is tracked internally as the overflow bucket). Throws
     // std::invalid_argument if empty or not strictly ascending.
     explicit Histogram(std::vector<double> upper_bounds);
@@ -81,14 +81,14 @@ public:
     struct Snapshot {
         std::vector<double> bounds;  // the configured upper bounds (no +Inf)
         std::vector<uint64_t>
-            counts;         // size == bounds.size() +1; cumulative,
-                            // last element is the +Inf bucket = total
+            counts;         // size == bounds.size()+1; cumulative,
+                            // last element is the +Inf bucket == total
         uint64_t count{0};  // total observations
         double sum{0.0};    // sum of observed values
     };
     Snapshot snapshot() const;
 
-    // A resonable default bucket set for latency in SECONDS.
+    // A reasonable default bucket set for latency in SECONDS.
     static std::vector<double> defaultLatencyBuckets();
 
 private:

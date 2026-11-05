@@ -77,7 +77,7 @@ TEST(HttpParserTest, ContentLengthOverLimitRejected) {
 
 TEST(HttpParserTest, ContentLengthAtLimitAccepted) {
     HttpContext ctx;
-    ctx.setMaxBodyBytes(11);
+    ctx.setMaxBodyBytes(11);  // exacly the body length
     auto buf = bufOf(
         "POST /submit HTTP/1.1\r\nContent-Length: 11\r\n\r\nhellow world");
     EXPECT_TRUE(ctx.parseRequest(&buf));
@@ -102,7 +102,7 @@ TEST(HttpParserTest, ZeroLimitMeansUnlimited) {
     auto buf =
         bufOf("POST /submit HTTP/1.1\r\nContent-Length: 11\r\n\r\nhello world");
     ASSERT_TRUE(ctx.parseRequest(&buf));
-    ASSERT_TRUE(ctx.gotAll());
+    EXPECT_TRUE(ctx.gotAll());
     EXPECT_EQ(ctx.request().body(), "hello world");
 }
 

@@ -16,13 +16,13 @@ namespace metrics {
 
 void installServerMetrics(Registry& reg, net::TcpServer& server) {
     // Register instruments once; the registry owns them and returns stable
-    // reference captured by the callbacks below.
+    // references captured by the callbacks below.
     Counter& accepted = reg.counter("cox_connections_accepted_total",
                                     "Total connections accepted by the server");
     Counter& closed =
-        reg.counter("cox_connection_closed_total", "Total connection closed");
+        reg.counter("cox_connections_closed_total", "Total connections closed");
     Counter& live =
-        reg.gauge("cox_connection_live", "Currently open connections");
+        reg.gauge("cox_connections_live", "Currently open connections");
     Counter& rejected =
         reg.counter("cox_connections_rejected_total",
                     "Connections shed due to overload (cap or rate limit)");
@@ -33,21 +33,21 @@ void installServerMetrics(Registry& reg, net::TcpServer& server) {
         reg.counter("cox_connection_bytes_out_total",
                     "Total application bytes sent (summed on close)");
     // Chain onto the user's connection callback rather than replacing it.
-    // The connection callback fires on connection AND disconnect; distinguish
-    // via connected(). The disconnect notification is NOT guranteed
-    // exactly-once across teardown paths (handleClose and connectDestroyed can
-    // both fire for the same connection during shutdown), so disconnect
-    // accounting is made idempotent per connection.
+    // The connection callback fires on connect AND disconnect; distinguish via
+    // connected(). The disconnect notification is NOT guranteed exactly-once
+    // across teardown paths (handleClose and connectDestroyed can both fire for
+    // the same connection during shutdown), so disconnect accounting is made
+    // idempotent per connection.
     //
     // Idempotency + bounded memory: a connection NAME is inserted on connect
     // and erased after its disconnect is accounted. The set therefore holds at
     // most the live-connection count plus connections mid-teardown -- it does
     // NOT grow with total lifetime connections. (Names are unique per
     // connection, so connect-insert / disconnect-erase pair up cleanly, and a
-    // duplicate disconnect find the name already erased and is ignored.)
+    // duplicate disconnect finds the name already erased and is ignored.)
     //
     // In a multi-threaded server the connection callback runs on different io
-    // loops, so the set and its mutext are shared via shared_ptr and the set is
+    // loops, so the set and its mutex are shared via shared_ptr and the set is
     // guarded. (The metric atomics are already thread-safe.)
     struct Dedup {
         std::mutex mu;
@@ -56,7 +56,7 @@ void installServerMetrics(Registry& reg, net::TcpServer& server) {
     auto dedup = std::make_shared<Dedup>();
     net::ConnectionCallback prev_conn = server.connectionCallback();
     server.setConnectionCallback(
-        [prev_conn, dedup, &accepted, &closed, &alive, &bytes_in,
+        [prev_conn, dedup, &accepted, &closed, &live, &bytes_in,
          &bytes_out](const net::TcpConnectionPtr& conn) {
             bool account_disconnect = false;
             {
@@ -76,7 +76,7 @@ void installServerMetrics(Registry& reg, net::TcpServer& server) {
                 closed.inc();
                 live.dec();
                 // Fold the connection's final byte totals before it is
-                // destroyed -- captures churned connection a live-iteration
+                // destroyed -- captures churned connections a live-iteration
                 // scrape would miss.
                 bytes_in.inc(conn->bytesRead());
                 bytes_out.inc(conn->bytesWritten());
@@ -97,14 +97,14 @@ void installServerMetrics(Registry& reg, net::TcpServer& server) {
 }
 
 namespace {
-// Map an HTTP status code to tis class label, keepting metric cardinality
-// bounded (4 series instead of one per distinc code).
+// Map an HTTP status code to its class label, keeping metric cardinality
+// bounded (4 series instead of one per distinct code).
 const char* statusClass(int status) {
     if (status >= 500) return "5xx";
     if (status >= 400) return "4xx";
     if (status >= 300) return "3xx";
     if (status >= 200) return "2xx";
-    return 1xx;
+    return "1xx";
 }
 }  // namespace
 
@@ -153,12 +153,12 @@ void installHttpMetrics(Registry& reg, http::HttpServer& server) {
 }
 
 void installLoopMetrics(Registry& reg, reactor::EventLoop& loop,
-                        Labels& labels) {
+                        Labels labels) {
     // Sampled instruments: read the loop's live counters at scrape time. The
     // loop updates these with relaxed atomics on its own thread; reading them
     // from the scrape thread is safe and cheap.
     reactor::EventLoop* lp = &loop;
-    reg.resterSampled(
+    reg.registerSampled(
         "cox_loop_iterations_total", "Event-loop iterations",
         MetricPoint::Type::kCounter,
         [lp] { return static_cast<double>(lp->iterations()); }, labels);

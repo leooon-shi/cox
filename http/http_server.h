@@ -67,7 +67,7 @@ public:
     // limit enforced by the parser: a Content-Length above it is rejected up
     // front with 413, and a chunked body is rejected once it exceeds the cap.
     // Defaults to HttpContext::kDefaultMaxBodyBytes.
-    void setMaxBodySize(size_t bytes) { max_body_size_ = bytes; }
+    void setMaxBodySize(size_t bytes) { max_body_bytes_ = bytes; }
 
     // Maximum unconsumed bytes buffered per connection at the TCP layer before
     // the connection is force-closed (coarse memory bound, distinct from the

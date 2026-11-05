@@ -16,7 +16,7 @@ namespace http {
 //
 // Supported: request line, headers, Content-Length bodies, and chunked
 // transfer-encoding. The header section is bounded by kMaxHeaderBytes and the
-// body by setMaxBodySize() (a real per-request limit, independent of the TCP
+// body by setMaxBodyBytes() (a real per-request limit, independent of the TCP
 // input-buffer cap).
 class HttpContext {
 public:
@@ -54,6 +54,7 @@ public:
     // Maximum request body size in bytes. 0 disables the limit. Enforced for
     // both Content-Length (rejected up front from the declared length) and
     // chunked (rejected once the accumulated body exceeds the cap). This is a
+    // a real per-request limit, distinct from the TCP input-buffer cap, which
     // only bounds unconsumed bytes in flight.
     void setMaxBodyBytes(size_t bytes) { max_body_bytes_ = bytes; }
     size_t maxBodyBytes() const { return max_body_bytes_; }

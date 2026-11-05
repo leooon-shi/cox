@@ -5,7 +5,7 @@
 
 namespace metrics {
 namespace {
-// Two Instruments are the same iff name and label set match. Labels are
+// Two Instruments are the same iff name AND label set match. Labels are
 // compared in the order given (callers use a consistent order).
 bool sameLabels(const Labels& a, const Labels& b) {
     if (a.size() != b.size()) {
@@ -40,8 +40,8 @@ Registry::Entry& Registry::findOrCreate(const std::string& name,
     for (auto& e : entries_) {
         if (e->name == name && sameLabels(e->labels, labels)) {
             if (e->type != type) {
-                throw std::runtime_error("merics: instrument '" + name +
-                                         "; redeclared with a different type");
+                throw std::runtime_error("metrics: instrument '" + name +
+                                         "' redeclared with a different type");
             }
             return *e;
         }
@@ -65,7 +65,7 @@ Counter& Registry::counter(std::string name, std::string help, Labels labels) {
     return *e.counter;
 }
 
-Gauge& Registry::gauge(std::name, std::string help, Labels labels) {
+Gauge& Registry::gauge(std::string name, std::string help, Labels labels) {
     std::lock_guard<std::mutex> lock(mutex_);
     Entry& e = findOrCreate(name, help, MetricPoint::Type::kGauge, labels);
     if (!e.gauge) {
@@ -74,7 +74,7 @@ Gauge& Registry::gauge(std::name, std::string help, Labels labels) {
     return *e.gauge;
 }
 
-Histogram& Registry::histogram(std::name, std::string help,
+Histogram& Registry::histogram(std::string name, std::string help,
                                std::vector<double> buckets, Labels labels) {
     std::lock_guard<std::mutex> lock(mutex_);
     Entry& e = findOrCreate(name, help, MetricPoint::Type::kHistogram, labels);
@@ -98,8 +98,8 @@ void Registry::registerSampled(std::string name, std::string help,
     e.sample = std::move(sample);
 }
 
-bool Registry::ScrapFilter::matches(const MetricPoint& p) const {
-    if (!name_prefx.empty()) {
+bool Registry::ScrapeFilter::matches(const MetricPoint& p) const {
+    if (!name_prefix.empty()) {
         if (p.name.size() < name_prefix.size() ||
             p.name.compare(0, name_prefix.size(), name_prefix) != 0) {
             return false;
@@ -117,12 +117,12 @@ bool Registry::ScrapFilter::matches(const MetricPoint& p) const {
 Snapshot Registry::scrape(const ScrapeFilter& filter) const {
     std::lock_guard<std::mutex> lock(mutex_);
     Snapshot snap;
-    snap.reserver(entries_.size());
+    snap.reserve(entries_.size());
     for (const auto& e : entries_) {
         // Cheap pre-checks on the Entry to skip excluded instruments BEFORE
         // doing the (relatively costly) histogram snapshot read.
         if (!filter.name_prefix.empty()) {
-            if (e->name.size() < filter.name_prefix_.size() ||
+            if (e->name.size() < filter.name_prefix.size() ||
                 e->name.compare(0, filter.name_prefix.size(),
                                 filter.name_prefix) != 0) {
                 continue;
@@ -146,20 +146,21 @@ Snapshot Registry::scrape(const ScrapeFilter& filter) const {
                 case MetricPoint::Type::kCounter:
                     p.value = static_cast<double>(e->counter->value());
                     break;
-                case MetricPoint::Type::Gauge:
+                case MetricPoint::Type::kGauge:
                     p.value = static_cast<double>(e->gauge->value());
                     break;
-                case MetricPoint::Type::Histogram: {
+                case MetricPoint::Type::kHistogram: {
                     Histogram::Snapshot hs = e->histogram->snapshot();
-                    p.buckets_bounds = std::move(hs.bounds);
-                    p.buckets_counts = std::move(hs.counts);
+                    p.bucket_bounds = std::move(hs.bounds);
+                    p.bucket_counts = std::move(hs.counts);
                     p.hist_count = hs.count;
+                    p.hist_sum = hs.sum;
                     break;
                 }
             }
         }
 
-        // The arbitrary predicate (e.g label matching) needs the built point.
+        // The arbitrary predicate (e.g. label matching) needs the built point.
         if (filter.predicate && !filter.predicate(p)) {
             continue;
         }
@@ -207,7 +208,7 @@ std::string prometheus(const Snapshot& snap) {
     std::ostringstream os;
     for (const auto& p : snap) {
         os << "# HELP " << p.name << ' ' << p.help << '\n';
-        os << "# TYPE " << p.name << ' ' << typeNmae(p.type) << '\n';
+        os << "# TYPE " << p.name << ' ' << typeName(p.type) << '\n';
         switch (p.type) {
             case MetricPoint::Type::kCounter:
             case MetricPoint::Type::kGauge:

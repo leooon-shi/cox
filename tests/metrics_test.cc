@@ -1,5 +1,5 @@
 // Metrics module tests: instrument arithmetic, histogram bucketing, the
-// format-neutral Snapshot, Prometheus exposition, and concurrent correctnesss.
+// format-neutral Snapshot, Prometheus exposition, and concurrent correctness.
 
 #include "metrics.h"
 #include "registry.h"
@@ -39,7 +39,7 @@ TEST(MetricsTest, GaugeUpDownSet) {
 TEST(MetricsTest, HistogramBucketsAndSum) {
     Histogram h({1.0, 5.0, 10.0});  // +Inf bucket is implicit
     h.observe(0.5);                 // -> bucket le=1
-    h.observe(3.0);                 // -> bucket le=5;
+    h.observe(3.0);                 // -> bucket le=5
     h.observe(7.0);                 // -> bucket le=10
     h.observe(100.0);               // -> +Inf bucket
 
@@ -50,7 +50,7 @@ TEST(MetricsTest, HistogramBucketsAndSum) {
     EXPECT_EQ(s.counts[0], 1u);  // <= 1
     EXPECT_EQ(s.counts[1], 2u);  // <= 5
     EXPECT_EQ(s.counts[2], 3u);  // <= 10
-    EXPECT_EQ(s.counts[3], 4u);  // <= +Inf (total)
+    EXPECT_EQ(s.counts[3], 4u);  // +Inf (total)
     EXPECT_EQ(s.count, 4u);
     EXPECT_DOUBLE_EQ(s.sum, 110.5);
 }
@@ -61,7 +61,7 @@ TEST(MetricsTest, HistogramBoundaryGoesIntoItsOwnBucket) {
     auto s = h.snapshot();
     EXPECT_EQ(s.counts[0], 1u);  // <= 1 includes exactly 1.0
     EXPECT_EQ(s.counts[1], 1u);  // <= 2 cumulative
-    EXPECT_EQ(s.counts[2], 1u);  // <= +Inf
+    EXPECT_EQ(s.counts[2], 1u);  // +Inf
 }
 
 TEST(MetricsTest, HistogramRejectsBadBounds) {
@@ -144,16 +144,16 @@ TEST(MetricsTest, PrometheusFormat) {
 
 TEST(MetricsTest, PrometheusHistogramFormat) {
     Registry reg;
-    auto& h = reg.histogram("lab", "latency", {0.1, 0.5});
+    auto& h = reg.histogram("lat", "latency", {0.1, 0.5});
     h.observe(0.05);  // le=0.1
     h.observe(0.3);   // le=0.5
     std::string out = expo::prometheus(reg.scrape());
 
     EXPECT_NE(out.find("# TYPE lat histogram"), std::string::npos);
-    EXPECT_NE(out.find("lat_buckets{le=\"0.1\"} 1"), std::string::npos);
-    EXPECT_NE(out.find("lat_buckets{le=\"0.5\"} 2"),
+    EXPECT_NE(out.find("lat_bucket{le=\"0.1\"} 1"), std::string::npos);
+    EXPECT_NE(out.find("lat_bucket{le=\"0.5\"} 2"),
               std::string::npos);  // cumulative
-    EXPECT_NE(out.find("lat_buckets{le=\"+Inf\"} 2"), std::string::npos);
+    EXPECT_NE(out.find("lat_bucket{le=\"+Inf\"} 2"), std::string::npos);
     EXPECT_NE(out.find("lat_count 2"), std::string::npos);
 }
 
@@ -161,7 +161,7 @@ TEST(MetricsTest, PrometheusLabelsRendered) {
     Registry reg;
     reg.counter("reqs", "by status", {{"status", "2xx"}}).inc(5);
     std::string out = expo::prometheus(reg.scrape());
-    EXPECT_NE(out.find("reqs{status=\2xx\"} 5"), std::string::npos);
+    EXPECT_NE(out.find("reqs{status=\"2xx\"} 5"), std::string::npos);
 }
 
 // ---- Scrape-time filter ----
@@ -180,7 +180,7 @@ TEST(MetricsTest, ScrapeFilterByNamePrefix) {
     EXPECT_EQ(snap[0].name, "cox_http_requests_total");
 }
 
-TEST(MetricsTest, ScrapeFilterExcludeHistograms) {
+TEST(MetricsTest, ScrapeFilterExcludesHistograms) {
     Registry reg;
     reg.counter("c", "h").inc(1);
     reg.gauge("g", "h").set(2);
@@ -190,7 +190,7 @@ TEST(MetricsTest, ScrapeFilterExcludeHistograms) {
     f.include_histograms = false;
     Snapshot snap = reg.scrape(f);
 
-    ASSERT_EQ(snap.size(), 2u);  // Counter + gauge, no histogram
+    ASSERT_EQ(snap.size(), 2u);  // counter + gauge, no histogram
     for (const auto& p : snap) {
         EXPECT_NE(p.type, MetricPoint::Type::kHistogram);
     }
@@ -214,7 +214,7 @@ TEST(MetricsTest, ScrapeFilterPredicate) {
 TEST(MetricsTest, ScrapeFilterRulesAreAnded) {
     Registry reg;
     reg.counter("cox_a_total", "h").inc(1);
-    reg.histogram("cox_a_hist", "h", {1.0}).observe(0.5);  // metches prefix
+    reg.histogram("cox_a_hist", "h", {1.0}).observe(0.5);  // matches prefix
     reg.counter("other_total", "h").inc(1);
 
     Registry::ScrapeFilter f;
@@ -228,9 +228,9 @@ TEST(MetricsTest, ScrapeFilterRulesAreAnded) {
 
 TEST(MetricsTest, DefaultScrapeSelectsEverything) {
     Registry reg;
-    reg.counter("c", "h").inc(1);
+    reg.counter("c", "h");
     reg.histogram("h", "h", {1.0});
-    EXPECT_EQ(reg.scrape().size(), 2u);  // no filter == all;
+    EXPECT_EQ(reg.scrape().size(), 2u);  // no filter == all
 }
 
 // ---- Sampled instruments ----
@@ -240,6 +240,7 @@ TEST(MetricsTest, SampledInstrumentReadsLiveValueAtScrape) {
     uint64_t live = 0;
     reg.registerSampled("loop_iters", "iterations", MetricPoint::Type::kCounter,
                         [&live] { return static_cast<double>(live); });
+
     live = 5;
     EXPECT_EQ(reg.scrape()[0].value, 5.0);  // read at scrape time
     live = 99;
@@ -265,7 +266,7 @@ TEST(MetricsTest, SampledInstrumentSerializes) {
 
 // ---- Concurrency ----
 
-TEST(MetricsTest, CountersIsThreadSafe) {
+TEST(MetricsTest, CounterIsThreadSafe) {
     Counter c;
     constexpr int kThreads = 8;
     constexpr int kPerThread = 100000;

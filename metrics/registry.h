@@ -11,10 +11,9 @@
 #include <vector>
 
 namespace metrics {
-// A label is key=value pair; a metric's identity is its name plus an ordered
+// A label is a key=value pair; a metric's identity is its name plus an ordered
 // label set. For v1 (see design §4.4) callers pre-declare the label values and
-// hold the returned instrument reference, so there is no per-precord map
-// lookup.
+// hold the returned instrument reference, so there is no per-record map lookup.
 using Label = std::pair<std::string, std::string>;
 using Labels = std::vector<Label>;
 
@@ -33,7 +32,7 @@ struct MetricPoint {
     double value{0.0};
 
     // Histogram (empty for non-histograms). Cumulative, Prometheus-style.
-    std::vector<double> bucket_bounds;    // asceding, excludes +Inf
+    std::vector<double> bucket_bounds;    // ascending, excludes +Inf
     std::vector<uint64_t> bucket_counts;  // size == bounds+1 (last == +Inf)
     uint64_t hist_count{0};
     double hist_sum{0.0};
@@ -54,7 +53,7 @@ public:
     // owns the object). Calling again with the same (name, labels) returns the
     // SAME instrument; the type must match or std::runtime_error is thrown.
     Counter& counter(std::string name, std::string help, Labels labels = {});
-    Gauge& gauge(std::string name, std::string help, Labels label = {});
+    Gauge& gauge(std::string name, std::string help, Labels labels = {});
     Histogram& histogram(std::string name, std::string help,
                          std::vector<double> buckets, Labels labels = {});
 
@@ -62,7 +61,7 @@ public:
     // scrape time, rather than stored in an owned atomic. Use this to surface a
     // value that lives elsewhere and is updated on a hot path with no metrics
     // dependency -- e.g. EventLoop::iterations() or a thread-pool queue depth.
-    // `type` is kCounter (monotonic source) or kGuage (up/down sources);
+    // `type` is kCounter (monotonic source) or kGauge (up/down source);
     // kHistogram is not supported here. `sample` is invoked during scrape(),
     // so it must be cheap and thread-safe (reading a relaxed atomic is both).
     void registerSampled(std::string name, std::string help,
@@ -71,8 +70,8 @@ public:
 
     // Scrape-time filter: selects WHICH instruments a scrape emits. It only
     // affects the scraper's work (iteration + later serialization) -- the hot
-    // path (inc/observe) is untoched. Use it to run a cheap, frequent scrape
-    // over subset (e.g. counters only, or a name prefix) alongside an
+    // path (inc/observe) is untouched. Use it to run a cheap, frequent scrape
+    // over a subset (e.g. counters only, or a name prefix) alongside an
     // occasional full scrape.
     //
     // A default-constructed filter selects everything. Rules are ANDed: an
@@ -96,7 +95,7 @@ public:
     // `filter`. Thread-safe; takes the registry mutex only to iterate, never
     // on the hot path.
     Snapshot scrape(const ScrapeFilter& filter) const;
-    // Convenience overload: snapshot of ALL instruments (no filters).
+    // Convenience overload: snapshot of ALL instruments (no filter).
     Snapshot scrape() const { return scrape(ScrapeFilter{}); }
 
     // Process-wide default registry (mirrors the Logger's default instance)
@@ -109,7 +108,7 @@ private:
         MetricPoint::Type type;
         Labels labels;
         // Exactly one of these describes the value source:
-        //  - an owned intrument (counter/gauge/histogram), OR
+        //  - an owned instrument (counter/gauge/histogram), OR
         //  - `sample` (a scrape-time callback) for a sampled counter/gauge.
         std::unique_ptr<Counter> counter;
         std::unique_ptr<Gauge> gauge;

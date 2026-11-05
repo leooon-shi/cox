@@ -95,7 +95,7 @@ bool HttpContext::parseRequest(buffer::Buffer* buf) {
                                              cl.c_str(), nullptr, 10));
                         body_received_ = 0;
                         // Reject oversized bodies up front from the declared
-                        // length -- no need to read a single bytes.
+                        // length -- no need to read a single byte.
                         if (max_body_bytes_ > 0 &&
                             content_length_ > max_body_bytes_) {
                             error_ = Error::kTooLarge;
@@ -193,6 +193,6 @@ void HttpContext::reset() {
     body_received_ = 0;
     header_bytes_ = 0;
     chunk_remaining_ = 0;
-    // max_body_size_ is configuration, not per-request state: preserve it.
+    // max_body_bytes_ is configuration, not per-request state: preserve it.
 }
 }  // namespace http

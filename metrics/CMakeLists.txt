@@ -1,4 +1,4 @@
-# metrics module: Counter/Gauge/histogram + Registry + exposition.
+# metrics module: Counter/Gauge/Histogram + Registry + exposition.
 #
 # Core (metrics.cc, registry.cc) has NO Cox dependencies. The optional
 # server_metrics.cc wires a TcpServer to standard metrics via its public hooks,

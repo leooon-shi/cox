@@ -134,7 +134,7 @@ void HttpServer::processInput(
     };
 
     // Build the error response matching the parser's failure reason: an
-    // oversized body is 413 payload Too Large; anything else malformed is 400.
+    // oversized body is 413 Payload Too Large; anything else malformed is 400.
     auto errorResponse = [](HttpContext::Error e) -> std::string {
         if (e == HttpContext::Error::kTooLarge) {
             return "HTTP/1.1 413 Payload Too Large\r\nContent-Length: 0\r\n"

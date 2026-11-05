@@ -64,7 +64,7 @@ public:
 
     // ---- Lightweight runtime stats (for metrics/observability) ----
     // Written only by the loop thread; read by any thread (e.g. a metrics
-    // scrapper). Plain relaxed atomics -- a single add per loop iteration, no
+    // scraper). Plain relaxed atomics -- a single add per loop iteration, no
     // dependency on the metrics module. Monotonic since construction.
     //
     // Number of loop iterations (one poll() + handler drain per iteration).

@@ -142,7 +142,9 @@ public:
     // Cumulative application bytes received / sent on this connection. Written
     // only by this connection's loop thread; read by any thread. Relaxed
     // atomics, no metrics-module dependency.
-    uint64_t bytesRead() { return bytes_read_.load(std::memory_order_relaxed); }
+    uint64_t bytesRead() const {
+        return bytes_read_.load(std::memory_order_relaxed);
+    }
     uint64_t bytesWritten() const {
         return bytes_written_.load(std::memory_order_relaxed);
     }

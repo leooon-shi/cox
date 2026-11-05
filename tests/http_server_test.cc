@@ -208,6 +208,7 @@ TEST(HttpServerTest, OversizedBodyRejectedWith413) {
             resp->setBody("ok");
         });
         server.start();
+        started = true;
         loop.loop();
     });
     while (!started.load()) {

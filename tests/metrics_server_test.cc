@@ -7,6 +7,7 @@
 #include "event_loop.h"
 #include "http_response.h"
 #include "http_server.h"
+#include "inet_address.h"
 #include "registry.h"
 #include "socket.h"
 #include "tcp_connection.h"
@@ -54,7 +55,7 @@ double valueOf(const metrics::Snapshot& snap, const std::string& name) {
     }
     return -1;  // sentinel: not present
 }
-// Find a histogram's total count in a snaphot by name.
+// Find a histogram's total count in a snapshot by name.
 uint64_t histCountOf(const metrics::Snapshot& snap, const std::string& name) {
     for (const auto& p : snap) {
         if (p.name == name) {
@@ -103,7 +104,7 @@ TEST(MetricsServerTest, CountsAcceptedLiveAndClosedAndChainsUserCallback) {
             });
 
         // Install AFTER the user's callbacks, BEFORE start().
-        metrics::installHttpMetrics(reg, server);
+        metrics::installServerMetrics(reg, server);
 
         server.start();
         started = true;
@@ -127,7 +128,7 @@ TEST(MetricsServerTest, CountsAcceptedLiveAndClosedAndChainsUserCallback) {
         EXPECT_EQ(valueOf(snap, "cox_connections_closed_total"), 0.0);
     }
 
-    // Close one; live should drop, closed shuld rise.
+    // Close one; live should drop, closed should rise.
     ::close(c1);
     std::this_thread::sleep_for(50ms);
     {
@@ -188,7 +189,7 @@ TEST(MetricsServerTest, RejectedCounterOnConnectionCap) {
     server_thread.join();
 }
 
-TEST(MetricsServerTest, HtppRequestMetricsByStatusClassAndDuration) {
+TEST(MetricsServerTest, HttpRequestMetricsByStatusClassAndDuration) {
     const uint16_t kPort = 46212;
     metrics::Registry reg;
     std::atomic<bool> started{false};
@@ -209,7 +210,7 @@ TEST(MetricsServerTest, HtppRequestMetricsByStatusClassAndDuration) {
                     resp->setBody("nope");
                 }
             });
-        // A user observer metrics must CHAIN, not replace
+        // A user observer metrics must CHAIN, not replace.
         server.setRequestObserver([&](int, double) { user_obs_calls++; });
         metrics::installHttpMetrics(reg, server);
         server.start();
@@ -226,7 +227,7 @@ TEST(MetricsServerTest, HtppRequestMetricsByStatusClassAndDuration) {
     for (const char* path : {"/ok", "/missing"}) {
         int fd = connectClient(kPort);
         std::string req = std::string("GET ") + path +
-                          "HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n";
+                          " HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n";
         ASSERT_TRUE(test_util::sendAll(fd, req));
         char buf[256];
         (void)::read(fd, buf, sizeof(buf));  // drain response
@@ -322,7 +323,7 @@ TEST(MetricsServerTest, LoopMetricsSampleLiveCounters) {
     EXPECT_GT(iters2, iters1);  // sampled live -> advances between scrapes
 
     // poll-wait accumulates (seconds; small but > 0 after blocking in poll).
-    EXPECT_GE(valueOf(snap2, "cox_loop_wait_seconds_total"), 0.0);
+    EXPECT_GE(valueOf(snap2, "cox_loop_poll_wait_seconds_total"), 0.0);
 
     loop_ptr->runInLoop([&] { loop_ptr->quit(); });
     loop_thread.join();
