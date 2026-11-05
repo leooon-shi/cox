@@ -7,6 +7,7 @@
 #include "tcp_connection.h"
 #include "tls_connection.h"
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <string>
@@ -124,11 +125,32 @@ void HttpServer::processInput(
 
     HttpContext& ctx = it->second->ctx;
 
+    // Notify the request observer (metrics/tracing hook). `status` is the sent
+    // HTTP status; `secs` is handler wall time (0 for parser-rejected paths).
+    auto notify = [this](int status, double secs) {
+        if (request_observer_) {
+            request_observer_(status, secs);
+        }
+    };
+
+    // Build the error response matching the parser's failure reason: an
+    // oversized body is 413 payload Too Large; anything else malformed is 400.
+    auto errorResponse = [](HttpContext::Error e) -> std::string {
+        if (e == HttpContext::Error::kTooLarge) {
+            return "HTTP/1.1 413 Payload Too Large\r\nContent-Length: 0\r\n"
+                   "Connection: close\r\n\r\n";
+        }
+        return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n"
+               "Connection: close\r\n\r\n";
+    };
+
     if (!ctx.parseRequest(in)) {
-        log().debug("malformed request on " + conn_name + "; sending 400");
-        send(
-            "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n"
-            "Connection: close\r\n\r\n");
+        int status = ctx.error() == HttpContext::Error::kTooLarge ? 413 : 400;
+        log().debug("rejected request on " + conn_name + " (" +
+                    (status == 413 ? "body too large; 413" : "malformed; 400") +
+                    ")");
+        send(errorResponse(ctx.error()));
+        notify(status, 0.0);
         close();
         return;
     }
@@ -138,12 +160,17 @@ void HttpServer::processInput(
         const bool keep_alive = req.keepAlive();
 
         HttpResponse resp(keep_alive);
+        auto t0 = std::chrono::steady_clock::now();
         if (handler_) {
             handler_(req, &resp);
         } else {
             resp.setStatus(404);
             resp.setBody("No handler");
         }
+        double handler_secs =
+            std::chrono::duration<double>(std::chrono::steady_clock::now() - t0)
+                .count();
+        notify(resp.statusCode(), handler_secs);
         resp.setKeepAlive(keep_alive);
 
         buffer::Buffer out;
@@ -158,11 +185,14 @@ void HttpServer::processInput(
 
         // Parse a possibly-pipelined next request already buffered.
         if (!ctx.parseRequest(in)) {
-            log().debug("malformed pipelined request on " + conn_name +
-                        "; sending 400");
-            send(
-                "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n"
-                "Connection: close\r\n\r\n");
+            int status =
+                ctx.error() == HttpContext::Error::kTooLarge ? 413 : 400;
+            log().debug(
+                "rejected pipelined request on " + conn_name + " (" +
+                (status == 413 ? "body too large; 413" : "malformed; 400") +
+                ")");
+            send(errorResponse(ctx.error()));
+            notify(status, 0.0);
             close();
             return;
         }

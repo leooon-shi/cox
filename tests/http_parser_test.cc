@@ -64,6 +64,48 @@ TEST(HttpParserTest, ChunkedBody) {
     EXPECT_EQ(ctx.request().body(), "Wikipedia");
 }
 
+TEST(HttpParserTest, ContentLengthOverLimitRejected) {
+    HttpContext ctx;
+    ctx.setMaxBodyBytes(8);
+    // Declared length 11 > cap 8: rejected up front, before reading the body.
+    auto buf = bufOf(
+        "POST /submit HTTP/1.1\r\nContent-Length: 11\r\n\r\nhellow world");
+    EXPECT_FALSE(ctx.parseRequest(&buf));
+    EXPECT_TRUE(ctx.hasError());
+    EXPECT_EQ(ctx.error(), HttpContext::Error::kTooLarge);
+}
+
+TEST(HttpParserTest, ContentLengthAtLimitAccepted) {
+    HttpContext ctx;
+    ctx.setMaxBodyBytes(11);
+    auto buf = bufOf(
+        "POST /submit HTTP/1.1\r\nContent-Length: 11\r\n\r\nhellow world");
+    EXPECT_TRUE(ctx.parseRequest(&buf));
+    EXPECT_TRUE(ctx.gotAll());
+    EXPECT_EQ(ctx.request().body(), "hellow world");
+}
+
+TEST(HttpParserTest, ChunkedOverLimitRejected) {
+    HttpContext ctx;
+    ctx.setMaxBodyBytes(6);  // "Wiki"(4) + "pedia"(5) = 9 > 6
+    auto buf = bufOf(
+        "POST /c HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"
+        "4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n");
+    EXPECT_FALSE(ctx.parseRequest(&buf));
+    EXPECT_TRUE(ctx.hasError());
+    EXPECT_EQ(ctx.error(), HttpContext::Error::kTooLarge);
+}
+
+TEST(HttpParserTest, ZeroLimitMeansUnlimited) {
+    HttpContext ctx;
+    ctx.setMaxBodyBytes(0);  // default: no limit
+    auto buf =
+        bufOf("POST /submit HTTP/1.1\r\nContent-Length: 11\r\n\r\nhello world");
+    ASSERT_TRUE(ctx.parseRequest(&buf));
+    ASSERT_TRUE(ctx.gotAll());
+    EXPECT_EQ(ctx.request().body(), "hello world");
+}
+
 TEST(HttpParserTest, MalformedMethodErrors) {
     HttpContext ctx;
     auto buf = bufOf("FROBNICATE / HTTP/1.1\r\n\r\n");

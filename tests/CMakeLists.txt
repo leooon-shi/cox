@@ -72,6 +72,10 @@ cox_add_test(backoff_test             LIBS cox_flowcontrol)
 cox_add_test(concurrency_limiter_test LIBS cox_flowcontrol)
 cox_add_test(overload_control_test    LIBS cox_net)
 
+# ---- metrics ----
+cox_add_test(metrics_test             LIBS cox_metrics)
+cox_add_test(metrics_server_test      LIBS cox_metrics)
+
 # ---- net / TCP ----
 cox_add_test(inet_address_test        LIBS cox_net)
 cox_add_test(socket_test              LIBS cox_net)

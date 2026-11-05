@@ -163,12 +163,13 @@ add_subdirectory(fswatch)
 add_subdirectory(net)
 add_subdirectory(tls)
 add_subdirectory(http)
+add_subdirectory(metrics)
 
 # Namespaced ALIAS targets so examples (and any in-tree consumer) link the same
 # cox::<module> names external consumers use via find_package(Cox). Internal
 # unit tests link the plain cox_<module> targets directly.
-foreach(_m reactor logging utilities buffer concurrent flowcontrol fswatch
-           net tls http)
+foreach(_m reactor logging utilities buffer concurrent flowcontrol metrics
+           fswatch net tls http)
     if(NOT TARGET cox::${_m})
         add_library(cox::${_m} ALIAS cox_${_m})
     endif()

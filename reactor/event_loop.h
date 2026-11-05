@@ -62,6 +62,22 @@ public:
     }
     void assertInLoopThread() const;
 
+    // ---- Lightweight runtime stats (for metrics/observability) ----
+    // Written only by the loop thread; read by any thread (e.g. a metrics
+    // scrapper). Plain relaxed atomics -- a single add per loop iteration, no
+    // dependency on the metrics module. Monotonic since construction.
+    //
+    // Number of loop iterations (one poll() + handler drain per iteration).
+    uint64_t iterations() const {
+        return iterations_.load(std::memory_order_relaxed);
+    }
+    // Cumulative time spent blocked in poll(), in microseconds. Dividing by
+    // iterations() gives mean wait; the delta between scrapes gives busy/idle
+    // ratio.
+    uint64_t pollWaitMicros() const {
+        return poll_wait_us_.load(std::memory_order_relaxed);
+    }
+
 private:
     void wakeup();
     void handleWakeup();
@@ -89,6 +105,9 @@ private:
     int wakeup_fd_{-1};
 
     std::atomic<bool> quit_{false};
+    // Loop runtime stats (loop-thread writer, any-thread reader).
+    std::atomic<uint64_t> iterations_{0};
+    std::atomic<uint64_t> poll_wait_us_{0};
     // Written by the loop thread, read by other threads in queueInLoop to
     // decide whether a wakeup is needed. Atomic to avoid a data race.
     std::atomic<Channel*> processing_channel_{nullptr};

@@ -138,6 +138,14 @@ public:
     // Bytes currently queued in the output buffer (for backpressure decisions).
     size_t outputBufferPending() const;
 
+    // ---- Lightweight per-connection byte stats (for metrics) ----
+    // Cumulative application bytes received / sent on this connection. Written
+    // only by this connection's loop thread; read by any thread. Relaxed
+    // atomics, no metrics-module dependency.
+    uint64_t bytesRead() { return bytes_read_.load(std::memory_order_relaxed); }
+    uint64_t bytesWritten() const {
+        return bytes_written_.load(std::memory_order_relaxed);
+    }
     // Called by TcpServer once the connection object is fully constructed and
     // its shared_ptr exists; establishes the channel and fires the connection
     // callback. Must run in the loop thread.
@@ -181,6 +189,10 @@ private:
 
     buffer::Buffer input_buffer_;
     buffer::Buffer output_buffer_;
+
+    // Cumulative byte counters (loop-thread writer, any-thread reader).
+    std::atomic<uint64_t> bytes_read_{0};
+    std::atomic<uint64_t> bytes_written_{0};
 
     ConnectionCallback connection_callback_;
     MessageCallback message_callback_;

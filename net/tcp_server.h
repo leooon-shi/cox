@@ -80,6 +80,11 @@ public:
     void setConnectionCallback(ConnectionCallback cb) {
         connection_callback_ = std::move(cb);
     }
+    // Read the current connection callback (e.g. to chain instrumentation onto
+    // it without clobbering it). Returns a copy.
+    ConnectionCallback connectionCallback() const {
+        return connection_callback_;
+    }
     void setMessageCallback(MessageCallback cb) {
         message_callback_ = std::move(cb);
     }
@@ -128,6 +133,8 @@ public:
     void setOverloadCallback(OverloadCallback cb) {
         overload_callback_ = std::move(cb);
     }
+    // Read the current overload callback (to chain onto it). Returns a copy.
+    OverloadCallback overloadCallback() const { return overload_callback_; }
 
     // Optional accept-rate limit (new connections per second, with burst). When
     // exceeded, incoming connections are shed early (accept-then-close) and the

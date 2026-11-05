@@ -14,7 +14,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 BUILD_DIR="build/coverage"
-PROFDIR=$BUILD_DIR/profraw
+PROFDIR="$BUILD_DIR/profraw"
 WANT_HTML=0
 [[ "${1:-}" == "--html" ]] && WANT_HTML=1
 
@@ -49,7 +49,7 @@ for o in "${OBJS[@]}"; do OBJ_ARGS+=(-object "$o"); done
 
 IGNORE='(/third_party/|/tests/|/googletest/|/usr/)'
 
-echo "== coverage summary (Cox sources) == "
+echo "== coverage summary (Cox sources) =="
 llvm-cov report "${OBJ_ARGS[@]}" \
     -instr-profile="$PROFDATA" \
     -ignore-filename-regex="$IGNORE"
@@ -59,6 +59,6 @@ if [[ $WANT_HTML -eq 1 ]]; then
     llvm-cov show "${OBJ_ARGS[@]}" \
         -instr-profile="$PROFDATA" \
         -ignore-filename-regex="$IGNORE" \
-        -format=html -output-dir="$BUILD_TDIR/html"
+        -format=html -output-dir="$BUILD_DIR/html"
     echo "open $BUILD_DIR/html/index.html"
 fi

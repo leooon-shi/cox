@@ -190,3 +190,44 @@ TEST(HttpServerTest, PostEcho) {
     loop_ptr->quit();
     server_thread.join();
 }
+
+TEST(HttpServerTest, OversizedBodyRejectedWith413) {
+    const uint16_t kPort = 55504;
+    std::atomic<bool> started{false};
+    std::atomic<int> handler_calls{0};
+    reactor::EventLoop* loop_ptr = nullptr;
+
+    std::thread server_thread([&] {
+        reactor::EventLoop loop;
+        loop_ptr = &loop;
+        HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort), "http");
+        server.setMaxBodySize(8);  // tiny cap
+        server.setHttpHandler([&](const HttpRequest&, HttpResponse* resp) {
+            handler_calls++;  // must NOT be called for an oversized body
+            resp->setStatus(200);
+            resp->setBody("ok");
+        });
+        server.start();
+        loop.loop();
+    });
+    while (!started.load()) {
+        std::this_thread::sleep_for(1ms);
+    }
+    std::this_thread::sleep_for(30ms);
+
+    int client = connectClient(kPort);
+    std::string body = "this body is definitely larger than eight bytes";
+    std::string req =
+        "POST /upload HTTP/1.1\r\nHost: localhost\r\n"
+        "Content-Length: " +
+        std::to_string(body.size()) + "\r\n\r\n" + body;
+    ASSERT_TRUE(test_util::sendAll(client, req));
+
+    std::string resp = readAll(client, 1000);
+    EXPECT_NE(resp.find("HTTP/1.1 413 Payload Too Large"), std::string::npos);
+    EXPECT_EQ(handler_calls.load(), 0);  // request never reached the handler
+
+    ::close(client);
+    loop_ptr->quit();
+    server_thread.join();
+}

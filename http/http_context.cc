@@ -94,6 +94,14 @@ bool HttpContext::parseRequest(buffer::Buffer* buf) {
                                        : static_cast<size_t>(std::strtoul(
                                              cl.c_str(), nullptr, 10));
                         body_received_ = 0;
+                        // Reject oversized bodies up front from the declared
+                        // length -- no need to read a single bytes.
+                        if (max_body_bytes_ > 0 &&
+                            content_length_ > max_body_bytes_) {
+                            error_ = Error::kTooLarge;
+                            state_ = State::kError;
+                            return false;
+                        }
                         state_ = (content_length_ > 0) ? State::kExpectBody
                                                        : State::kGotAll;
                     }
@@ -150,6 +158,14 @@ bool HttpContext::parseRequest(buffer::Buffer* buf) {
             size_t avail = buf->readableBytes();
             size_t take = std::min(avail, chunk_remaining_);
             if (take > 0) {
+                // Enforce the body cap on the running total; chunked has no
+                // declared length, so the limit is checked as data arrives.
+                if (max_body_bytes_ > 0 &&
+                    body_received_ + take > max_body_bytes_) {
+                    error_ = Error::kTooLarge;
+                    state_ = State::kError;
+                    return false;
+                }
                 request_.appendBody(buf->peek(), take);
                 buf->retrieve(take);
                 chunk_remaining_ -= take;
@@ -177,5 +193,6 @@ void HttpContext::reset() {
     body_received_ = 0;
     header_bytes_ = 0;
     chunk_remaining_ = 0;
+    // max_body_size_ is configuration, not per-request state: preserve it.
 }
 }  // namespace http

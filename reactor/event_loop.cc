@@ -7,6 +7,7 @@
 #include "timer_queue.h"
 
 #include <unistd.h>  // for ::read, ::write, ::close
+#include <chrono>    // for poll-wait timing
 #include <cstdint>   // for uint64_t
 #include <sstream>   // for std::ostringstream (hex formatting of pointer)
 
@@ -109,8 +110,16 @@ void EventLoop::loop() {
         // Timeout policy is defined by kPollTimeoutMs (see top of file):
         // -1 (block forever) in Debug, a bounded backstop in Release.
         active_channels_.clear();
+        auto poll_start = std::chrono::steady_clock::now();
         poller_->poll(kPollTimeoutMs, active_channels_);
-
+        auto poll_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                           std::chrono::steady_clock::now() - poll_start)
+                           .count();
+        // Stats: one iteration, plus time blocked in poll(). Relaxed atomics,
+        // loop-thread writer only (see accessors in the header).
+        iterations_.fetch_add(1, std::memory_order_relaxed);
+        poll_wait_us_.fetch_add(static_cast<uint64_t>(poll_us),
+                                std::memory_order_relaxed);
         for (auto* channel : active_channels_) {
             processing_channel_.store(channel, std::memory_order_relaxed);
             channel->handleEvents();

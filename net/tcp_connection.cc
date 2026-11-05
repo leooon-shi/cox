@@ -94,6 +94,8 @@ void TcpConnection::handleRead() {
     int saved_errno = 0;
     ssize_t n = input_buffer_.readFd(channel_.fd(), &saved_errno);
     if (n > 0) {
+        bytes_read_.fetch_add(static_cast<uint64_t>(n),
+                              std::memory_order_relaxed);
         resetIdleTimer();  // activity: push the idle deadline forward
         if (message_callback_) {
             message_callback_(shared_from_this(), &input_buffer_);
@@ -196,6 +198,8 @@ void TcpConnection::handleWrite() {
     ssize_t n = ::write(channel_.fd(), output_buffer_.peek(),
                         output_buffer_.readableBytes());
     if (n > 0) {
+        bytes_written_.fetch_add(static_cast<uint64_t>(n),
+                                 std::memory_order_relaxed);
         output_buffer_.retrieve(static_cast<size_t>(n));
         if (output_buffer_.readableBytes() == 0) {
             // All buffered output flushed: stop watching for writability.
@@ -277,6 +281,8 @@ void TcpConnection::sendInLoop(const char* data, size_t len) {
     if (!channel_.isWriting() && output_buffer_.readableBytes() == 0) {
         nwrote = ::write(channel_.fd(), data, len);
         if (nwrote >= 0) {
+            bytes_written_.fetch_add(static_cast<uint64_t>(n),
+                                     std::memory_order_relaxed);
             remaining = len - static_cast<size_t>(nwrote);
             if (remaining == 0 && write_complete_callback_) {
                 write_complete_callback_(shared_from_this());
