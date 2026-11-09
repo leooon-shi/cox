@@ -3,7 +3,7 @@
 #
 # Roadmap CI/CD item 6: replace "the suite is thorough" with a number. This
 # builds the coverage preset, runs the whole suite (each test binary writing
-# its own profraw via LLVM_ProFILE_FILE), merges them, and prints a per-file
+# its own profraw via LLVM_PROFILE_FILE), merges them, and prints a per-file
 # line/region summary. Pass --html for a browsable report under build/coverage.
 #
 # Usage:

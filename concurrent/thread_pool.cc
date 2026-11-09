@@ -52,12 +52,14 @@ bool ThreadPool::isFull() const {
 void ThreadPool::run(Task task) {
     if (threads_.empty()) {
         task();  // no workers: run inline
+        tasks_run_.fetch_add(1, std::memory_order_relaxed);
         return;
     }
     std::unique_lock<std::mutex> lock(mutex_);
     // Block while the queue is full and the pool is still running.
     not_full_.wait(lock, [this] { return !isFull() || !running_.load(); });
     if (!running_.load()) {
+        tasks_shed_.fetch_add(1, std::memory_order_relaxed);
         return;  // dropped: pool is stopping
     }
     queue_.push_back(std::move(task));
@@ -67,15 +69,18 @@ void ThreadPool::run(Task task) {
 bool ThreadPool::tryRun(Task task) {
     if (threads_.empty()) {
         task();  // No workers: run inline
+        tasks_run_.fetch_add(1, std::memory_order_relaxed);
         return true;
     }
 
     std::unique_lock<std::mutex> lock(mutex_);
     if (!running_.load()) {
+        tasks_shed_.fetch_add(1, std::memory_order_relaxed);
         return false;
     }
 
     if (isFull()) {
+        tasks_shed_.fetch_add(1, std::memory_order_relaxed);
         return false;  // load-shedding: caller should reject/deny
     }
     queue_.push_back(std::move(task));
@@ -133,6 +138,7 @@ void ThreadPool::runInThread() {
         for (Task& task : batch) {
             task();  // Exceptions are the task's responsibility
             task = nullptr;
+            tasks_run_.fetch_add(1, std::memory_order_relaxed);
         }
     }
 }

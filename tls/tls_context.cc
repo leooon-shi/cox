@@ -1,6 +1,11 @@
 #include "tls_context.h"
 
+#include "event_loop.h"
+#include "session_cache.h"
+#include "ticket_key_manager.h"
+
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/ssl.h>
 
 #include <mutex>
@@ -61,9 +66,112 @@ TlsContext::TlsContext(Role role) : role_(role), ctx_(nullptr) {
 }
 
 TlsContext::~TlsContext() {
+    // Cancel the ticket-key rotation timer before anything it closes over is
+    // destroyed (the sanitizer-saga discipline: cancel armed timers on
+    // teardown). ticket_keys_/session_cache_ then free via unique_ptr.
+    if (ticket_timer_armed_ && ticket_loop_ != nullptr) {
+        ticket_loop_->cancel(ticket_timer_);
+        ticket_timer_armed_ = false;
+    }
     if (ctx_) {
         SSL_CTX_free(ctx_);
     }
+}
+
+int TlsContext::ticketKeyCallback(SSL* ssl, unsigned char* key_name,
+                                  unsigned char* iv, EVP_CIPHER_CTX* ectx,
+                                  EVP_MAC_CTX* hctx, int enc) {
+    // Recover the manager from the SSL_CTX app-data set in
+    // enableSessionTickets.
+    SSL_CTX* ctx = SSL_get_SSL_CTX(ssl);
+    auto* mgr = static_cast<TicketKeyManager*>(SSL_CTX_get_ex_data(ctx, 0));
+    if (mgr == nullptr) {
+        return -1;
+    }
+    return mgr->keyCallback(ssl, key_name, iv, ectx, hctx, enc);
+}
+
+void TlsContext::enableSessionTickets(reactor::EventLoop* loop,
+                                      uint32_t rotate_seconds) {
+    if (role != Role::kServer) {
+        return;  // tickets are a server concern
+    }
+    if (!ticket_keys_) {
+        ticket_keys_ = std::make_unique<TicketKeyManager>();
+    }
+    // Make the manager reachable from the C callback via SSL_CTX app-data.
+    SSL_CTX_set_ex_data(ctx_, 0, ticket_keys_.get());
+    SSL_CTX_set_tlsext_ticket_key_evp_cb(ctx_, &TlsContext::ticketKeyCallback);
+
+    // Periodic rotation for forward secrecy, driven on the loop (same pattern
+    // as CertReloader). Defualt cadence is a few hours; keep the previous key
+    // for the grace window that TicketKeyManager retains.
+    const uint64_t period_ms =
+        static_cast<uint64_t>(rotate_seconds == 0 ? 6 * 3600 : rotate_seconds) *
+        1000;
+    ticket_loop_ = loop;
+    if (loop != nullptr) {
+        TicketKeyManager* mgr = ticket_keys_.get();
+        ticket_timer_ = loop->runEvery(period_ms, [mgr]() { mgr->rotate(); });
+        ticket_timer_armed_ = true;
+    }
+}
+
+void TlsContext::setSessionCache(size max_sessions) {
+    if (role != Role::kClient) {
+        return;  // the origin-keyed cache is a client concern
+    }
+    session_cache_ = std::make_unique<SessionCache>(max_sessions);
+    // Reach the cache from the C callback via SSL_CTX app-data slot 1 (slot 0
+    // is the server ticket manager; a context is single-role so they never
+    // collide, but distinct slots keep it clear).
+    SSL_CTX_set_ex_data(ctx_, 1, session_cache_.get());
+    // Enable client-side caching so OpenSSL surfaces new sessions through the
+    // new-session callback; we store them by origin. NO_INTERNAL_STORE: we keep
+    // the sessions ourselves, keyed by origin, not in OpenSSL's id-keyed store.
+    SSL_CTX_set_session_cache_mode(
+        ctx_, SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_NO_INTERNAL_STORE);
+    SSL_CTX_sess_set_new_cb(ctx_, &TlsContext::newSessionCallback);
+}
+
+int TlsContext::newSessionCallback(SSL* ssl, SSL_SESSION* session) {
+    // Fires when a session becomes resumble -- for TLS 1.2 at handshake, for
+    // TLS 1.3 when the post-handshake NewSessionTicket arrives. Recover the
+    // cache (SSL_CTX ex-data) and the origin (SSL ex-data, set by TlsEngine).
+    SSL_CTX* ctx = SSL_get_SSL_CTX(ssl);
+    auto* cache = static_cast<SessionCache*>(SSL_CTX_get_ex_data(ctx, 1));
+    const char* origin =
+        static_cast<const char*>(SSL_get_ex_data(ssl, originExIndex()));
+    if (cache != nullptr && origin != nullptr && origin[0] != '\0') {
+        cache->store(origin, session);  // store() dups into an independent copy
+    }
+    // Return 0: we did NOT take ownership of the callback's reference (store()
+    // keeps its own copy), so OpenSSL frees the session as usual.
+    return 0;
+}
+
+int TlsContext::originExIndex() {
+    // Process-wide SSL ex-data index for the per-connection origin C-string.
+    static int idx =
+        SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+    return idx;
+}
+
+int TlsContext::sessionOriginExIndex() {
+    return originExIndex();
+}
+
+void TlsContext::disableResumption() {
+    // No tickets issued/accepted (server) and no caching (client): full
+    // handshake every time.
+    SSL_CTX_set_options(ctx_, SSL_OP_NO_TICKET);
+    SSL_CTX_set_session_cache_mode(ctx_, SSL_SESS_CACHE_OFF);
+    if (ticket_timer_armed_ && ticket_loop_ != nullptr) {
+        ticket_loop_->cancel(ticket_timer_);
+        ticket_timer_armed_ = false;
+    }
+    ticket_keys_.reset();
+    session_cache_.reset();
 }
 
 void TlsContext::useCertificateAndKey(const std::string& cert_pem_path,

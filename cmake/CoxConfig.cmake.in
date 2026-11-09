@@ -1,10 +1,13 @@
 @PACKAGE_INIT@
 
-# CoxConfig.cmake -- package config for find_package(Cox).
+# coxConfig.cmake -- package config for find_package(cox).
+#
+# The project is named Cox, but the installed package is spelled lowercase so
+# consumers write find_package(cox) and link cox::<module>
 #
 # Re-find external dependencies that Cox's targets link PUBLICly, so their
-# imported targets (OpenSSL::SSL, etc.) exist before we pull in CoxTargets.
-# Without this, consuming CoxTargets.cmake would reference targets that have
+# imported targets (OpenSSL::SSL, etc.) exist before we pull in coxTargets.
+# Without this, consuming coxTargets.cmake would reference targets that have
 # not been defined in the consumer's project.
 
 include(CMakeFindDependencyMacro)
@@ -21,6 +24,6 @@ if(@COX_HAVE_CARES@)
     # absolute path recorded in the export set, so no re-find is required here.
 endif()
 
-include("${CMAKE_CURRENT_LIST_DIR}/CoxTargets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/coxTargets.cmake")
 
-check_required_components(Cox)
+check_required_components(cox)

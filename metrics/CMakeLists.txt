@@ -16,7 +16,7 @@ set(METRICS_HEADERS
 )
 
 add_library(cox_metrics STATIC ${METRICS_SOURCES} ${METRICS_HEADERS})
-target_link_libraries(cox_metrics PUBLIC cox_net cox_http)
+target_link_libraries(cox_metrics PUBLIC cox_net cox_http cox_tls cox_concurrent)
 
 if(COX_INSTALL)
     cox_install_module(cox_metrics HEADERS ${METRICS_HEADERS})

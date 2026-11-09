@@ -12,6 +12,7 @@ struct bio_st;
 typedef struct bio_st BIO;
 
 namespace tls {
+class SessionCache;
 // TlsEngine drives a single TLS connection's OpenSSL state machine using memory
 // BIOs, with NO knowledge of sockets or event loops. This isolates the tricky
 // TLS logic so it can be unit-tested by piping the two engines' network output
@@ -97,6 +98,13 @@ private:
     BIO* wbio_;  // SSL -> network ( we read outbound encrypted bytes here)
     // NOTE: the role is applied at construction (accept vs connect state, SNI)
     // and never needed afterwards, so it is deliberately NOT stored.
+    // Client-side resumption: the context's origin-keyed session cache (or
+    // nullptr if resumption is disabled) and the origin to key it by. On a
+    // client handshake we offer any cached session before the handshake (via
+    // SSL_set_session) and stash the origin on the SSL so the context's
+    // new-session callback stores the negotiated session under the same key.
+    SessionCache* session_cache_{nullptr};
+    std::string session_origin_;
     std::string last_error_;
 };
 }  // namespace tls

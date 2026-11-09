@@ -115,10 +115,22 @@ public:
     void setMaxConnectionAge(uint32_t max_age_seconds) {
         max_age_seconds_ = max_age_seconds;
     }
+    // Optional: let a protocol layer close gracefully when max age is
+    // reached. Return true to take over (e.g. send HTTP/2 GOAWAY and let
+    // in-flight requests finish); the connection is then force-closed only
+    // if still open `grace_seconds` later (0 = no forced close). Return false
+    // for the default immediate force-close. Runs on the connection's loop.
+    using MaxAgeCallback = std::function<bool(const TcpConnectionPtr&)>;
+    void setMaxAgeCallback(MaxAgeCallback cb, uint32_t grace_seconds) {
+        max_age_callback_ = std::move(cb);
+        max_age_grace_seconds_ = grace_seconds;
+    }
 
     void setConnectionCallback(ConnectionCallback cb) {
         connection_callback_ = std::move(cb);
     }
+    // The installed connection callback (to chain onto it). Returns a copy.
+    ConnectionCallback connectionCallback() { return connection_callback_; }
     void setMessageCallback(MessageCallback cb) {
         message_callback_ = std::move(cb);
     }
@@ -145,10 +157,28 @@ public:
     uint64_t bytesRead() const {
         return bytes_read_.load(std::memory_order_relaxed);
     }
-
     uint64_t bytesWritten() const {
         return bytes_written_.load(std::memory_order_relaxed);
     }
+
+    // --- Close reason (for metrics / diagnostics) ----
+    // Why the connection ended. Set at each force-close site (the hardening
+    // timers and the input-buffer cap) before teardown; defaults to kPeer for
+    // an ordinary peer close / error. Read by metrics on disconnect so a
+    // labeled cox_connection_closed_total{reason=...} can attribute closes to
+    // the specific defense that fired (vs. a normal close). Written only by the
+    // loop thread, before the close callback runs; read after, same thread in
+    // the single-loop case and happens-after the disconnect callback otherwise.
+    enum class CloseReason {
+        kPeer,          // peer closed, read EOF, or socket error (the defualt)
+        kIdleTimeout,   // idle timeout fired (no inbound activity)
+        kWriteTimeout,  // write timeout fired (slow consumer, output backed up)
+        kMaxAge,        // connection max-age reached (lifetime recycling)
+        kInputCap,      // input-buffer cap exceeded (read-side memory bound)
+    };
+    CloseReason closeReason() const { return close_reason_; }
+    static const char* closeReasonString(CloseReason r);
+
     // Called by TcpServer once the connection object is fully constructed and
     // its shared_ptr exists; establishes the channel and fires the connection
     // callback. Must run in the loop thread.
@@ -221,10 +251,16 @@ private:
     uint32_t max_age_seconds_{0};
     reactor::TimerId max_age_timer_;
     bool max_age_timer_armed_{false};
+    MaxAgeCallback max_age_callback_;
+    uint32_t max_age_grace_seconds_{0};
 
     // Ingress backpressure state (accessed only in the loop thread). Tracks
     // whether the connection's read interest is currently enabled.
     bool reading_{true};
+
+    // Why the connection closed (see CloseReason). Set by the loop thread at
+    // each force-close site before teardown; kPeer by default.
+    CloseReason close_reason_{CloseReason::kPeer};
 
     // Generic per-connection context for higher-level protocols.
     std::shared_ptr<void> context_;

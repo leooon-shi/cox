@@ -4,12 +4,19 @@
 
 namespace net {
 class TcpServer;
-}
+class Resolver;
+}  // namespace net
 namespace http {
 class HttpServer;
 }
 namespace reactor {
 class EventLoop;
+}
+namespace concurrent {
+class ThreadPool;
+}
+namespace Tls {
+class TlsContext;
 }
 
 namespace metrics {
@@ -43,7 +50,11 @@ void installServerMetrics(Registry& reg, net::TcpServer& server);
 // request observer. Registers:
 //   cox_http_requests_total{status_class}  (counter; class = 2xx/3xx/4xx/5xx)
 //   cox_http_request_duration_seconds      (histogram; handler wall time)
+//   cox_http_rejected_total{reason}        (counter, sampled; requests the
+//       parser rejected before the handler: reason = bad_request (400) or
+//       body_too_large (413). These are ALSO counted in request_total{4xx}.)
 // Call AFTER the application has set its own observer (if any), before start().
+// The server must outlive the registry's scrapes.
 void installHttpMetrics(Registry& reg, http::HttpServer& server);
 
 // Built-in EventLoop instrumentation via the loop's lightweight stat accessors
@@ -54,5 +65,30 @@ void installHttpMetrics(Registry& reg, http::HttpServer& server);
 // `labels` lets a multi-loop server distinguish loops (e.g. {{"loop","io0"}}).
 void installLoopMetrics(Registry& reg, reactor::EventLoop& loop,
                         Labels labels = {});
+
+// Built-in ThreadPool instrumentation (sampled at scrape time from the pool's
+// relaxed counters, concurrent has no dependency on this module). Registers:
+//   cox_threadpool_tasks_total{result="run"|"shed"}  (counter)
+//   cox_threadpool_queue_depth                       (gauge; queued tasks)
+// `labels` distinguishes pools (e.g. {{"pool", "dns"}}). The pool must outlive
+// the registry's scrapes.
+void installThreadPoolMetrics(Registry& reg, concurrent::ThreadPool& pool,
+                              Labels labels = {});
+
+// Built-in TLS instrumentation from a TlsContext's handshake counters (every
+// TlsConnection built on the context records its outcome). Registers:
+//   cox_tls_handshakes_total{result="ok"|"failed"}  (counter)
+// "failed" includes a peer closing before the handshake completed. `labels`
+// distinguishes contexts (e.g. a server vs a client context). The context
+// must outlive the registry's scrapes.
+void installTlsMetrics(Registry& reg, const tls::TlsContext& ctx,
+                       Labels labels = {});
+
+// Build-in DNS instrumentation from a Resolver's lookup counters (works for
+// either backend). Registers:
+//   cox_dns_lookups_total{result="ok"|"failed"}  (counter)
+// A cache hit counts as ok. The resolver must outlive the registry's scrapes.
+void installDnsMetrics(Registry& reg, const net::Resolver& resolver,
+                       Labels labels = {});
 
 }  // namespace metrics

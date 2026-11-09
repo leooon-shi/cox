@@ -6,6 +6,8 @@ set(TLS_SOURCES
     tls_connection.cc
     cert_reloader.cc
     ocsp_stapler.cc
+    ticket_key_manager.cc
+    session_cache.cc
 )
 set(TLS_HEADERS
     tls_context.h
@@ -13,6 +15,8 @@ set(TLS_HEADERS
     tls_connection.h
     cert_reloader.h
     ocsp_stapler.h
+    ticket_key_manager.h
+    session_cache.h
 )
 
 add_library(cox_tls STATIC ${TLS_SOURCES} ${TLS_HEADERS})

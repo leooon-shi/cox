@@ -92,6 +92,7 @@ cox_add_test(resolver_test            LIBS cox_net cox_concurrent)
 # start a local responder, so they must not run at build/discovery time.
 cox_add_test(tls_engine_test          LIBS cox_tls OPAQUE)
 cox_add_test(tls_integration_test     LIBS cox_tls cox_net OPAQUE)
+cox_add_test(tls_session_resumption_test LIBS cox_tls OPAQUE)
 cox_add_test(cert_reloader_test       LIBS cox_tls OPAQUE)
 cox_add_test(sni_test                 LIBS cox_tls OPAQUE SLOW)
 cox_add_test(ocsp_test                LIBS cox_tls OPAQUE SLOW)
@@ -108,6 +109,16 @@ cox_add_test(dns_client_test          LIBS cox_http cox_concurrent)
 # OPAQUE: generate certs via the openssl CLI
 cox_add_test(tls_pool_test            LIBS cox_http OPAQUE SLOW)
 cox_add_test(https_test               LIBS cox_http OPAQUE)
+
+# ---- HTTP/2 (only with -DCOX_WITH_HTTP2=ON) ----
+if(COX_WITH_HTTP2)
+    cox_add_test(http2_session_test   LIBS cox_http)
+    cox_add_test(http2_client_session_test   LIBS cox_http)
+    # OPAQUE: shells out to openssl (cert) and curl (h2 client)
+    cox_add_test(http2_integration_test   LIBS cox_http OPAQUE)
+    # OPAQUE: shells out to openssl (cert)
+    cox_add_test(http2_client_test   LIBS cox_http OPAQUE)
+endif()
 
 # Guards the API snippets used in docs/ and insights/features/ (also shells out
 # to openssl for TLS/OCSP examples).

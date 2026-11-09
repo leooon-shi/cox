@@ -3,6 +3,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstddef>
+#include <cstdint>
 #include <deque>
 #include <functional>
 #include <mutex>
@@ -66,6 +67,18 @@ public:
     bool running() const { return running_.load(); }
     const std::string& name() const { return name_; }
 
+    // Lifetime task counters (relaxed atomics; cheap to read from any thread,
+    // e.g. a metrics scrape). tasksRun() counts tasks that actually executed
+    // (on a worker or inline). taskShed() counts tasks that were NOT run:
+    // tryRun() refused because the queue was full or the pool was stopped, or
+    // run() dropped because the pool was stopping.
+    uint64_t tasksRun() const {
+        return tasks_run_.load(std::memory_order_relaxed);
+    }
+    uint64_t tasksShed() const {
+        return tasks_shed_.load(std::memory_order_relaxed);
+    }
+
 private:
     void runInThread();
     // Drain up to take_batch_size_ tasks into `out`, blocking until at least
@@ -84,6 +97,8 @@ private:
     size_t max_queue_size_{0};
     size_t take_batch_size_{32};
     std::atomic<bool> running_{false};
+    std::atomic<uint64_t> tasks_run_{0};
+    std::atomic<uint64_t> tasks_shed_{0};
 };
 
 }  // namespace concurrent

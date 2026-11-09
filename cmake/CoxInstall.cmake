@@ -1,7 +1,7 @@
 # CoxInstall.cmake
 #
 # Helpers to make Cox's static libraries installable and consumable via
-# find_package(Cox) + target_link_libraries(app cox::<module>).
+# find_package(cox) + target_link_libraries(app cox::<module>).
 #
 # Design:
 #   * Each module calls cox_install_module(<target> HEADERS <h1> <h2> ...).
@@ -10,7 +10,7 @@
 #     adds the target to the shared CoxTargets export set, and installs its
 #     headers under include/cox/ preserving any subdirectory (e.g. poller/).
 #   * The top-level CMakeLists then calls cox_install_package() once to install
-#     the export set, generate CoxConfig.cmake + version file, and create the
+#     the export set, generate coxConfig.cmake + version file, and create the
 #     cox:: ALIAS namespace for in-tree consumers.
 #
 # Headers are installed FLAT under a single include/cox/ root (preserving
@@ -56,28 +56,33 @@ endfunction()
 function(cox_install_package)
     include(CMakePackageConfigHelpers)
 
-    set(_cmake_dir "${CMAKE_INSTALL_LIBDIR}/cmake/Cox")
+    # The project is named Cox, but external consumers use the lowercase
+    # find_package(cox). CMake's package search is case-sensitive on the config
+    # filename and directory, so the installed artifacts use the lowercase
+    # "cox" spelling: lib/cmake/cox/coxConfig.cmake. The cox:: target namespace
+    # is unchanged (it already matches the lowercase convention).
+    set(_cmake_dir "${CMAKE_INSTALL_LIBDIR}/cmake/cox")
 
     # Export the targets under the cox:: namespace for installed consumers.
     install(EXPORT CoxTargets
-            FILE CoxTargets.cmake
+            FILE coxTargets.cmake
             NAMESPACE cox::
             DESTINATION "${_cmake_dir}")
 
-    # Generate CoxConfig.cmake from the template; it re-finds transitive
+    # Generate coxConfig.cmake from the template; it re-finds transitive
     # external dependencies (OpenSSL always; c-ares when Cox was built with it)
     # before including the exported targets.
     configure_package_config_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/CoxConfig.cmake.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/CoxConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/coxConfig.cmake"
         INSTALL_DESTINATION "${_cmake_dir}")
 
     write_basic_package_version_file(
-        "${CMAKE_CURRENT_BINARY_DIR}/CoxConfigVersion.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/coxConfigVersion.cmake"
         VERSION "${PROJECT_VERSION}"
         COMPATIBILITY SameMajorVersion)
     install(FILES
-            "${CMAKE_CURRENT_BINARY_DIR}/CoxConfig.cmake"
-            "${CMAKE_CURRENT_BINARY_DIR}/CoxConfigVersion.cmake"
+            "${CMAKE_CURRENT_BINARY_DIR}/coxConfig.cmake"
+            "${CMAKE_CURRENT_BINARY_DIR}/coxConfigVersion.cmake"
             DESTINATION "${_cmake_dir}")
 endfunction()

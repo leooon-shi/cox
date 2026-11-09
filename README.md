@@ -15,8 +15,31 @@ with one deliberate deviation: 4-space indentation instead of 2. The rules are
 encoded in `.clang-format` so they are checkable rather than aspirational:
 
 ``bash
-clang-format --dry-run --Werror $(git ls-files '*.cc' '*.h' | grep -v '^googletest/')
+clang-format --dry-run --Werror $(git ls-files '*.cc' '*.h' | grep -v '^third_party/')
 ```
+
+### Format on commit (local pre-commit hook)
+The repo ships a ready-made hook, `.git_hooks_pre_commit.sample`. On every
+commit it runs `clang-format -i` on the staged `.cc`/`.h` files (added, copied
+or modified; submodules such as `third_party/googletest` are excluded) and
+re-stages them, so what you commit is already formatted. Install it once per
+close:
+
+```bash
+cp .git_hooks_pre_commit.sample .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+Notes:
+- Skip it for a single commit: `COX_NO_FORMAT=1 git commit ...`.
+- If `clang-format` is not on `PATH`, the hook exits silently and the commit
+  goes through unformatted. CI still reports it.
+- The hook formats and re-stages the WHOLE file. If you staged only part of a
+  file (`git add -p`), the unstaged hunks get staged too.
+- Git ignores `.git/hooks/` when `core.hooksPath` is set (check with
+  `git config --show-origin core.hooksPath`). Some managed machines set it
+  system-wide. In that case, put the hook in the configured directory, or run
+  `clang-format -i` on the changed files before committing.
 
 ## Unit Tests (UT)
 The project includes unit tests to ensure code quality and correctness.

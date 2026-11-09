@@ -76,17 +76,38 @@ jobs:
         run: |
           cmake --preset examples
           cmake --build --preset examples --parallel
+  hardening-smoke:
+    name: hardening smoke (containment invariants)
+    runs-on: ubuntu-24.04
+    # NON-BLOCKING (like the benchmark/coverage jobs): a reduced-scale run of the
+    # load-validation scenarios (docs/performance/hardening-validation.md)
+    # asserting only CONTAINMENT invariants -- bounded live connections, a
+    # rejected/closed counter advancing, an in-flight gauge under its cap -- and
+    # NEVER latency or CPU (harware-dependent, meaningless on shared runners).
+    # Socket timing on shared CI can be flaky, so this reports rather than gates;
+    # a failure is a signal to look. The full attack is a. manual, tuned-host run.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build clang libssl-dev libc-ares-dev openssl curl
+      - name: Run hardening smoke tier
+        run: |
+          ulimit -n 4096  # headroom for the reduced-scale floods
+          ./scripts/hardening_smoke.sh build/examples/bin
 
   format:
     name: clang-format check
     runs-on: ubuntu-24.04
-    # NON-BLOCKING: the existing code does NOT yet conform to .clang-format
-    # (measured 2026-09-05 with clang-format 18: ~3800 replacements across 151
-    # files, mostly hand-aligned columns and >80-char lines being reflowed).
-    # Bringing it into conformance is a single mechanical commit that touches
-    # nearly every file, so it is left as a deliberate decision rather than
-    # bundled into unrelated work. This job reports the diff meanwhile; drop
-    # continue-on-error once the tree is formatted.
+    # NON-BLOCKING: the tree fully conforms to
+    # .clang-format (all tracked sources outside third_party/). The primary
+    # guard is the local pre-commit hook (.git_hooks_pre_commit.sample; see
+    # README > Code Style).
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4

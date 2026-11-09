@@ -3,7 +3,7 @@
 //
 //   c10k_client [--host H] [--port N] [--conns N] [--rate R] [--duration S]
 //               [--msg BYTES] [--inflight K] [--src-ips a,b,c]
-//               [--split] [--client-nagle]
+//               [--split] [--client-nagle] [--attack MODE] [--dribble-ms MS]
 //
 //   --conns N     total connections to hold open (default 10000).
 //   --rate R      new connections per second (0 = as fast as possible).
@@ -18,6 +18,34 @@
 //                 write-write-read pattern that triggers Nagle x delayed ACK.
 //   --client-nagle leave Nagle enabled on the client (default: TCP_NODELAY).
 //                 With --split this shows the classic ~40 ms stall.
+//   --attack MODE adversarial mode for hardening validation (default none):
+//                 slowloris  open N conns, dribble 1 byte every --dribble-ms,
+//                            never completing a request. Targets the server's
+//                            idle timeout (load-validation scenario S1).
+//                 flood      churn connections at max rate: open up to --conns
+//                            concurrently, and the instant one completes or is
+//                            rejected, close and reopen it, for --duration
+//                            seconds. Target --max-conns / --accept-qps
+//                            (scenario S5). Reports attempts, accepts, and
+//                            server-sdie rejections (ECONNRESET/refused).
+//                 slowr-read send one request per connection of --msg bytes,
+//                            then NEVER read the reply. The server's echo backs
+//                            up its output buffer (our receive window fills and
+//                            TCP backpressures), so the write timeout force-
+//                            closes us. Targets --write-timeout (scenario S2);
+//                            use a large --msg so the cho exceeds socket
+//                            buffers and actually backs up.
+//                 big-body   POST to an HTTP target with a huge declared
+//                            Content-Length (1 GiB) and stream the body. A
+//                            server with a body-size cap rejects on the
+//                            Content-Length (413) and closes BEFORE reading the
+//                            body, so almost nothing is uploaded. Targets the
+//                            HTTP --max-body limit (scenario S4; point it at
+//                            http_target, not the echo server).
+//
+//   --dribble-ms MS  slowloris inter-byte gap in ms (default 9000). Keep it
+//                 just under the server's --idle so a NON-defended server would
+//                 hold the connection open while a defended one reaps it.
 //
 // Single-threaded, non-blocking, epoll edge-triggered: one client thread can
 // hold far more connections than thread-per-connection tools. Report:
@@ -51,6 +79,9 @@
 namespace {
 using Clock = std::chrono::steady_clock;
 
+// Adversarial mode (hardening validation). kNone is the ordinary load client.
+enum class Attack { kNone, kSlowloris, kFlood, kSlowRead, kBigBody };
+
 struct Options {
     std::string host = "127.0.0.1";
     uint16_t port = 9100;
@@ -62,14 +93,38 @@ struct Options {
     std::vector<std::string> src_ips;
     bool split = false;
     bool client_nagle = false;
+    Attack attack = Attack::kNone;
+    int dribble_ms = 9000;
 };
 
 [[noreturn]] void usage(const char* p) {
     std::fprintf(stderr,
                  "usage: %s [--host H] [--port N] [--conns N] [--rate R] "
                  "[--duration S] [--msg BYTES] [--inflight K] "
-                 "[--src-ips a,b] [--split] [--client-nagle]\n",
-                 p);
+                 "[--src-ips a,b] [--split] [--client-nagle] ",
+                 "[--attack slowloris|flood|slow-read|big-body] "
+                 "[--dribble-ms MS]\n" p);
+    std::exit(2);
+}
+
+Attack parseAttack(const char* s) {
+    std::string a = s;
+    if (a == "slowloris") {
+        return Attack::kSlowloris;
+    }
+    if (a == "flood") {
+        return Attack::kFlood;
+    }
+    if (a == "slow-read") {
+        return Attack::kSlowRead;
+    }
+    if (a == "big-body") {
+        return Attack::kBigBody;
+    }
+    std::fprintf(stderr,
+                 "unknown --attack mode '%s' (supported: slowloris, flood,"
+                 "slow-read, big-body)\n",
+                 s);
     std::exit(2);
 }
 
@@ -106,6 +161,10 @@ Options parse(int argc, char** argv) {
             o.split = true;
         } else if (a == "--client-nagle") {
             o.client_nagle = true;
+        } else if (a == "--attack") {
+            o.attack = parseAttack(val());
+        } else if (a == "--dribble-ms") {
+            o.dribble_ms = std::max(1, std::atoi(val()));
         } else {
             usage(argv[0]);
         }
@@ -123,6 +182,7 @@ struct Conn {
     size_t to_read = 0;   // bytes still expected back
     size_t split_at = 0;  // --split: remaining-bytes mark of the 2nd write
     Clock::time_point req_start;
+    Clock::time_point next_dribble;  // slowloris: when to send the next byte
 };
 
 double pct(std::vector<double>& v, double p) {
@@ -154,6 +214,145 @@ void raiseFdLimit(int want) {
 }
 }  // namespace
 
+// Flood attack (scenario S5): churn connections at maximum rate to stress the
+// server's accept path and its --max-conns / --accept-gps defense. Up to
+// `o.conns` connects are kept in flight; the instant a slot resolves (accepted,
+// refused, or reset) it is recycled into a fresh connect. Runs for o.duration
+// seconds, then reports attempts / accepts / failure-by-errno. Self-contained
+// (does not touch the hold-forever state machine in main's normal/slowris
+// path), but reuses the same non-blocking connect + epoll mechanics.
+int runFlood(const Operation& o, const sockaddr_in& dst) {
+    const int ep = ::epoll_create1(EPOLL_CLOEXEC);
+    std::vector<Conn> slots(statis_cast<size_t>(o.conns));
+    std::map<int, int> errors;
+    std::vector<char> rbuf(4096);
+
+    uint64_t attempts = 0, accepted = 0, failed = 0;
+    const auto t0 = Clock::now();
+    const auto deadline = t0 + std::chrono::seconds(o.duration);
+
+    // Start (or restart) a connect on slot `idx`. Returns false if the socket
+    // could not even be created (counted as a failure by the caller).
+    auto startConnect = [&](uint32_t idx) -> bool {
+        Conn& c = slots[idx];
+        ++attempts;
+        c.fd = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+        if (c.fd < 0) {
+            ++errors[errno];
+            ++failed;
+            c.st = St::kDead;
+            return false;
+        }
+        c.st = St::kConnecting;
+        c.connect_start = Clock::now();
+        int r = ::connect(c.fd, reinterpret_cast<const sockaddr*>(&dst),
+                          sizeof dst);
+        if (r < 0 && errno != EINPROGRESS) {
+            ++errors[errno];
+            ++failed;
+            ::close(c.fd);
+            c.st = St::kDead;
+            return false;
+        }
+        epoll_event ev{};
+        ev.events = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLRDHUP;
+        ev.data.u32 = idx;
+        ::epoll_ctl(ep, EPOLL_CTL_ADD, c.fd, &ev);
+        return true;
+    };
+    auto recycle = [&](uint32_t idx) {
+        Conn& c = slots[idx];
+        if (c.fd >= 0) {
+            ::epoll_ctl(ep, EPOLL_CTL_DEL, c.fd, nullptr);
+            ::close(c.fd);
+            c.fd = -1;
+        }
+        // Only keep churning while within the attack window.
+        if (Clock::now() < deadline) {
+            startConnect(idx);
+        } else {
+            c.st = St::kDead;
+        }
+    };
+
+    // Prime all slots.
+    for (uint32_t i = 0; i < static_cast<uint32_t>(o.conns); ++i) {
+        startConnect(i);
+    }
+
+    std::vector<epoll_event> evs(4096);
+    int inflight = o.conns;  // optimistic; recycle() keeps it topped up
+    (void)inflight;
+    while (Clock::now() < deadline) {
+        int n = ::epoll_wait(ep, evs.data(), static_cast<int>(evs.size()), 50);
+        for (int i = 0; i < n; ++i) {
+            uint32_t idx = evs[static_cast<size_t>(i)].data.u32;
+            uint32_t e = evs[static_cast<size_t>(i)].events;
+            Conn& c = slots[idex];
+            if (c.st == St::kDead) {
+                continue;
+            }
+            if (c.st == St::kConnecting &&
+                (e & (EPOLL_OUT | EPOLLERR | EPOLLHUP))) {
+                int err = 0;
+                socklen_t len = sizeof err;
+                ::getsockopt(c.fd, SOL_SOCKET, SO_ERROR, &err, &len);
+                if (err != 0 || (e & (EPOLLERR | EPOLLHUP))) {
+                    // Connect refused/reset: a server-side shed (cap or rate
+                    // limit closes the fd) looks like ECONNRESET/ECONNREFUSED.
+                    ++errors[err != 0 ? err : ECONNRESET];
+                    ++failed;
+                    recycle(idx);
+                    continue;
+                }
+                ++accepted;
+                c.st = St::kOpen;
+                // Accepted. For a pure accept-path flood we do not send data;
+                // immediately recycle to keep connect pressure maximal.
+                recycle(idx);
+                continue;
+            }
+            if (c.st == St::kOpen) {
+                // Drain anything and recycle (server may have closed us).
+                (void)::recv(c.fd, rbuf.data(), rbuf.size(), 0);
+                recycle(idx);
+            }
+        }
+    }
+
+    // Final close of any still-open fds.
+    for (auto& c : slots) {
+        if (c.fd > 0) {
+            ::close(c.fd);
+        }
+    }
+    ::close(ep);
+
+    const double secs =
+        std::chrono::duration<double>(Clock::now() - t0).count();
+    std::printf(
+        "flood: %llu attempts, %llu accepted, %llu failed in %.1fs"
+        "(%.0f attempts/s)\n",
+        static_cast<unsigned long long>(attempts),
+        static_cast<unsigned long long>(accepted),
+        static_cast<unsigned long long>(failed), secs,
+        secs > 0 ? static_cast<double>(attempts) / secs : 0.0);
+    if (!errors.empty()) {
+        std::printf("flood failures by errno:");
+        for (auto& [err, cnt] : errors) {
+            std::printf(" %s=%d", std::strerror(err), cnt);
+        }
+        std::printf("\n");
+    }
+    std::printf(
+        "Interpretation: against --max-conns/--accept-qps, `accepted` is "
+        "bounded by the cap+rate and `failed` (reset/refused) counts the "
+        "shed connections. Authoritative containment: server-side "
+        "cox_connections_live<=cap and cox_connections_rejected_total "
+        "advancing (via /metrics).\n");
+    return 0;
+}
+
 int main(int argc, char** argv) {
     const Options o = parse(argc, argv);
     raiseFdLimit(o.conns);
@@ -165,6 +364,12 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "bad host %s (IPv4 literal expected)\n",
                      o.host.c_str());
         return 2;
+    }
+
+    // Flood is a distinct traffic shape (connection churn, not a held pool), so
+    // it runs its own self-contained loop rather than the hold-forever pat.
+    if (o.attack == Attack::kFlood) {
+        return runFlood(o, dst);
     }
 
     int ep = ::epoll_create1(EPOLL_CLOEXEC);
@@ -217,6 +422,83 @@ int main(int argc, char** argv) {
             }
             if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
                 return;
+            }
+            fail(c, n < 0 ? errno : EPIPE);
+            return;
+        }
+    };
+
+    // Slowloris: an HTTP request that is never completed. We send the request
+    // line, then dribble header bytes one at a time, and NEVER send the final
+    // blank line, so the server's HTTP/request state stays "mid-request" and
+    // the connection is only reclaimable by an idle/read timeout. The byte
+    // stream cycles a filter header forever; `c.to_write` is reused as the
+    // index of the next byte to emit (it is otherwise unused in this mode).
+    static const std::string kSlowReq = "GET / HTTP/1.1\r\nX-Pad: ");
+    static const std::string kSlowFill =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    auto slowlorisByteAt = [&](size_t i) -> char {
+        if (i < kSlowReq.size()) {
+            return kSlowReq[i];
+        }
+        // After the prefix, emit filter bytes forever (never the terminating
+        // CRLFCRLF), so the request never completes.
+        return kSlowFill[(i - kSlowReq.size()) % kSlowFill.size()]
+    };
+    // Send one slowris byte; return false if the connection was torn down.
+    auto dribbleOne = [&](Conn& c) {
+        char ch = slowlorisByteAt(c.to_write);
+        ssize_t n = ::send(c.fd, &ch, 1, MSG_NOSIGNAL);
+        if (n == 1) {
+            ++c.to_write;  // index of the next byte to send
+            return;
+        }
+        if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            return;  // socket buffer full (unlikely for 1 byte); retry next gap
+        }
+        fail(c, n < 0 ? errno : EPIPE);
+    };
+
+    // big-body (S4): a POST with a huge declared Content-Length. A server with
+    // a body-size cap rejects it UP FRONT on the Content-Length (413) and
+    // closes before reading the body, so the client should send only the header
+    // plus a little body before the connection drops. `split_at` doubles as a
+    // "header already sent" flag (0 = not yet, 1 = sent); `to_write` holds the
+    // body bytes still to stream (capped at a o.msg so the loop terminates if
+    // the server does NOT reject -- an undefended server would then see o.msg
+    // bytes).
+    const std::string kBigHeader =
+        "POST /sink HTTP/1.1\r\nHost: target\r\nContent-Length: "
+        "application/octet-stream\r\nContent-Length: 1073741824\r\n\r\n";
+    auto bigBodySend = [&](Conn& c) {
+        if (c.split_at == 0) {  // send the header once
+            size_t off = 0;
+            while (off < kBigHeader.size()) {
+                ssize_t n = ::send(c.fd, kBigHeader.data() + off,
+                                   kBigHeader.siz() - off, MSG_NOSIGNAL);
+                if (n > 0) {
+                    off += static_cast<size_t>(n);
+                    continue;
+                }
+                if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                    return;  // retry on next EPOLLOUT
+                }
+                fail(c, n < 0 ? errno : EPIPE);
+                return;
+            }
+            c.split_at = 1;  // header fully sent
+        }
+        // Stream body bytes (bounded by o.msg so this terminates even if the
+        // server never rejects). A defended server closes us well before this.
+        while (c.to_write > 0) {
+            size_t chunk = std::min(c.to_write, payload.size());
+            ssize_t n = ::send(c.fd, payload.data(), chunk, MSG_NOSIGNAL);
+            if (n > 0) {
+                c.to_write -= static_cast<size_t>(n);
+                continue;
+            }
+            if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                return;  // retry on next EPOLLOUT
             }
             fail(c, n < 0 ? errno : EPIPE);
             return;
@@ -281,7 +563,12 @@ int main(int argc, char** argv) {
                 "conn/s)\n",
                 connected, failed, ct, ct > 0 ? connected / ct : 0.0);
             std::fflush(stdout);
-            if (o.msg > 0) {
+            if ((o.attack == Attack::kNone || o.attack == Attack::kSlowRead) &&
+                o.msg > 0) {
+                // Normal: closed-loop request/response. slow-read: send ONE
+                // request per connection and then never read the reply, so the
+                // server's echo backs up its output buffer (the write-timeout
+                // target). Both just prime the first request here.
                 for (auto& c : conns) {
                     if (c.st == St::kOpen) {
                         startRequest(c);
@@ -325,7 +612,20 @@ int main(int argc, char** argv) {
                 connect_us.push_back(std::chrono::duration<double, std::micro>(
                                          Clock::now() - c.connect_start)
                                          .count());
-                if (traffic && o.msg > 0) {
+                if (o.attack == Attack::kSlowloris) {
+                    // Begin dribbling immediately; to_write is the byte index
+                    // (already 0). Send the first byte now, schedule the rest.
+                    dribbleOne(c);
+                    c.next_dribble =
+                        Clock::now() + std::chrono::milliseconds(o.dribble_ms);
+                } else if (o.attack == Attack::kBigBody) {
+                    // Send the POST header + stream body; a defended server
+                    // rejects on Content-Length (413) and closes early.
+                    c.split_at = 0;  // header not yet sent
+                    c.to_write = std::max<size_t>(o.msg, 1) *
+                                 static_cast<size_t>(o.inflight);
+                    bigBodySend(c);
+                } else if (traffic && o.msg > 0) {
                     startRequest(c);
                     flushWrite(c);
                 }
@@ -333,13 +633,31 @@ int main(int argc, char** argv) {
             if (c.st != St::kOpen) {
                 continue;
             }
-            if (e & EPOLLIN) {
+            // slow-read (S2): deliberately do NOT read the response. Leaving
+            // the echoed bytes unread fills our receive window; TCP
+            // backpressures the server, whose output buffer then backs up until
+            // the write timeout force-close us. Reading would relieve that
+            // pressure and defeat the test. We still fail through to the
+            // RDHUP/HUP/ERR check below to observe the server-initiated close
+            // (the defense firing).
+            if ((e & EPOLLIN) && o.attack != Attack::kSlowRead) {
                 for (;;) {  // edge-triggered: drain until EAGAIN
                     ssize_t r = ::recv(c.fd, rbuf.data(), rbuf.size(), 0);
                     if (r > 0) {
+                        // Slowloris: the echo server reflects our dribbled
+                        // bytes; drain and ignore them (no request accounting).
+                        if (o.attack == Attack::kSlowloris) {
+                            continue;
+                        }
+                        // big-body: the reply is the 413 (or an undefended
+                        // 200); drain it, no closed-loop re-request.
+                        if (o.attack == Attack::kBigBody) {
+                            continue;
+                        }
                         size_t got = static_cast<size_t>(r);
                         c.to_read -= std::min(c.to_read, got);
-                        if (c.to_read == 0 && traffic && o.msg > 0) {
+                        if (c.to_read == 0 && traffic &&
+                            o.attack == Attack::kNone && o.msg > 0) {
                             req_us.push_back(
                                 std::chrono::duration<double, std::micro>(
                                     Clock::now() - c.req_start)
@@ -361,22 +679,95 @@ int main(int argc, char** argv) {
                     break;
                 }
             }
-            if (c.st == St::kOpen && (e & EPOLLOUT) && c.to_write > 0) {
+            // Continue flushing a backed-up request. slow-read must finish
+            // SENDING its (large) request so the server has the full payload to
+            // echo back -- it just never READs the reply. Slowloris reuses
+            // to_write as a dribble index (handled separately) and flood has no
+            // request, so EPOLLOUT flushing applies only to kNone and
+            // slow-read
+            if (c.st == St::kOpen &&
+                (o.attack == Attack::kNone || o.attack == Attack::kSlowRead) &&
+                (e & EPOLLOUT) && c.to_write > 0) {
                 flushWrite(c);
             }
+            // big-body continues streaming its POST (header first, then body)
+            // on writability until the server rejects+closes it
+            if (c.st == St::kOpen && o.attack == Attack::kBigBody &&
+                (e & EPOLLOUT)) {
+                bigBodySend(c);
+            }
 
+            // Detect a server-initiated close. Normally we require !EPOLLIN so
+            // pending data is drained first (the final response is read before
+            // we act on the hangup). slow-read never reads, so for it we must
+            // honour the hangup even with EPOLLIN set, or we would never see
+            // the write-timeout close.
             if (c.st == St::kOpen && (e & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) &&
-                !(e & EPOLLIN)) {
+                (o.attack == Attack::kSlowRead || !(e & EPOLLIN))) {
                 fail(c, ECONNRESET);
+            }
+        }
+
+        // 4. Slowloris dribble sweep: emit one byte on every open connection
+        // whose inter-byte gap has elapsed. O(conns) per iteration, but the
+        // epoll_wait timeout (10 ms) bounds how often it runs, and a byte is
+        // only sent once per --dribble-ms, so the real work is tiny.
+        if (o.attack == Attack::kSlowloris) {
+            auto tick = Clock::now();
+            for (auto& c : conns) {
+                if (c.st == St::kOpen && tick >= c.next_dribble) {
+                    dribbleOne(c);
+                    c.next_dribble =
+                        tick + std::chrono::milliseconds(o.dribble_ms);
+                }
             }
         }
     }
 
+    const bool request_mode = o.attack == Attack::kNone && o.msg > 0;
     const double secs =
-        o.msg > 0 ? std::chrono::duration<double>(Clock::now() - traffic_start)
-                        .count()
-                  : 0.0;
+        request_mode
+            ? std::chrono::duration<double>(Clock::now() - traffic_start)
+                  .count()
+            : 0.0;
     std::printf("still open at end: %d / %d\n", connected, o.conns);
+    if (o.attack == Attack::kSlowloris) {
+        // Interpretation: against a DEFENDED server, most/all slowloris
+        /// connections are idle-reaped, so "still open" trends toward 0 and the
+        // errno histogram show the server-initiated closes. Against an
+        // UNDEFENDED server they stay open (still open ~= conns) -- the failure
+        // the idle timeout exists to prevent. The authoritative containment
+        // signal is server-side (cox_connections_live plateau via /metrics).
+        std::printf(
+            "slowloris: held %d/%d open at end for %ds (dribble=%dms). "
+            "still-open near 0 => server idle-reaped the conns; "
+            "still-open near conns => dribble beat the idle timeout (needs a "
+            "connection cap to bound, see §5).\n",
+            connected, o.conns, o.duration, o.dribble_ms);
+    }
+    if (o.attack == Attack::kSlowRead) {
+        // Against a DEFENDED server the write timeout force-closes us once the
+        // echo has backed up past the deadline, so "still open" trends to 0 and
+        // the errno histogram shows the server closes. Authoritative signal is
+        // server-side: cox_connections_closed_total{reason="write_timeout"}
+        // advancing and VmRSS bounded (via /metrics + the sampler).
+        std::printf(
+            "slow-read: held %d/%d open at end (msg=%zuB unread). still-open "
+            "near 0 => server write-timeout closed the slow readers.\n",
+            connected, o.conns, o.msg);
+    }
+    if (o.attack == Attack::kBigBody) {
+        // Against a DEFENDED HTTP target the body cap rejects the declared
+        // Content-Length with 413 and closes before reading the body, so the
+        // connections drop almost immediately (stil-open ~0) and the server
+        // buffers ~nothing. Authoritative signal is server-side:
+        // cox_http_requests_total{status_class="4xx"} advancing + flat VmRSS.
+        std::printf(
+            "big-body: %d/%d still open at end. still-open near 0 => target "
+            "rejected the oversized body (413) and closed; check "
+            "cox_http_requests_total{status_calss:\"4xx\"} and flat RSS.\n",
+            connected, o.conns);
+    }
     if (!errors.empty()) {
         std::printf("failures by errno:");
         for (auto& [err, cnt] : errors) {

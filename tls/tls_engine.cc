@@ -1,5 +1,7 @@
 #include "tls_engine.h"
 
+#include "session_cache.h"
+
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -72,23 +74,40 @@ void TlsEngine::init(const TlsContext& ctx, Role role,
         SSL_set_accept_state(ssl_);
     } else {
         SSL_set_connect_state(ssl_);
-        if (!server_hostname.empty()) {
+        // Offer a cached session for this origin so the ClientHello can resume,
+        // and stash the origin on the SSL so the context's new-session callback
+        // can store the negotiated session back under the same key (works for
+        // TLS 1.3, whose ticket arrives post-handshake). Keyed by the SNI
+        // hostname -- the origin a connection pool reconnects on.
+        session_cache_ = ctx.sessionCache();
+        session_origin_ = server_hostname;
+        if (session_cache_ != nullptr && !server_hostname.empty()) {
+            // session_origin_ is a stable member; its c_str() outlives the SSL.
+            SSL_set_ex_data(ssl_, TlsContext::sessionOriginExIndex(),
+                            const_cast<char*>(session_origin_.c_str()));
+            SSL_SESSION* sess = session_cache_->get(server_hostname);
+            if (sess != nullptr) {
+                SSL_set_session(ssl_, sess);  // does not take ownership
+                SSL_SESSION_free(sess);       // release our added reference
+            }
+        }
+        if (!server_hostname.empty())
             // Send SNI so a multi-domain server can select a certificate. An IP
             // literal must NOT be sent as SNI (RFC 6066), so skip those.
             if (!looksLikeIpLiteral(server_hostname)) {
-                // OpenSSL's macro casts internally; see note in tls_context.cc.
+            // OpenSSL's macro casts internally; see note in tls_context.cc.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
                 SSL_set_tlsext_host_name(ssl_, server_hostname.c_str());
 #pragma GCC diagnostic pop
             }
-            // Also verify the certificate actually matches the name we asked
-            // for -- without this, verification proves only "signed by a
-            // trusted CA", not "is the host we intended to reach".
-            SSL_set_hostflags(ssl_, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
-            SSL_set1_host(ssl_, server_hostname.c_str());
-        }
+        // Also verify the certificate actually matches the name we asked
+        // for -- without this, verification proves only "signed by a
+        // trusted CA", not "is the host we intended to reach".
+        SSL_set_hostflags(ssl_, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+        SSL_set1_host(ssl_, server_hostname.c_str());
     }
+}
 }
 
 TlsEngine::~TlsEngine() {

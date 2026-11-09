@@ -2,6 +2,7 @@
 
 #include "inet_address.h"
 
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -44,6 +45,41 @@ public:
 
     virtual ~Resolver() = default;
 
+    // Lookup outcome counters, shared by every backend (lifetime counts,
+    // relaxed atomics, readable from any thread). One resolve()/resolveAll()
+    // call counts exactly once: ok (addresses returned, including a cache hit)
+    // or failed (error returned). Counted when the result is delivered on the
+    // loop thread.
+    uint64_t lookupsOk() const {
+        return stats_->ok.load(std::memory_order_relaxed);
+    }
+    uint64_t lookupsFailed() const {
+        return stats_->failed.load(std::memory_order_relaxed);
+    }
+
+protected:
+    // Held by shared_ptr so a backend's in-flight work (which can outlive the
+    // Resolver object) can still record into it safely.
+    struct LookupStatus {
+        std::atomic<uint64_t> ok{0};
+        std::atomic<uint64_t> failed{0};
+    };
+    // Wrap a user callback so its innvocation records the outcome. Backends
+    // apply this is resolveAll() before handling the callback to their Impl.
+    ListCallback counted(ListCallback cb) const {
+        return
+            [stats = stats_, cb = std::move(cb)](
+                const std::vector<InetAddress>& addrs, const std::string& err) {
+                (err.empty() ? stats->ok : stats->failed)
+                    .fetch_add(1, std::memory_order_relaxed);
+                cb(addrs, err);
+            };
+    }
+
+private:
+    std::shared_ptr<LookupStatus> stats_ = std::make_shared<LookupStatus>();
+
+public:
     // Resolve host:port to an address, invoking cb on the loop thread. Kept
     // for callers that only need one address; implemented in terms of
     // resolveAll(), handing back the first result.
