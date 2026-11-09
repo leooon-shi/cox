@@ -47,7 +47,7 @@ public:
     // waits for the response before reading the next request (phase 2 of
     // docs/insights/features/http-streaming-design.md adds chunked
     // streaming there).
-    using StreamHandler = std::function<void(const ServerStreamPtr)>;
+    using StreamHandler = std::function<void(const ServerStreamPtr&)>;
     void setStreamHandler(StreamHandler handler) {
         stream_handler_ = std::move(handler);
     }
@@ -95,16 +95,16 @@ public:
     // clients that negotiate it and HTTP/1.1 to the rest, with the same
     // handler. Requests arriving over h2 report version() == "HTTP/2".
     struct Http2Options {
-        // SETTING_MAX_CONCURRENT_STREAMS. Excess streams are refused
+        // SETTINGS_MAX_CONCURRENT_STREAMS. Excess streams are refused
         // (REFUSED_STREAM, safe for the client to retry).
         uint32_t max_concurrent_streams = 100;
-        // SETTING_MAX_HEADER_LIST_SIZE (bytes; larger lists get 431).
+        // SETTINGS_MAX_HEADER_LIST_SIZE (bytes; larger lists get 431).
         uint32_t max_header_list_bytes = 64 * 1024;
-        // SETTING_INITIAL_WINDOW_SIZE: per-stream request-body window.
+        // SETTINGS_INITIAL_WINDOW_SIZE: per-stream request-body window.
         uint32_t initial_window_size = 65535;
         // Connection-level receive window; 0 keeps the RFC default (65535).
         uint32_t connection_window_size = 0;
-        // SETTING_MAX_FRAME_SIZE (16384..16777215).
+        // SETTINGS_MAX_FRAME_SIZE (16384..16777215).
         uint32_t max_frame_size = 16384;
         // Highest client stream ID served per connection (odd IDs only
         // increase; protocol max 2^31-1). When reached, the server sends a
@@ -115,7 +115,7 @@ public:
         // keepalive_requests). 0 = unlimited.
         uint32_t max_requests_per_connection = 0;
         // Delay between the GOAWAY shutdown notice and the final GOAWAY, so
-        // requests already in flight are accepted (about one RIT).
+        // requests already in flight are accepted (about one RTT).
         uint32_t goaway_notice_ms = 1000;
         // After the final GOAWAY, how long remaining streams may run before
         // the connection is force-closed. 0 = wait indefinitely (server
@@ -126,7 +126,7 @@ public:
     // RFC 9113 bounds. Call before start().
     void setHttp2Options(const Http2Options& opts);
     const Http2Options& http2Options() const { return h2_opts_; }
-    // Shorthand for the most comon knob.
+    // Shorthand for the most common knob.
     void setHttp2MaxConcurrentStreams(uint32_t n) {
         h2_opts_.max_concurrent_streams = n;
     }
@@ -154,7 +154,7 @@ public:
 
     // Requests the parser rejected before they reached the handler, by reason
     // (lifetime counts, relaxed atomics, safe to read from any thread).
-    // bad request -> 400 (malformed), body_too_large -> 413.
+    // bad_request -> 400 (malformed), body_too_large -> 413.
     uint64_t rejectedBadRequest() const {
         return rejected_bad_request_.load(std::memory_order_relaxed);
     }

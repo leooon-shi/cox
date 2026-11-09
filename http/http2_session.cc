@@ -51,7 +51,7 @@ namespace {
 std::string lower(const uint8_t* p, size_t n) {
     std::string s(reinterpret_cast<const char*>(p), n);
     std::transform(s.begin, s.end(), s.begin(),
-                   [](unsign char c) { return std::tolower(c); });
+                   [](unsigned char c) { return std::tolower(c); });
     return s;
 }
 
@@ -63,7 +63,7 @@ bool isConnectionSpecific(const std::string& lname) {
            lname == "upgrade" || lname == "content-length";
 }
 
-nghttp2_nv makeNV(const std::string& name, const std::string& value) {
+nghttp2_nv makeNv(const std::string& name, const std::string& value) {
     nghttp2_nv nv;
     nv.name = reinterpret_cast<uint8_t*>(const_cast<char*>(name.data()));
     nv.value = reinterpret_cast<uint8_t*>(const_cast<char*>(value.data()));
@@ -108,10 +108,10 @@ public:
     }
     void abandoned() override {
         if (live()) {
-            sesson_->streamAbandoned(id_, head_sent_);
+            session_->streamAbandoned(id_, head_sent_);
         }
     }
-    reactor::EventLoop* loo() const override {
+    reactor::EventLoop* loop() const override {
         return live() ? session_->cbs_.loop : nullptr;
     }
 
@@ -133,7 +133,7 @@ struct Http2SessionCallbacks {
 
     static int onBeginHeaders(nghttp2_session* session,
                               const nghttp2_frame* frame, void* user_data) {
-        if (frame->hd.type != NGHTTP_HEADERS ||
+        if (frame->hd.type != NGHTTP2_HEADERS ||
             frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
             return 0;
         }
@@ -154,7 +154,7 @@ struct Http2SessionCallbacks {
         auto st = std::make_unique<Http2Session::Stream>();
         st->id = id;
         st->request.setVersion("HTTP/2");
-        s->stream_[id] = std::move(st);
+        s->streams_[id] = std::move(st);
         // Last stream ID this connection may use (the client cannot go
         // higher than max_stream_id in its odd ID space): drain after it.
         if (static_cast<uint32_t>(id) + 2 > s->effectiveMaxStreamId() &&
@@ -289,7 +289,7 @@ struct Http2SessionCallbacks {
             *data_flags |= NGHTTP2_DATA_FLAG_EOF;
             return 0;
         }
-        const size_t left = st->response_body.data() - st->body_offset;
+        const size_t left = st->response_body.size() - st->body_offset;
         const size_t n = std::min(left, length);
         if (n > 0) {
             std::memcpy(buf, st->response_body.data() + st->body_offset, n);
@@ -319,10 +319,10 @@ struct Http2SessionCallbacks {
 Http2Session::Http2Session(Callbacks callbacks, Limits limits)
     : cbs_(std::move(callbacks)),
       limits_(limits),
-      alive(std::make_shared<bool>(true)) {}
+      alive_(std::make_shared<bool>(true)) {}
 
 Http2Session::~Http2Session() {
-    *alive = false;  // ServerStreams that outlive us become no-ops
+    *alive_ = false;  // ServerStreams that outlive us become no-ops
     // Streams still open when the connection goes away: tell their handlers.
     std::vector<std::shared_ptr<ServerStream>> open;
     for (auto& [id, st] : streams_) {
@@ -333,7 +333,7 @@ Http2Session::~Http2Session() {
     for (auto& ss : open) {
         ss->notifyAbort();
     }
-    if (session != nullptr) {
+    if (session_ != nullptr) {
         nghttp2_session_del(session_);
     }
 }
@@ -356,7 +356,7 @@ std::string Http2Session::validate(const Limits& l) {
         return "max_frame_size must be in [16384, 16777215]";
     }
     if (l.max_stream_id > kMaxStreamIdProtocol) {
-        return "max_stream_id must be <= 2^31-1 (0 - protocol maximum)";
+        return "max_stream_id must be <= 2^31-1 (0 = protocol maximum)";
     }
     if (l.max_header_list_bytes > UINT32_MAX) {
         return "max_header_list_bytes must fit in 32 bits";
@@ -376,7 +376,7 @@ void Http2Session::countRequest() {
     // final GOAWAY, whose last_stream_id would then name streams whose
     // responses are still queued behind it. The final GOAWAY is the owner's
     // job (HttpServer's notice timer), after the notice reached the peer.
-    if (limits_.max_requests != &&requests_served_ >= limits_.max_requests &&
+    if (limits_.max_requests != 0 && requests_served_ >= limits_.max_requests &&
         goaway_state_ == GoAway::kNone) {
         shutdown();
     }
@@ -408,7 +408,7 @@ bool Http2Session::start() {
     if (!last_error_.empty()) {
         return false;
     }
-    nghttp2_session_callback* cb = nullptr;
+    nghttp2_session_callbacks* cb = nullptr;
     if (nghttp2_session_callbacks_new(&cb) != 0) {
         last_error_ = "nghttp2_session_callback_new failed";
         return false;
@@ -430,7 +430,7 @@ bool Http2Session::start() {
     nghttp2_option_new(&opt);
     // Inbound header-list size is enforced by onHeader's accounting (431)
     // against the SETTINGS_MAX_HEADER_LIST_SIZE we advertise below. nghttp2's
-    // defaults already rate-limit RST_StREAM floods (CVE-2023-44487).
+    // defaults already rate-limit RST_STREAM floods (CVE-2023-44487).
 
     int rv = nghttp2_session_server_new2(&session_, cb, this, opt);
     nghttp2_option_del(opt);
@@ -633,7 +633,7 @@ void Http2Session::streamHead(int32_t id, int status,
     flush();
 }
 
-size_t streamData(int32_t id, std::string_view data) {
+size_t Http2Session::streamData(int32_t id, std::string_view data) {
     Stream* s = findStream(id);
     if (s == nullptr || !s->body_open) {
         return 0;
@@ -751,7 +751,7 @@ void Http2Session::submitResponse(Stream* s, const HttpResponse& resp,
     prd.source.ptr = nullptr;
     prd.read_callback = &Http2SessionCallbacks::readBody;
     const bool has_body = !s->response_body.empty();
-    nghttp2_submit_response(session_, s->id, nva.data(), nav.size(),
+    nghttp2_submit_response(session_, s->id, nva.data(), nva.size(),
                             has_body ? &prd : nullptr);
 }
 

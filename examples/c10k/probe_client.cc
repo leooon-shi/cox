@@ -1,19 +1,19 @@
-// probe_client: a single well-behaved client that issue ONE request per
+// probe_client: a single well-behaved client that issues ONE request per
 // second against the data port, recording success and round-trip latency. It
-// is the liveness half of load-validation thesis (docs/insights/features/
+// is the liveness half of the load-validation thesis (docs/insights/features/
 // load-validation-design.md): while an adversary (c10k_client --attack ...)
 // hammers the server, this probe answers "is a legitimate client still served,
 // with bounded latency?" A defense that protects a resource by freezing all
 // traffic fails this measurement.
 //
-//   probe_client [--host N] [--port N] [--interval-ms MS] [--count N]
+//   probe_client [--host H] [--port N] [--interval-ms MS] [--count N]
 //                [--timeout-ms MS] [--msg BYTES] [--quiet] [--no-read]
 //
 //   --host H         data-port host (IPv4 literal; default 127.0.0.1).
 //   --port N         data port under attack (default 9100).
 //   --interval-ms    time between probes (default 1000 = 1/s, per the design).
 //   --count N        number of probes to issue (0 = run until killed).
-//   --tiemout-ms     per-probe deadline covering connect+send+recv (default
+//   --timeout-ms     per-probe deadline covering connect+send+recv (default
 //                    1000). A probe that exceeds it is a FAILURE (timeout) --
 //                    this is how a server that stops serving shows up.
 //   --msg BYTES      echo payload size (default 16); the server echoes it back.
@@ -32,7 +32,7 @@
 // failures here, not just as degraded latency on a pre-opened connection.
 //
 // Standalone (libc/POSIX only), like c10k_client: a measurement tool must not
-// shared code paths with the server it measures.
+// share code paths with the server it measures.
 
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -79,7 +79,7 @@ struct Options {
 
 Options parse(int argc, char** argv) {
     Options o;
-    for (int i = 0; i < argc; ++i) {
+    for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         auto val = [&]() -> const char* {
             if (i + 1 >= argc) {
@@ -91,7 +91,7 @@ Options parse(int argc, char** argv) {
             o.host = val();
         } else if (a == "--port") {
             o.port = static_cast<uint16_t>(std::atoi(val()));
-        } else if (a == "--metrics-port") {
+        } else if (a == "--interval-ms") {
             o.interval_ms = std::max(1, std::atoi(val()));
         } else if (a == "--count") {
             o.count = std::atoi(val());
@@ -143,9 +143,9 @@ short waitFd(int fd, short events, Clock::time_point deadline) {
     return static_cast<short>(r);  // 0 timeout, -1 error
 }
 
-enum class Result { kOK, kConnectFail, kTimeout, kIoFail };
+enum class Result { kOk, kConnectFail, kTimeout, kIoFail };
 
-// One probe: fresh on-blocking connect + send(msg) + recv(msg) within the
+// One probe: fresh non-blocking connect + send(msg) + recv(msg) within the
 // deadline. Fills `latency_us` on success. keeps its own fd; never leaks it.
 Result probeOnce(const Options& o, const sockaddr_in& dst,
                  const std::string& payload, std::vector<char>& rbuf,
@@ -175,7 +175,7 @@ Result probeOnce(const Options& o, const sockaddr_in& dst,
     }
     if (r < 0) {
         short re = waitFd(fd, POLLOUT, deadline);
-        if (re < 0) {
+        if (re <= 0) {
             return Result::kTimeout;
         }
         int err = 0;
@@ -205,19 +205,19 @@ Result probeOnce(const Options& o, const sockaddr_in& dst,
         return Result::kIoFail;
     }
 
-    // --no-read: success is connect+send completing in time. used for sink-mode
+    // --no-read: success is connect+send completing in time. Used for sink-mode
     // targets (S3) that never echo, where liveness means the accept/read path
     // stays responsive, not that a reply comes back.
     if (o.no_read) {
         *latency_us =
             std::chrono::duration<double, std::micro>(Clock::now() - start)
                 .count();
-        return Result::kOK;
+        return Result::kOk;
     }
 
     // --http: success is receiving ANY response bytes (an HTTP status line).
     // We do not match the body; getting a reply at all proves the target
-    // accepted, parsed and answered a well-formed request while under attack.
+    // accepted, parsed, and answered a well-formed request while under attack.
     if (o.http) {
         if (waitFd(fd, POLLIN, deadline) <= 0) {
             return Result::kTimeout;
@@ -227,7 +227,7 @@ Result probeOnce(const Options& o, const sockaddr_in& dst,
             *latency_us =
                 std::chrono::duration<double, std::micro>(Clock::now() - start)
                     .count();
-            return Result::kOK;
+            return Result::kOk;
         }
         return Result::kIoFail;  // closed/err before any reply
     }
@@ -238,7 +238,7 @@ Result probeOnce(const Options& o, const sockaddr_in& dst,
         if (waitFd(fd, POLLIN, deadline) <= 0) {
             return Result::kTimeout;
         }
-        ssize_t n = ::recv(fd, rbuf.data(), rbuf.size());
+        ssize_t n = ::recv(fd, rbuf.data(), rbuf.size(), 0);
         if (n > 0) {
             got += static_cast<size_t>(n);
             continue;
@@ -254,12 +254,12 @@ Result probeOnce(const Options& o, const sockaddr_in& dst,
 
     *latency_us =
         std::chrono::duration<double, std::micro>(Clock::now() - start).count();
-    return Result::kOK;
+    return Result::kOk;
 }
 
 const char* resultName(Result r) {
     switch (r) {
-        case Result::kOK:
+        case Result::kOk:
             return "ok";
         case Result::kConnectFail:
             return "connect_fail";
@@ -284,7 +284,7 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    // Payload: raw fillter for the echo probe, or a minimal valid HTTP GET for
+    // Payload: raw filter for the echo probe, or a minimal valid HTTP GET for
     // an HTTP target (--http). Connection: close so the server ends the
     // response cleanly and we measure one full round trip per probe.
     const std::string payload =
@@ -308,7 +308,7 @@ int main(int argc, char** argv) {
         Result r = probeOnce(o, dst, payload, rbuf, &lat);
         ++total;
         switch (r) {
-            case Result::kOK:
+            case Result::kOk:
                 ++ok;
                 ok_us.push_back(lat);
                 break;
@@ -323,7 +323,7 @@ int main(int argc, char** argv) {
                 break;
         }
         if (!o.quiet) {
-            if (r == Result::kOK) {
+            if (r == Result::kOk) {
                 std::printf("probe %4d: ok %.0fus\n", i, lat);
             } else {
                 std::printf("probe %4d: FAIL (%s)\n", i, resultName(r));
@@ -349,7 +349,7 @@ int main(int argc, char** argv) {
         static_cast<unsigned long long>(connect_fail),
         static_cast<unsigned long long>(timeout),
         static_cast<unsigned long long>(io_fail));
-    std::printf("probe latency (ok only): p50=%.0fus p99=%.0fus max=%.ofus\n",
+    std::printf("probe latency (ok only): p50=%.0fus p99=%.0fus max=%.0fus\n",
                 pct(ok_us, 0.50), pct(ok_us, 0.99), pct(ok_us, 1.0));
     // Nonzero exit if any probe failed: a CI liveness assertion can key on it.
     return (connect_fail + timeout + io_fail) > 0 ? 1 : 0;

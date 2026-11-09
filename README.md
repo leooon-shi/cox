@@ -14,7 +14,7 @@ The project follows the [Google C++ Style Guide](https://google.github.io/styleg
 with one deliberate deviation: 4-space indentation instead of 2. The rules are
 encoded in `.clang-format` so they are checkable rather than aspirational:
 
-``bash
+```bash
 clang-format --dry-run --Werror $(git ls-files '*.cc' '*.h' | grep -v '^third_party/')
 ```
 
@@ -23,7 +23,7 @@ The repo ships a ready-made hook, `.git_hooks_pre_commit.sample`. On every
 commit it runs `clang-format -i` on the staged `.cc`/`.h` files (added, copied
 or modified; submodules such as `third_party/googletest` are excluded) and
 re-stages them, so what you commit is already formatted. Install it once per
-close:
+clone:
 
 ```bash
 cp .git_hooks_pre_commit.sample .git/hooks/pre-commit

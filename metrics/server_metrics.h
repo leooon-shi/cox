@@ -15,7 +15,7 @@ class EventLoop;
 namespace concurrent {
 class ThreadPool;
 }
-namespace Tls {
+namespace tls {
 class TlsContext;
 }
 
@@ -52,7 +52,7 @@ void installServerMetrics(Registry& reg, net::TcpServer& server);
 //   cox_http_request_duration_seconds      (histogram; handler wall time)
 //   cox_http_rejected_total{reason}        (counter, sampled; requests the
 //       parser rejected before the handler: reason = bad_request (400) or
-//       body_too_large (413). These are ALSO counted in request_total{4xx}.)
+//       body_too_large (413). These are ALSO counted in requests_total{4xx}.)
 // Call AFTER the application has set its own observer (if any), before start().
 // The server must outlive the registry's scrapes.
 void installHttpMetrics(Registry& reg, http::HttpServer& server);
@@ -67,10 +67,10 @@ void installLoopMetrics(Registry& reg, reactor::EventLoop& loop,
                         Labels labels = {});
 
 // Built-in ThreadPool instrumentation (sampled at scrape time from the pool's
-// relaxed counters, concurrent has no dependency on this module). Registers:
+// relaxed counters; concurrent has no dependency on this module). Registers:
 //   cox_threadpool_tasks_total{result="run"|"shed"}  (counter)
 //   cox_threadpool_queue_depth                       (gauge; queued tasks)
-// `labels` distinguishes pools (e.g. {{"pool", "dns"}}). The pool must outlive
+// `labels` distinguishes pools (e.g. {{"pool","dns"}}). The pool must outlive
 // the registry's scrapes.
 void installThreadPoolMetrics(Registry& reg, concurrent::ThreadPool& pool,
                               Labels labels = {});
@@ -84,7 +84,7 @@ void installThreadPoolMetrics(Registry& reg, concurrent::ThreadPool& pool,
 void installTlsMetrics(Registry& reg, const tls::TlsContext& ctx,
                        Labels labels = {});
 
-// Build-in DNS instrumentation from a Resolver's lookup counters (works for
+// Built-in DNS instrumentation from a Resolver's lookup counters (works for
 // either backend). Registers:
 //   cox_dns_lookups_total{result="ok"|"failed"}  (counter)
 // A cache hit counts as ok. The resolver must outlive the registry's scrapes.

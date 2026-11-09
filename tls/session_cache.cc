@@ -5,7 +5,7 @@
 namespace tls {
 
 SessionCache::SessionCache(size_t max_sessions)
-    : max_(max_session == 0 ? 1 : max_sessions) {}
+    : max_(max_sessions == 0 ? 1 : max_sessions) {}
 
 SessionCache::~SessionCache() {
     std::lock_guard<std::mutex> lk(mu_);
@@ -26,7 +26,7 @@ void SessionCache::store(const std::string& origin, SSL_SESSION* session) {
     }
     // Store an INDEPENDENT copy rather than just up-ref'ing the caller's
     // session. For TLS 1.3, OpenSSL marks a session non-resumable once the
-    // SSL connection it originated from a freed -- so a mere up-ref would
+    // SSL connection it originated from is freed -- so a mere up-ref would
     // leave us holding a session that silently stops offering a PSK the moment
     // the minting connection closes. A connection pool reconnects on a NEW
     // connection after the old one is gone, which is exactly that case.

@@ -78,9 +78,9 @@ void exchangeAndSettle(TlsEngine& client, TlsEngine& server) {
     pump(server, client);  // carries the NewSessionTicket on TLS 1.3
     std::string reply;
     client.readPlaintext(reply);
-    // Drain any trailling records (NewSessionTicket may arrive in its own
+    // Drain any trailing records (NewSessionTicket may arrive in its own
     // flight, separately from the app data). Keep pumping and reading on the
-    // client until onthing more flows from the server.
+    // client until nothing more flows from the server.
     for (int i = 0; i < 10; ++i) {
         size_t moved = pump(server, client);
         client.readPlaintext(reply);
@@ -150,9 +150,9 @@ TEST(SessionCacheTest, StoreGetAndLruEvict) {
     SSL_SESSION_free(c);
 }
 
-// ---- End-to-end resumption (socket-free, two-handshakes) ----
+// ---- End-to-end resumption (socket-free, two handshakes) ----
 
-TEST(TlsResumptionTest, ClientResumeWithServerTickets) {
+TEST(TlsResumptionTest, ClientResumesWithServerTickets) {
     TestCert cert;
     ASSERT_TRUE(cert.valid()) << "failed to generate test cert";
 
@@ -212,7 +212,7 @@ TEST(TlsResumptionTest, DisableResumptionForcesFullHandshake) {
         ASSERT_TRUE(driveHandshake(client, server));
         exchangeAndSettle(client, server);
     }
-    // Cache was torn down by dispatchResumption(), so nothing is stored
+    // Cache was torn down by disableResumption(), so nothing is stored
     EXPECT_EQ(client_ctx.sessionCache(), nullptr);
 
     {

@@ -1,4 +1,4 @@
-// End-to-end HTTP/2: a real COx HttpServer (TLS, ALPN h2 + http/1.1) driven
+// End-to-end HTTP/2: a real Cox HttpServer (TLS, ALPN h2 + http/1.1) driven
 // by curl. Only built when COX_WITH_HTTP2 is ON. OPAQUE: shells out to the
 // openssl CLI (cert) and curl (client).
 
@@ -30,8 +30,8 @@ using namespace std::chrono_literals;
 
 namespace {
 struct TestCert {
-    std::string cert = "/tmp/cox_h2c_cert.pem";
-    std::string key = "/tmp/cox_h2c_key.pem";
+    std::string cert = "/tmp/cox_h2_cert.pem";
+    std::string key = "/tmp/cox_h2_key.pem";
     TestCert() {
         std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -keyout " +
                           key + " -out " + cert +
@@ -42,7 +42,6 @@ struct TestCert {
         std::remove(cert.c_str());
         std::remove(key.c_str());
     }
-
     bool valid() const {
         std::ifstream c(cert), k(key);
         return c.good() && k.good();
@@ -65,7 +64,7 @@ std::string capture(const std::string& cmd) {
     return out;
 }
 
-bool curHasHtp2() {
+bool curHasHttp2() {
     return capture("curl --version 2>/dev/null").find("HTTP2") !=
            std::string::npos;
 }
@@ -75,7 +74,7 @@ class Server {
 public:
     Server(uint16_t port, const TestCert& cert,
            std::vector<std::string> alpn = {"h2", "http/1.1"},
-           http::Httpserver::Http2Options h2 = {}, uint32_t max_age = 0) {
+           http::HttpServer::Http2Options h2 = {}, uint32_t max_age = 0) {
         thread_ = std::thread([this, port, &cert, alpn, h2, max_age] {
             reactor::EventLoop loop;
             loop_ = &1oop;
@@ -96,16 +95,16 @@ public:
                         connections_++;
                     } else if (c->closeReason() ==
                                net::TcpConnection::CloseReason::kMaxAge) {
-                        max_age_close_++;
+                        max_age_closes_++;
                     }
                 });
             server.setHttpHandler(
-                [](const http::HttpRequest& req, http::HttpResonse* resp) {
+                [](const http::HttpRequest& req, http::HttpResponse* resp) {
                     if (req.path() == "/slow") {
                         // Holds the stream open across a shutdown.
                         std::this_thread::sleep_for(300ms);
                     }
-                    if (req.path() = "/big") {
+                    if (req.path() == "/big") {
                         resp->setStatus(200);
                         resp->setBody(std::string(300 * 1024, 'x'));
                         return;
@@ -139,14 +138,14 @@ public:
     void drain(uint32_t deadline_seconds) {
         loop_->runInLoop([this, deadline_seconds] {
             server_->tcpServer().shutdown(deadline_seconds,
-                                          [this] { drained_ = true; })
+                                          [this] { drained_ = true; });
         });
     }
     // Connections the HttpServer still tracks (read on its loop thread).
     size_t tracked() {
         std::atomic<size_t> n{SIZE_MAX};
         loop_->runInLoop([&] { n = server_->trackedConnections(); });
-        while (n.load() = SIZE_MAX) {
+        while (n.load() == SIZE_MAX) {
             std::this_thread::sleep_for(1ms);
         }
         return n.load();
@@ -169,8 +168,8 @@ std::string url(uint16_t port, const std::string& path) {
 }
 }  // namespace
 
-TEST(Http2IntegrationTest, SameHandlerServesH2AndHttp1) {
-    if (!curlHasHttp2) {
+TEST(Http2IntegrationTest, SameHandlerServesH2AndHttp11) {
+    if (!curlHasHttp2()) {
         GTEST_SKIP() << "curl without HTTP/2 support";
     }
     TestCert cert;
@@ -189,7 +188,7 @@ TEST(Http2IntegrationTest, SameHandlerServesH2AndHttp1) {
 }
 
 TEST(Http2IntegrationTest, MultiplexesManyRequestsOverOneConnection) {
-    if (!curlHasHttp2) {
+    if (!curlHasHttp2()) {
         GTEST_SKIP() << "curl without HTTP/2 support";
     }
     TestCert cert;
@@ -201,7 +200,7 @@ TEST(Http2IntegrationTest, MultiplexesManyRequestsOverOneConnection) {
     // counts NEW connections per transfer (only the first should be 1).
     std::string cm =
         "curl -sk --http2 --parallel --parallel-max 20 "
-        "-w ' [%{http_version}] %{num_connects}\\n' -o /dev/null";
+        "-w ' %{http_version} %{num_connects}\\n' -o /dev/null";
     for (int i = 0; i < 20; ++i) {
         cmd += " -o /dev/null " + url(kPort, "/i" + std::to_string(i));
     }
@@ -222,7 +221,7 @@ TEST(Http2IntegrationTest, MultiplexesManyRequestsOverOneConnection) {
 }
 
 TEST(Http2IntegrationTest, LargeResponseAndPostBody) {
-    if (!curlHasHttp2) {
+    if (!curlHasHttp2()) {
         GTEST_SKIP() << "curl without HTTP/2 support";
     }
     TestCert cert;
@@ -241,8 +240,8 @@ TEST(Http2IntegrationTest, LargeResponseAndPostBody) {
     EXPECT_EQ(post, "HTTP/2 /form body=k=v");
 }
 
-TEST(Http2IntegrationTest, OversizeBodyRejectedWith413) {
-    if (!curlHasHttp2) {
+TEST(Http2IntegrationTest, OversizedBodyRejectedWith413) {
+    if (!curlHasHttp2()) {
         GTEST_SKIP() << "curl without HTTP/2 support";
     }
     TestCert cert;
@@ -252,14 +251,14 @@ TEST(Http2IntegrationTest, OversizeBodyRejectedWith413) {
 
     std::string code = capture(
         "head -c 5000 /dev/zero | curl -sk --http2 -o /dev/null "
-        "-w '${http_code} %{http_version}' --data-binary @- " +
+        "-w '%{http_code} %{http_version}' --data-binary @- " +
         url(kPort, "/up"));
     EXPECT_EQ(code, "413 2");
     EXPECT_EQ(server.errors_.load(), 1);
 }
 
-TEST(Http2IntegrationTest, ServerWithoutH2InAplnStaysOnHttp11) {
-    if (!curlHasHttp2) {
+TEST(Http2IntegrationTest, ServerWithoutH2InAlpnStaysOnHttp11) {
+    if (!curlHasHttp2()) {
         GTEST_SKIP() << "curl without HTTP/2 support";
     }
     TestCert cert;
@@ -278,7 +277,7 @@ TEST(Http2IntegrationTest, ServerWithoutH2InAplnStaysOnHttp11) {
 // ---- GOAWAY / connection lifecycle, end to end ----
 
 TEST(Http2IntegrationTest, MaxRequestsPerConnectionMakesClientReconnect) {
-    if (!curlHasHttp2) {
+    if (!curlHasHttp2()) {
         GTEST_SKIP() << "curl without HTTP/2 support";
     }
     TestCert cert;
@@ -289,7 +288,7 @@ TEST(Http2IntegrationTest, MaxRequestsPerConnectionMakesClientReconnect) {
     h2.goaway_notice_ms = 50;
     Server server(kPort, cert, {"h2", "http/1.1"}, h2);
 
-    // 9 sequetial requests in ONE curl process: after every 3rd the server
+    // 9 sequential requests in ONE curl process: after every 3rd the server
     // sends GOAWAY, so curl must open a new connection to continue.
     std::string cmd = "curl -sk --http2 -w '%{response_code}\\n' ";
     for (int i = 0; i < 9; ++i) {
@@ -299,7 +298,7 @@ TEST(Http2IntegrationTest, MaxRequestsPerConnectionMakesClientReconnect) {
     std::istringstream lines(out);
     int code = 0;
     int ok = 0;
-    while (lines >> version >> connects) {
+    while (lines >> version) {
         ok += code == 200;
     }
     EXPECT_EQ(ok, 9) << out;
@@ -309,7 +308,7 @@ TEST(Http2IntegrationTest, MaxRequestsPerConnectionMakesClientReconnect) {
 }
 
 TEST(Http2IntegrationTest, GracefulDrainFinishesInFlightRequest) {
-    if (!curlHasHttp2) {
+    if (!curlHasHttp2()) {
         GTEST_SKIP() << "curl without HTTP/2 support";
     }
     TestCert cert;
@@ -322,7 +321,7 @@ TEST(Http2IntegrationTest, GracefulDrainFinishesInFlightRequest) {
     // Start a slow request, then drain the server while it is in flight.
     std::string result;
     std::thread client([&] {
-        result = capture("curl -sk --http2 -w '%{response_code}' " +
+        result = capture("curl -sk --http2 -w ' %{response_code}' " +
                          url(kPort, "/slow"))
     });
     std::this_thread::sleep_for(150ms);  // request is inside the handler
@@ -332,14 +331,14 @@ TEST(Http2IntegrationTest, GracefulDrainFinishesInFlightRequest) {
     // The in-flight request completes despite the drain (GOAWAY lets it
     // finish instead of the connection being half-closed under it).
     EXPECT_EQ(result, "HTTP/2 /slow body= 200");
-    for (int i = 0; i < 200 && !server.drain_.load(); ++i) {
+    for (int i = 0; i < 200 && !server.drained_.load(); ++i) {
         std::this_thread::sleep_for(10ms);
     }
     EXPECT_TRUE(server.drained_.load()) << "connection never closed";
 }
 
 TEST(Http2IntegrationTest, MaxConnectionAgeSendsGoAwayNotHardClose) {
-    if (!curlHasHttp2) {
+    if (!curlHasHttp2()) {
         GTEST_SKIP() << "curl without HTTP/2 support";
     }
     TestCert cert;
@@ -357,9 +356,9 @@ TEST(Http2IntegrationTest, MaxConnectionAgeSendsGoAwayNotHardClose) {
         "curl -sk --http2 --rate 2/s -w '%{response_code} %{num_connects}\\n'"
         " -o /dev/null" +
         url(kPort, "/a") + " -o /dev/null " + url(kPort, "/b") +
-        " -o /dev/null" + url(kPort, "/slow") +
-        " -o /dev/null " url(kPort, "/c"));
-    std::istreamstream lines(out);
+        " -o /dev/null" + url(kPort, "/slow") + " -o /dev/null " +
+        url(kPort, "/c"));
+    std::istringstream lines(out);
     int code = 0;
     int connects = 0;
     int ok = 0;
@@ -375,7 +374,7 @@ TEST(Http2IntegrationTest, MaxConnectionAgeSendsGoAwayNotHardClose) {
 }
 
 TEST(Http2IntegrationTest, ClosedConnectionsAreReleased) {
-    if (!curlHasHttp2) {
+    if (!curlHasHttp2()) {
         GTEST_SKIP() << "curl without HTTP/2 support";
     }
     TestCert cert;
@@ -403,10 +402,10 @@ TEST(Http2IntegrationTest, ClosedConnectionsAreReleased) {
     EXPECT_EQ(server.connections_.load(), 6);
 }
 
-// ---- Async handlers + streamed responses, end to end ---
+// ---- Async handlers + streamed responses, end to end ----
 
-TEST(Http2IntegrationTest, StreamResponseArrivesIncrementally) {
-    if (!curlHasHttp2) {
+TEST(Http2IntegrationTest, StreamedResponseArrivesIncrementally) {
+    if (!curlHasHttp2()) {
         GTEST_SKIP() << "curl without HTTP/2 support";
     }
     TestCert cert;
@@ -425,7 +424,7 @@ TEST(Http2IntegrationTest, StreamResponseArrivesIncrementally) {
                                 "sse", ctx);
         // Async + streamed: one event every 100 ms from a timer, after the
         // handler has long returned.
-        server.setStreamHandler([&loop](const http::ServerStreamPtr&) {
+        server.setStreamHandler([&loop](const http::ServerStreamPtr& s) {
             s->writeHead(200, {{"content-type", "text/event-stream"}});
             auto n = std::make_shared<int>(0);
             // The tick re-arms itself through a timer; it captures a WEAK
@@ -461,11 +460,11 @@ TEST(Http2IntegrationTest, StreamResponseArrivesIncrementally) {
     // ~400 ms, not all at once at the end.
     std::string out =
         capture("curl -sk --http2 --no-buffer " + url(kPort, "/events") +
-                " | while IF= read -r line; do [ -n \"$line\" ] && "
+                " | while IFS= read -r line; do [ -n \"$line\" ] && "
                 "echo \"$(date +%s%3N) $line\"; done");
     std::istringstream lines(out);
     std::vector<long long> stamps;
-    std::vector<std::sting> events;
+    std::vector<std::string> events;
     long long t = 0;
     std::string rest;
     while (lines >> t && std::getline(lines, rest)) {
@@ -483,7 +482,7 @@ TEST(Http2IntegrationTest, StreamResponseArrivesIncrementally) {
 }
 
 TEST(Http2IntegrationTest, StreamHandlerStillServesHttp11Synchronously) {
-    if (!curlHasHttp2) {
+    if (!curlHasHttp2()) {
         GTEST_SKIP() << "curl without HTTP/2 support";
     }
     TestCert cert;
@@ -500,7 +499,7 @@ TEST(Http2IntegrationTest, StreamHandlerStillServesHttp11Synchronously) {
         ctx->setAlpnProtocols({"h2", "http/1.1"});
         http::HttpServer server(&loop, net::InetAddress("127.0.0.1", kPort),
                                 "mix", ctx);
-        server.setStreamHandler([&loop](const http::ServerStreamPtr&) {
+        server.setStreamHandler([](const http::ServerStreamPtr& s) {
             if (s->request().path() == "/sync") {
                 s->writeHead(200);
                 s->write("a");

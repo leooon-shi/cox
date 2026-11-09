@@ -89,7 +89,7 @@ void HttpServer::goAwayHttp2Connections() {
         }
     }
     for (const auto& name : names) {
-        goAwayHttp2(name, /*immdiate=*/false);
+        goAwayHttp2(name, /*immediate=*/false);
     }
 #endif
 }
@@ -203,7 +203,7 @@ void HttpServer::onConnection(const net::TcpConnectionPtr& conn) {
                         pcp->tls->shutdown();
                         return;
                     }
-                    if (pcp->h2->goingAway() && !pcp->h2->finishGoAwaySent()) {
+                    if (pcp->h2->goingAway() && !pcp->h2->finalGoAwaySent()) {
                         // A stream-ID / request limit sent the notice:
                         // schedule the final GOAWAY.
                         goAwayHttp2(name, /*immediate=*/false);
@@ -291,14 +291,14 @@ void HttpServer::goAwayHttp2(const std::string& name, bool immediate) {
         return;
     }
     PerConn& pc = *it->second;
-    // Timers go onn the connection's own io loop (with setThreadNum(N) it is
+    // Timers go on the connection's own io loop (with setThreadNum(N) it is
     // not the server's base loop), the same thread that touches this state.
     reactor::EventLoop* loop = pc.tls->tcpConnection()->getLoop();
     if (!pc.h2->goingAway()) {
         pc.h2->shutdown(immediate);  // step 1: notice (or final if immediate)
     }
     // Arm the step-2 and grace timers once per connection, however many
-    // timers this is called while the notice is pending.
+    // times this is called while the notice is pending.
     if (!pc.goaway_timer_armed) {
         pc.goaway_timer_armed = true;
         if (!pc.h2->finalGoAwaySent()) {
@@ -319,7 +319,7 @@ void HttpServer::goAwayHttp2(const std::string& name, bool immediate) {
             std::weak_ptr<net::TcpConnection> weak = pc.tls->tcpConnection();
             loop->runAfter(ms, [weak]() {
                 if (auto c = weak.lock()) {
-                    c->forceClose();  // stream outlived the grace period
+                    c->forceClose();  // streams outlived the grace period
                 }
             });
         }

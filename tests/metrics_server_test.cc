@@ -403,7 +403,7 @@ TEST(MetricsServerTest, ThreadPoolTasksRunShedAndQueueDepth) {
                               {{"pool", "t"}, {"result", "run"}}),
               2.0);
     EXPECT_EQ(
-        valueWithLabels(end, "cox_threadpool_queue_total", {{"pool", "t"}}),
+        valueWithLabels(end, "cox_threadpool_queue_depth", {{"pool", "t"}}),
         0.0);
 }
 

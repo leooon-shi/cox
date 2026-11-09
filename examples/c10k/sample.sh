@@ -3,26 +3,26 @@
 # load-validation-design.md). Once per second it records, into a CSV, the three
 # signals the pass/fail checks need:
 #   - from the server's /metrics: live connections, accepted/closed/rejected
-#     totals (the Cox-reported view of what the defense is doning);
-#   - from /proc/<pid>/status: VmRSS (memory containment -- does it plateaus or
+#     totals (the Cox-reported view of what the defense is doing);
+#   - from /proc/<pid>/status: VmRSS (memory containment -- does it plateau or
 #     grow without bound?);
 #   - from ss: open socket count toward the server port (fd containment,
 #     cross-checking the metrics' live count against the kernel's view).
 #
 # It is a glue tool on purpose (curl + /proc + ss), so it is a script, not a
-# binary --trivially adjustable per scenario. Standalone like the other load
+# binary -- trivially adjustable per scenario. Standalone like the other load
 # tools; no Cox dependency.
 #
 # Usage:
 #   sample.sh --pid PID --metrics-url URL [--port N] [--count N]
 #             [--interval S] [--out FILE]
 #
-#   -- pid PID      server process id (for /proc/<pid>/status VmRSS). Required.
+#   --pid PID       server process id (for /proc/<pid>/status VmRSS). Required.
 #   --metrics-url   e.g. http://127.0.0.1:19101/metrics. Required.
 #   --port N        data port, for the ss socket count (default: parsed from
 #                   nothing -- if omitted, the ss column is left empty).
 #   --count N       number of samples (0 = until killed; default 0).
-#   --interval S    seconds between samples (default 1)
+#   --interval S    seconds between samples (default 1).
 #   --out FILE      CSV output path (default: stdout).
 #
 # CSV columns:
@@ -70,11 +70,11 @@ if [[ -n "$out" ]]; then
 fi
 emit "t_s,rss_kib,sockets,live,accepted,closed,rejected"
 
-#VmRSS in KiB from /proc/<pid>/status, or empty if the process is gone.
+# VmRSS in KiB from /proc/<pid>/status, or empty if the process is gone.
 read_rss() {
     local v
     v=$(awk '/^VmRSS:/{print $2}' "/proc/$1/status" 2>/dev/null)
-    printf '%s' "{v:-}"
+    printf '%s' "${v:-}"
 }
 
 # Count established+listening sockets toward the data port (kernel's view of
@@ -109,7 +109,7 @@ while :; do
     scrape=$(curl -s --max-time 2 "$metrics_url" 2>/dev/null)
     live=$(printf '%s' "$scrape" | metric_of cox_connections_live)
     accepted=$(printf '%s' "$scrape" | metric_of cox_connections_accepted_total)
-    closed=$(printf '%s' "$scrape" | metric_of cox_connctions_closed_total)
+    closed=$(printf '%s' "$scrape" | metric_of cox_connections_closed_total)
     rejected=$(printf '%s' "$scrape" | metric_of cox_connections_rejected_total)
 
     emit "${t_s},${rss},${sockets},${live:-},${accepted:-},${closed:-},${rejected:-}"

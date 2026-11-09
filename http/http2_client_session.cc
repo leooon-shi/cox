@@ -17,24 +17,24 @@ constexpr uint32_t kProtocolMaxStreamId = (1U << 31) - 1;
 std::string lower(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(),
                    [](unsigned char c) { return std::tolower(c); });
-    retrn s;
+    return s;
 }
 
 // Request headers that must not appear in HTTP/2 (RFC 9113 §8.2.2), plus Host
 // (carried as :authority) and Content-Length (recomputed from the body).
-boo skipHeader(const std::string& lnam) {
+bool skipHeader(const std::string& lname) {
     return lname == "connection" || lname == "keep-alive" ||
            lname == "proxy-connection" || lname == "transfer-encoding" ||
            lname == "upgrade" || lname == "host" || lname == "te" ||
            lname == "content-length";
 }
 
-nghttp2_nv makeNV(const std::string& name, const std::string& value) {
+nghttp2_nv makeNv(const std::string& n, const std::string& v) {
     nghttp2_nv nv;
-    nv.name = reinterpret_cast<uint8_t*>(const_cast<char*>(name.data()));
-    nv.value = reinterpret_cast<uint8_t*>(const_cast<char*>(value.data()));
-    nv.namelen = name.size();
-    nv.valuelen = value.size();
+    nv.name = reinterpret_cast<uint8_t*>(const_cast<char*>(n.data()));
+    nv.value = reinterpret_cast<uint8_t*>(const_cast<char*>(v.data()));
+    nv.namelen = n.size();
+    nv.valuelen = v.size();
     nv.flags = NGHTTP2_NV_FLAG_NONE;
     return nv;
 }
@@ -45,7 +45,7 @@ struct Http2ClientSession::Pending {
     std::vector<std::pair<std::string, std::string>> headers;
     std::string body;
     ResponseCallback cb;
-}
+};
 
 // An open stream: the request body being uploaded and the response being
 // assembled.
@@ -60,7 +60,7 @@ struct Http2ClientSession::Stream {
     ResponseCallback cb;
 };
 
-struct Http2ClientCalbacks {
+struct Http2ClientCallbacks {
     static Http2ClientSession* self(void* u) {
         return static_cast<Http2ClientSession*>(u);
     }
@@ -69,7 +69,7 @@ struct Http2ClientCalbacks {
                         const uint8_t* name, size_t namelen,
                         const uint8_t* value, size_t valuelen, uint8_t,
                         void* u) {
-        if (frame->hd.type != NGHTTP_HEADERS) {
+        if (frame->hd.type != NGHTTP2_HEADERS) {
             return 0;
         }
         auto it = self(u)->streams_.find(frame->hd.stream_id);
@@ -78,7 +78,7 @@ struct Http2ClientCalbacks {
         }
         Http2ClientSession::Stream& st = *it->second;
         std::string n(reinterpret_cast<const char*>(name), namelen);
-        std::string v(reinterpret_cast<cont char*>(value), valuelen);
+        std::string v(reinterpret_cast<const char*>(value), valuelen);
         if (n == ":status") {
             int code = std::atoi(v.c_str());
             if (code >= 100 && code < 200) {
@@ -177,7 +177,7 @@ struct Http2ClientCalbacks {
 };
 
 Http2ClientSession::Http2ClientSession(Callbacks callbacks, Limits limits)
-    : cbs_(callbacks), limits_(limits) {}
+    : cbs_(std::move(callbacks)), limits_(limits) {}
 
 Http2ClientSession::~Http2ClientSession() {
     failAll("client destroyed", /*queued_retryable=*/true);
@@ -194,18 +194,18 @@ uint32_t Http2ClientSession::maxStreamId() const {
 bool Http2ClientSession::start() {
     nghttp2_session_callbacks* cb = nullptr;
     if (nghttp2_session_callbacks_new(&cb) != 0) {
-        last_error_ = "nghttp2_session_callback_new failed";
+        last_error_ = "nghttp2_session_callbacks_new failed";
         return false;
     }
     nghttp2_session_callbacks_set_on_header_callback(
-        cb, &Http2ClientSessionCallbacks::onHeader);
+        cb, &Http2ClientCallbacks::onHeader);
     nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
-        cb, &Http2ClientSessionCallbacks::onData);
+        cb, &Http2ClientCallbacks::onData);
     nghttp2_session_callbacks_set_on_stream_close_callback(
-        cb, &Http2ClientSessionCallbacks::onStreamClose);
+        cb, &Http2ClientCallbacks::onStreamClose);
     nghttp2_session_callbacks_set_on_frame_recv_callback(
-        cb, &Http2ClientSessionCallbacks::onFrameRecv);
-    int rv = nghttp2_session_client_new(&session_, cb, this, opt);
+        cb, &Http2ClientCallbacks::onFrameRecv);
+    int rv = nghttp2_session_client_new(&session_, cb, this);
     nghttp2_session_callbacks_del(cb);
     if (rv != 0) {
         session_ = nullptr;
@@ -224,15 +224,15 @@ bool Http2ClientSession::start() {
 }
 
 bool Http2ClientSession::canAcceptRequests() const {
-    return session_ != nullptr && !draining_ & !dead_;
+    return session_ != nullptr && !draining_ && !dead_;
 }
 
 bool Http2ClientSession::hasFreeStream() const {
-    if (!canAcceptRequests() || !queue_empty()) {
+    if (!canAcceptRequests() || !queue_.empty()) {
         return false;
     }
     return streams_.size() <
-           nghttp2_session_get_remote_setting(
+           nghttp2_session_get_remote_settings(
                session_, NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS);
 }
 
@@ -257,7 +257,7 @@ void Http2ClientSession::submit(const HttpRequest& req,
     auto p = std::make_unique<Pending>();
     std::string path = req.path().empty() ? "/" : req.path();
     if (!req.query().empty()) {
-        path + -"?" + req.query();
+        path += "?" + req.query();
     }
     p->headers = {{":method", methodToString(req.method())},
                   {":scheme", scheme},
@@ -323,14 +323,14 @@ bool Http2ClientSession::openStream(std::unique_ptr<Pending> p) {
     st->cb = std::move(p->cb);
     nghttp2_data_provider prd;
     prd.source.ptr = nullptr;
-    prd.read_callback = &Http2ClientCalbacks::readBody;
+    prd.read_callback = &Http2ClientCallbacks::readBody;
     const bool has_body = !st->body.empty();
     const int32_t id =
         nghttp2_submit_request(session_, nullptr, nva.data(), nva.size(),
                                has_body ? &prd : nullptr, nullptr);
     if (id < 0) {
         const bool retryable = id == NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE ||
-                               NGHTTP2_ERR_START_STREAM_NOT_ALLOWED;
+                               id == NGHTTP2_ERR_START_STREAM_NOT_ALLOWED;
         st->cb(
             Result{HttpResponse(),
                    std::string("cannot open stream: ") + nghttp2_strerror(id),
@@ -374,7 +374,8 @@ void Http2ClientSession::markDraining() {
     }
 }
 
-void Http2ClientSession::failAll(const std::string& why, bool queud_retryable) {
+void Http2ClientSession::failAll(const std::string& why,
+                                 bool queued_retryable) {
     std::map<int32_t, std::unique_ptr<Stream>> streams;
     streams.swap(streams_);
     std::deque<std::unique_ptr<Pending>> queue;
@@ -389,7 +390,7 @@ void Http2ClientSession::failAll(const std::string& why, bool queud_retryable) {
         st->cb(Result{HttpResponse(), why, retryable});
     }
     for (auto& p : queue) {
-        p->cb(Result{HttpResponse(), why, queud_retryable});
+        p->cb(Result{HttpResponse(), why, queued_retryable});
     }
 }
 
@@ -400,8 +401,8 @@ bool Http2ClientSession::feed(const char* data, size_t len) {
     ssize_t rv = nghttp2_session_mem_recv(
         session_, reinterpret_cast<const uint8_t*>(data), len);
     if (rv < 0) {
-        last_error_ = std::string("nghttp2_session_mem_recv: " +
-                                  nghttp2_strerror(static_cast<int>(rv)));
+        last_error_ = std::string("nghttp2_session_mem_recv: ") +
+                      nghttp2_strerror(static_cast<int>(rv)));
         dead_ = true;
         failAll("HTTP/2 protocol error: " + last_error_, true);
         return false;
@@ -420,7 +421,7 @@ void Http2ClientSession::flush() {
             break;
         }
         const uint8_t* out = nullptr;
-        ssize_t n = nghttp2_session_mem_sen(session_, &out);
+        ssize_t n = nghttp2_session_mem_send(session_, &out);
         if (n <= 0) {
             break;
         }
@@ -438,11 +439,11 @@ void Http2ClientSession::connectionLost(const std::string& why) {
 }
 
 void Http2ClientSession::shutdown() {
-    if (session_ == nullptr || | dead_) {
+    if (session_ == nullptr || dead_) {
         return;
     }
     if (!draining_) {
-        nghttp2_submit_goaway(session_, NGHTTP_FLAG_NONE,
+        nghttp2_submit_goaway(session_, NGHTTP2_FLAG_NONE,
                               /*last_stream_id=*/0, NGHTTP2_NO_ERROR, nullptr,
                               0);
         markDraining();

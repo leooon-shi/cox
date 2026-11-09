@@ -45,8 +45,8 @@ public:
         client_.stop();
     }
 
-    // Called when this connection  stops accepting requests (GOAWAY, IDs
-    // exhaused, closed). The owner then routes new requests elsewhere.
+    // Called when this connection stops accepting requests (GOAWAY, IDs
+    // exhausted, closed). The owner then routes new requests elsewhere.
     std::function<void()> on_unusable;
     // Called once when the TCP connection is gone.
     std::function<void()> on_closed;
@@ -82,14 +82,14 @@ public:
     size_t load() const {
         size_t n = early_.size();
         if (session_) {
-            n += session_->inflight() + session_->queued();
+            n += session_->inFlight() + session_->queued();
         }
         return n;
     }
     // True while this connection can open a stream right away: still
-    // connecting (limit no known yet) or below the server's
+    // connecting (limit not known yet) or below the server's
     // MAX_CONCURRENT_STREAMS. The pool prefers these.
-    bool hasFreesStream() const {
+    bool hasFreeStream() const {
         return !session_ || session_->hasFreeStream();
     }
 
@@ -136,7 +136,7 @@ private:
             tls_->setMessageCallback(
                 [weak](const tls::TlsConnectionPtr&, std::string& pt) {
                     auto self = weak.lock();
-                    if (!self || self->session_) {
+                    if (!self || !self->session_) {
                         return;
                     }
                     if (!self->session_->feed(pt.data(), pt.size())) {
@@ -218,7 +218,7 @@ private:
         std::vector<Early> early;
         early.swap(early_);
         for (auto& e : early) {
-            session_submit(e.req, host_, "https", std::move(e.cb));
+            session_->submit(e.req, host_, "https", std::move(e.cb));
         }
     }
 
@@ -230,8 +230,8 @@ private:
         }
     }
 
-    vod onConnectTimeout() {
-        if (ready_ || close_) {
+    void onConnectTimeout() {
+        if (ready_ || closed_) {
             return;
         }
         COX_LOG_WARNING("h2 client: connect timed out after " +
@@ -242,7 +242,7 @@ private:
             tls_->tcpConnection()->forceClose();
         }
         // Not retryable: the next connection would most likely time out too,
-        // and retrying would mutiply the wait.
+        // and retrying would multiply the wait.
         failEarly("connect timed out", /*retryable=*/false);
         if (on_unusable) {
             on_unusable();
@@ -312,7 +312,7 @@ public:
             return;
         }
         if (!resolved_) {
-            // Park behind DNS; the first parked requst starts the lookup.
+            // Park behind DNS; the first parked request starts the lookup.
             dns_waiters_.push_back(Parked{req, std::move(cb), attempt});
             startResolve();
             return;
@@ -339,7 +339,7 @@ public:
                         if (auto s = weak.lock()) {
                             s->send(req, std::move(cb), attempt + 1);
                         } else {
-                            cb(HttpResponse(), "client destoryed");
+                            cb(HttpResponse(), "client destroyed");
                         }
                     });
             } else {
@@ -373,10 +373,10 @@ private:
     };
 
     // Choose a connection for a new request:
-    //  1. the least-loaded active connection that can open a stream now;
-    //  2. otherwise a NEW connection, while under max_connections;
-    //  3. otherwise the least-loaded active connection (the request queues
-    //     there until one of its streams finishes).
+    //   1. the least-loaded active connection that can open a stream now;
+    //   2. otherwise a NEW connection, while under max_connections;
+    //   3. otherwise the least-loaded active connection (the request queues
+    //      there until one of its streams finishes).
     std::shared_ptr<H2Conn> pick() {
         // Drop connection that stopped accepting requests (GOAWAY, stream
         // IDs exhausted, closed); they finish their own streams as retiring.
@@ -391,7 +391,7 @@ private:
         std::shared_ptr<H2Conn> best_free;
         std::shared_ptr<H2Conn> least;
         for (const auto& c : active_) {
-            if (c->hasFreesStream() &&
+            if (c->hasFreeStream() &&
                 (!best_free || c->load() < best_free->load())) {
                 best_free = c;
             }
@@ -430,7 +430,7 @@ private:
             auto it = std::find(self->active_.begin(), self->active_.end(), c);
             if (it != self->active_.end()) {
                 self->active_.erase(it);
-                self - retire(c);
+                self->retire(c);
             }
         };
         conn->on_closed = [weak, wconn] {
@@ -484,7 +484,7 @@ private:
             const std::string msg = err.empty() ? "no usable address" : err;
             COX_LOG_ERROR("h2 client: DNS resolution failed for " + dns_host_ +
                           ": " + msg);
-            // Every parked requst fails; a later request retries DNS.
+            // Every parked request fails; a later request retries DNS.
             failDnsWaiters("DNS resolution failed: " + msg);
             return;
         }
@@ -532,7 +532,7 @@ private:
     uint64_t opened_{0};
     uint64_t retries_{0};
     bool stopped_{false};
-    // DNS (hostname origins only)
+    // DNS (hostname origins only).
     bool resolved_;
     bool resolving_{false};
     std::string dns_host_;

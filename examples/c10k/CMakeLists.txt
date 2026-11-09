@@ -9,7 +9,7 @@ add_executable(c10k_server c10k_server.cc)
 target_link_libraries(c10k_server PRIVATE cox::metrics)
 
 # HTTP target for scenario S4 (body-limit vs big-body): HttpServer with
-# --max-body + /metrics. Links. cox::metrics (-> cox::http -> cox::net).
+# --max-body + /metrics. Links cox::metrics (-> cox::http -> cox::net).
 add_executable(http_target http_target.cc)
 target_link_libraries(http_target PRIVATE cox::metrics)
 

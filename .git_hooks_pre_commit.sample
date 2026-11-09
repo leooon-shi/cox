@@ -14,7 +14,7 @@ excludes=()
 while IFS= read -r sm; do
     [ -n "$sm" ] && excludes+=(":^$sm")
 done < <(git config --file .gitmodules --get-regexp '^submodule\..*\.path$' 2>/dev/null \
-     | awk '{print $2}' || true)
+    | awk '{print $2}' || true)
 
 # Find staged files matching .cc/.h, excluding submodules natively
 mapfile -t files < <(

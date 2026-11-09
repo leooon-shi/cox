@@ -83,7 +83,7 @@ bool ServerStream::write(std::string_view data) {
         return true;
     }
     const size_t buffered = sink_->sendData(data);
-    if (buffered > high_water_) {
+    if (buffered >= high_water_) {
         want_writable_ = true;
         return false;
     }
@@ -99,8 +99,8 @@ void ServerStream::end() {
         return;
     }
     state_ = State::kEnded;
-    // Drop the callbacks now the exchange is over. A handler commonly
-    // capture its own ServerStreamPtr in them (to keep writing from
+    // Drop the callbacks now that the exchange is over. A handler commonly
+    // captures its own ServerStreamPtr in them (to keep writing from
     // onWritable), which is a reference cycle: releasing them here lets the
     // stream be freed.
     on_writable_ = nullptr;

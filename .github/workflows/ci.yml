@@ -76,6 +76,7 @@ jobs:
         run: |
           cmake --preset examples
           cmake --build --preset examples --parallel
+
   hardening-smoke:
     name: hardening smoke (containment invariants)
     runs-on: ubuntu-24.04
@@ -83,9 +84,9 @@ jobs:
     # load-validation scenarios (docs/performance/hardening-validation.md)
     # asserting only CONTAINMENT invariants -- bounded live connections, a
     # rejected/closed counter advancing, an in-flight gauge under its cap -- and
-    # NEVER latency or CPU (harware-dependent, meaningless on shared runners).
+    # NEVER latency or CPU (hardware-dependent, meaningless on shared runners).
     # Socket timing on shared CI can be flaky, so this reports rather than gates;
-    # a failure is a signal to look. The full attack is a. manual, tuned-host run.
+    # a failure is a signal to look. The full attack is a manual, tuned-host run.
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -96,9 +97,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             cmake ninja-build clang libssl-dev libc-ares-dev openssl curl
+      - name: Build examples
+        run: |
+          cmake --preset examples
+          cmake --build --preset examples --parallel
       - name: Run hardening smoke tier
         run: |
-          ulimit -n 4096  # headroom for the reduced-scale floods
+          ulimit -n 4096   # headroom for the reduced-scale floods
           ./scripts/hardening_smoke.sh build/examples/bin
 
   format:

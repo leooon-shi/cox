@@ -3,7 +3,7 @@
 # coxConfig.cmake -- package config for find_package(cox).
 #
 # The project is named Cox, but the installed package is spelled lowercase so
-# consumers write find_package(cox) and link cox::<module>
+# consumers write find_package(cox) and link cox::<module>.
 #
 # Re-find external dependencies that Cox's targets link PUBLICly, so their
 # imported targets (OpenSSL::SSL, etc.) exist before we pull in coxTargets.

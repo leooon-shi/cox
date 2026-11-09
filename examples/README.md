@@ -95,7 +95,7 @@ The sink received 5.9 MiB in both cases. Without backpressure the proxy reads ev
 Each hardening defense is validated by running three things at once: an
 adversary (`c10k_client --attack ...`), a liveness probe (`probe_client`), and
 the containment sampler (`sample.sh`). A defense passes only if memory/fds stay
-bounded **end** the probe keeps succeeding. Example (scenario §1, slowloris vs
+bounded **and** the probe keeps succeeding. Example (scenario S1, slowloris vs
 idle timeout; run from the repo root):
 
 ```bash
@@ -108,7 +108,7 @@ $B/probe_client --port 19100 --count 12 &
 $B/c10k_client --port 19100 --conns 480 --rate 960 --attack slowloris --dribble-ms 2000 --duration 12
 wait; kill $SRV 2>/dev/null
 ```
-Scenario → defense → tool mapping (S1-S8)
+Scenario → defense → tool mapping (S1-S8):
 
 | Scenario | Server under test | Adversary |
 |---|---|---|
@@ -116,7 +116,7 @@ Scenario → defense → tool mapping (S1-S8)
 | S2 slow reader | `c10k_server --write-timeout S` | `--attack slow-read --msg <large>` |
 | S3 unframed flood | `c10k_server --sink --max-input-buf BYTES` (probe with `--no-read`) | endless body the server never consumes |
 | S4 big body | `http_target --max-body BYTES` (probe with `--http`) | `--attack big-body` |
-| S5 connection flood | `c10k_server --max-conns N --accept-qps Q` | `--attack fllod` |
+| S5 connection flood | `c10k_server --max-conns N --accept-qps Q` | `--attack fllood` |
 | S6 connection age | `c10k_server --max-age S` | long-lived idle connections (`--msg 0`) |
 | S7 heavy in-flight | `c10k_server --work-ms N --max-inflight N` | concurrent requests exceeding capacity |
 | S8 fd exhaustion | `c10k_server` under `ulimit -n 1024` | connection flood |
@@ -130,18 +130,18 @@ Run procedures and observed results: `docs/performance/hardening-validation.md`.
 
 The HTTP/2 design (`docs/insights/features/http2-design.md`; server and
 `Http2Client` implemented, opt-in via `COX_WITH_HTTP2` / the `http2` preset)
-deliverately defers the protocol internals to nghttp2, but the *concepts* it
+delivberately defers the protocol internals to nghttp2, but the *concepts* it
 relies on are standard deep-dive interview therritory. Read the design alongside
 these study-repo docs (create the sections noted if they are not yet written):
 
 | Design topic (§ in http2-design.md) | Interview doc / question it covers |
 |---|---|
-| Why wrap nghttp2, not hand-roll HPACK + multiplexing (§2) | `interview/http2_multiplexing_hpack.md` - "when do you buy vs build a protocol stack?"; HPACK decompression-bomb / dynamic-table-desync risk |
-| Stream multiplexing over one TCP connection (§4-§5) | `interview/http2_multiplexing_hpack.md` §"multiplexing" - how h2 removes HTTP/1.1 application-layer head-of line blocking |
-| TCP head-of-line blocking remains under h2 (§7) | `interview/http2_vs_http3_quic.md` - why a single lost segment stalls all h2 streams, and how HTTP/3/QUIC fixes it; `interview/tcp_connection_lifecycle_scaling.md` |
-| Per-stream + connection flow control, backpressure (§7) | `interview/http2_flow_control.md` - WINDOW_UDPATE, the interaction with TCP flow control, and how it maps onto a reactor's output backpressure (cross-ref `interview/tcp_connection_lifecycle_scaling.md` §5, which Cox's `stopRead()` backpressure already exercises) |
-| ALPN routing h2 vs http/1.1 (§3) | `interview/tls_handshake_alpn.md` - ALPN in the TLS handshake, server-preference selection, fail-open |
-| HPACK limits, stream-count caps as an attack surface (§10-§11) | `interview/http2_abuse_and_dos.md` - HEADERS/RST_STREAM floods (CVE-2023-44487 "Rapid Reset"), SETTINGS for `MAX_CONCURRENT_STREAMS` / header-list size; ties to Cox's load-validation discipline (`docs/performance/hardening-validation.md`) |
+| Why wrap nghttp2, not hand-roll HPACK + multiplexing (§2) | `interview/http2_multiplexing_hpack.md` – "when do you buy vs build a protocol stack?"; HPACK decompression-bomb / dynamic-table-desync risk |
+| Stream multiplexing over one TCP connection (§4–§5) | `interview/http2_multiplexing_hpack.md` §"multiplexing" – how h2 removes HTTP/1.1 application-layer head-of -line blocking |
+| TCP head-of-line blocking remains under h2 (§7) | `interview/http2_vs_http3_quic.md` – why a single lost segment stalls all h2 streams, and how HTTP/3/QUIC fixes it; `interview/tcp_connection_lifecycle_scaling.md` |
+| Per-stream + connection flow control, backpressure (§7) | `interview/http2_flow_control.md` – WINDOW_UPDATE, the interaction with TCP flow control, and how it maps onto a reactor's output backpressure (cross-ref `interview/tcp_connection_lifecycle_scaling.md` §5, which Cox's `stopRead()` backpressure already exercises) |
+| ALPN routing h2 vs http/1.1 (§3) | `interview/tls_handshake_alpn.md` – ALPN in the TLS handshake, server-preference selection, fail-open |
+| HPACK limits, stream-count caps as an attack surface (§10–§11) | `interview/http2_abuse_and_dos.md` – HEADERS/RST_STREAM floods (CVE-2023-44487 "Rapid Reset"), SETTINGS for `MAX_CONCURRENT_STREAMS` / header-list size; ties to Cox's load-validation discipline (`docs/performance/hardening-validation.md`) |
 
 ## TLS session resumption design
 
@@ -151,12 +151,12 @@ The TLS session resumption design (`docs/insights/features/tls-session-resumptio
 
 | Design topic (§ in tl-session-resumption-design.md) | Interview doc / question it covers |
 |---|---|
-| Full vs abbreviated handshake, why resumption matters (§1-§2) | `interview/tls_session_resumption.md` - cost of a full handshake (RTT + asymmetric crypto) vs a resumed one; when it pays off |
-| Session ID vs ticket vs TLS 1.3 PSK (§2) | `interview/tls_session_resumption.md` §"mechanisms" - stateful server cache vs stateless tickets; why tickets scale for a stateless server |
-| Ticket-key rotation & forward secrecy (§5) | `interview/tls_forward_secrecy.md` - why a never-rotated ticket key breaks forward secrecy for all resumed sessions; the two-key grace window |
-| 0-RTT early data and replay (§8) | `interview/tls13_0rtt_replay.md` - why 0-RTT data is replayable, idempotency requirement, anti-replay |
-| Shared ticket keys across a fleet (§8) | `interview/tls_resumption_at_scale.md` - load balanced resumption, out-of-band key distribution; cross-ref  `interview/tls_handshake_alpn.md` |
-| Resumption under mTLS (§8) | `interview/tls_session_resumption.md` §"mTLS" - the resumed handshake does not re-send the client cert; peer identity carried in the session |
+| Full vs abbreviated handshake, why resumption matters (§1–§2) | `interview/tls_session_resumption.md` – cost of a full handshake (RTT + asymmetric crypto) vs a resumed one; when it pays off |
+| Session ID vs ticket vs TLS 1.3 PSK (§2) | `interview/tls_session_resumption.md` §"mechanisms" – stateful server cache vs stateless tickets; why tickets scale for a stateless server |
+| Ticket-key rotation & forward secrecy (§5) | `interview/tls_forward_secrecy.md` – why a never-rotated ticket key breaks forward secrecy for all resumed sessions; the two-key grace window |
+| 0-RTT early data and replay (§8) | `interview/tls13_0rtt_replay.md` – why 0-RTT data is replayable, idempotency requirement, anti-replay |
+| Shared ticket keys across a fleet (§8) | `interview/tls_resumption_at_scale.md` – load balanced resumption, out-of-band key distribution; cross-ref  `interview/tls_handshake_alpn.md` |
+| Resumption under mTLS (§8) | `interview/tls_session_resumption.md` §"mTLS" – the resumed handshake does not re-send the client cert; peer identity carried in the session |
 
 ## Performance-tuning practice list
 

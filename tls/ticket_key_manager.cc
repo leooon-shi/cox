@@ -6,7 +6,7 @@
 #include <openssl/rand.h>
 #include <openssl/ssl.h>
 
-#include <string>
+#include <cstring>
 
 namespace tls {
 
@@ -16,7 +16,7 @@ TicketKeyManager::TicketKeyManager() {
 
 void TicketKeyManager::rotate() {
     Key k;
-    // CSPRNG for all key material. RAN_bytes returns 1 on success; on the
+    // CSPRNG for all key material. RAND_bytes returns 1 on success; on the
     // vanishingly rare failure we leave the previous keys in place rather than
     // install weak material.
     if (RAND_bytes(k.name.data(), static_cast<int>(k.name.size())) != 1 ||
@@ -51,7 +51,7 @@ bool TicketKeyManager::initSeal(const Key& k, unsigned char iv[16],
                                          const_cast<char*>("SHA256"), 0),
         OSSL_PARAM_construct_end()};
     if (EVP_MAC_init(hctx, k.hmac_key.data(), k.hmac_key.size(), params) != 1) {
-        retrn false;
+        return false;
     }
     return true;
 }

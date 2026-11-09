@@ -91,23 +91,23 @@ void TlsEngine::init(const TlsContext& ctx, Role role,
                 SSL_SESSION_free(sess);       // release our added reference
             }
         }
-        if (!server_hostname.empty())
+        if (!server_hostname.empty()) {
             // Send SNI so a multi-domain server can select a certificate. An IP
             // literal must NOT be sent as SNI (RFC 6066), so skip those.
             if (!looksLikeIpLiteral(server_hostname)) {
-            // OpenSSL's macro casts internally; see note in tls_context.cc.
+                // OpenSSL's macro casts internally; see note in tls_context.cc.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
                 SSL_set_tlsext_host_name(ssl_, server_hostname.c_str());
 #pragma GCC diagnostic pop
             }
-        // Also verify the certificate actually matches the name we asked
-        // for -- without this, verification proves only "signed by a
-        // trusted CA", not "is the host we intended to reach".
-        SSL_set_hostflags(ssl_, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
-        SSL_set1_host(ssl_, server_hostname.c_str());
+            // Also verify the certificate actually matches the name we asked
+            // for -- without this, verification proves only "signed by a
+            // trusted CA", not "is the host we intended to reach".
+            SSL_set_hostflags(ssl_, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+            SSL_set1_host(ssl_, server_hostname.c_str());
+        }
     }
-}
 }
 
 TlsEngine::~TlsEngine() {

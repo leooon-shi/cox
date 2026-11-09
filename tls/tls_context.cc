@@ -93,7 +93,7 @@ int TlsContext::ticketKeyCallback(SSL* ssl, unsigned char* key_name,
 
 void TlsContext::enableSessionTickets(reactor::EventLoop* loop,
                                       uint32_t rotate_seconds) {
-    if (role != Role::kServer) {
+    if (role_ != Role::kServer) {
         return;  // tickets are a server concern
     }
     if (!ticket_keys_) {
@@ -104,7 +104,7 @@ void TlsContext::enableSessionTickets(reactor::EventLoop* loop,
     SSL_CTX_set_tlsext_ticket_key_evp_cb(ctx_, &TlsContext::ticketKeyCallback);
 
     // Periodic rotation for forward secrecy, driven on the loop (same pattern
-    // as CertReloader). Defualt cadence is a few hours; keep the previous key
+    // as CertReloader). Default cadence is a few hours; keep the previous key
     // for the grace window that TicketKeyManager retains.
     const uint64_t period_ms =
         static_cast<uint64_t>(rotate_seconds == 0 ? 6 * 3600 : rotate_seconds) *
@@ -117,8 +117,8 @@ void TlsContext::enableSessionTickets(reactor::EventLoop* loop,
     }
 }
 
-void TlsContext::setSessionCache(size max_sessions) {
-    if (role != Role::kClient) {
+void TlsContext::setSessionCache(size_t max_sessions) {
+    if (role_ != Role::kClient) {
         return;  // the origin-keyed cache is a client concern
     }
     session_cache_ = std::make_unique<SessionCache>(max_sessions);
@@ -135,7 +135,7 @@ void TlsContext::setSessionCache(size max_sessions) {
 }
 
 int TlsContext::newSessionCallback(SSL* ssl, SSL_SESSION* session) {
-    // Fires when a session becomes resumble -- for TLS 1.2 at handshake, for
+    // Fires when a session becomes resumable -- for TLS 1.2 at handshake, for
     // TLS 1.3 when the post-handshake NewSessionTicket arrives. Recover the
     // cache (SSL_CTX ex-data) and the origin (SSL ex-data, set by TlsEngine).
     SSL_CTX* ctx = SSL_get_SSL_CTX(ssl);

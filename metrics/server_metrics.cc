@@ -26,7 +26,7 @@ void installServerMetrics(Registry& reg, net::TcpServer& server) {
     // a scrape attributes closes to the specific defense that fired. The reason
     // comes from TcpConnection::closeReason(), set at each force-close site.
     // Pre-created so the disconnect path only does inc(), no lookup. There is
-    // No unlaabeled aggregate: the total is sum(by reason), and mixing an
+    // No unlabeled aggregate: the total is sum(by reason), and mixing an
     // unlabeled series with labeled ones under one name is malformed Prometheus
     // (mirrors cox_http_requests_total, which is only ever labeled).
     Counter& closed_peer =

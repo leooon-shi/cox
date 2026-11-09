@@ -24,26 +24,26 @@ namespace http {
 // on nghttp2 (framing, HPACK, flow control, stream state). Only compiled when
 // COX_WITH_HTTP2 is ON. Design: docs/insights/features/http2-design.md.
 //
-// It is SOCKET-FREE, like TlsEngine: decypted bytes go in through feed(),
+// It is SOCKET-FREE, like TlsEngine: decrypted bytes go in through feed(),
 // frames come out through the `send` callback, so it can be unit-tested by
 // piping it to an nghttp2 client session. HttpServer wires it to a
 // TlsConnection once ALPN has selected "h2".
 //
 // Each request stream is turned into the same HttpRequest/HttpResponse the
 // HTTP/1.1 path uses and handed to the same handler, so one handler serves
-// both protocols. Streams are multiplexed: serveral can be in flight on one
+// both protocols. Streams are multiplexed: several can be in flight on one
 // connection and their responses are written in completion order.
 //
-// Containment (same discipline as HTTP/1.1 parser and TCP hardening):
-//  * SETTINGS advertise max concurrent streams and max header list size;
-//    nghttp2 refuses streams over the cap (RST_STREAM REFUSED_STREAM).
-//  * A header list over the cap gets 431 and never reaches the handler.
-//  * A request body over the cap gets 413 and the rest of it is dropped.
-//  * Output backpressure: frames are only pulled from nghttp2 while the
-//    downstream `pending()` bytes are below `output_high_water`; call
-//    flush() again when the output drains (write-complete).
-//  * nghttp2 itself enforces HTTP/2 flow-control windows, validates
-//    pseudo-headers, and rate-limits stream resets ("rapid reset").
+// Containment (same discipline as the HTTP/1.1 parser and TCP hardening):
+//   * SETTINGS advertise max concurrent streams and max header list size;
+//     nghttp2 refuses streams over the cap (RST_STREAM REFUSED_STREAM).
+//   * A header list over the cap gets 431 and never reaches the handler.
+//   * A request body over the cap gets 413 and the rest of it is dropped.
+//   * Output backpressure: frames are only pulled from nghttp2 while the
+//     downstream `pending()` bytes are below `output_high_water`; call
+//     flush() again when the output drains (write-complete).
+//   * nghttp2 itself enforces HTTP/2 flow-control windows, validates
+//     pseudo-headers, and rate-limits stream resets ("rapid reset").
 //
 // Threading: not thread-safe. Use it from the connection's loop thread only.
 class Http2Session {
@@ -55,7 +55,7 @@ public:
         // Application handler. Runs synchronously per request: the response
         // must be complete when it returns. Ignored if stream_handler is set.
         Handler handler;
-        // Async / /streaming handler: receives a ServerStream and answers now
+        // Async / streaming handler: receives a ServerStream and answers now
         // or later (see server_stream.h). Takes precedence over `handler`.
         std::function<void(const ServerStreamPtr&)> stream_handler;
         // The connection's loop, reported by ServerStream::loop() so a
@@ -73,18 +73,18 @@ public:
         std::function<void(int status)> on_reject;
     };
 
-    // All HTTP/2 tuanbles. Defaults follow nginx / Envoy practice. values
+    // All HTTP/2 tunables. Defaults follow nginx / Envoy practice. Values
     // marked SETTINGS are advertised to the peer in the initial SETTINGS
     // frame (RFC 9113 §6.5.2); the rest are enforced locally.
     struct Limits {
-        // SETTINGS_MAX_CONCURRENT_STREAM: open streams the peer may have at
+        // SETTINGS_MAX_CONCURRENT_STREAMS: open streams the peer may have at
         // once. Excess streams are refused with RST_STREAM(REFUSED_STREAM),
         // which a client may safely retry.
         uint32_t max_concurrent_streams = 100;
         // SETTINGS_MAX_HEADER_LIST_SIZE: decoded header list size (name +
         // value + 32 per field). Larger lists get 431.
         size_t max_header_list_bytes = 64 * 1024;
-        // SETINGS_INITIAL_WINDOW_SIZE: per-stream receive window, i.e. how
+        // SETTINGS_INITIAL_WINDOW_SIZE: per-stream receive window, i.e. how
         // much request body the peer may send before we acknowledge it.
         // RFC default 65535; max 2^31-1.
         uint32_t initial_window_size = 65535;
@@ -109,7 +109,7 @@ public:
         uint32_t max_requests = 0;
         // Output backpressure threshold for pending() bytes.
         size_t output_high_water = 1024 * 1024;
-        // Streamed response: bytes buffered per stream before
+        // Streamed responses: bytes buffered per stream before
         // ServerStream::write() returns false (backpressure).
         size_t stream_high_water = 256 * 1024;
     };
@@ -124,7 +124,7 @@ public:
     // otherwise a description of the first bad field.
     static std::string validate(const Limits& limits);
 
-    // Send the server SETTINGS. Call once, before feeding any btes. Returns
+    // Send the server SETTINGS. Call once, before feeding any bytes. Returns
     // false if nghttp2 could not be initialised or the limits are invalid
     // (lastError() says which).
     bool start();
@@ -140,7 +140,7 @@ public:
     void flush();
 
     // Graceful shutdown (RFC 9113 §6.8), the two-step GOAWAY used by nginx
-    // and Enovy. Call it twice:
+    // and Envoy. Call it twice:
     //   1st call: GOAWAY(last_stream_id = 2^31-1, NO_ERROR), a "shutdown
     //      notice". The client stops opening streams, but requests already in
     //      flight on the wire are still accepted.
@@ -168,7 +168,7 @@ public:
     const std::string lastError() const { return last_error_; }
 
     // Streams currently tracked (for tests).
-    size_t activeStream() const { return streams_.size(); }
+    size_t activeStreams() const { return streams_.size(); }
     // Requests dispatched to the handler or rejected so far.
     uint64_t requestsServed() const { return requests_served_; }
     // Highest client stream ID received so far (0 if none).

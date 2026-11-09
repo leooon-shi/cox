@@ -33,13 +33,13 @@ namespace http {
 //
 // Origin: a numeric address, or a hostname resolved through a net::Resolver
 // on first use (requests wait for it). Each connection tries the resolved
-// address in order (IPv6/IPv4 failover); if no connection can be
+// addresses in order (IPv6/IPv4 failover); if no connection can be
 // established, the name is resolved again for the next request.
 //
 // Connection lifecycle is handled for the caller:
 //   * When the server sends GOAWAY, or a connection's stream IDs run out
 //     (they only increase and cannot be reset), that connection stops taking
-//     requets and finishes its in-flight ones; new requests go elsewhere.
+//     requests and finishes its in-flight ones; new requests go elsewhere.
 //     Requests the server did not process (above GOAWAY's last_stream_id,
 //     refused with REFUSED_STREAM, or still queued) are re-sent
 //     automatically, at most `max_retries` times.
@@ -59,7 +59,7 @@ public:
         // Re-sends of a request the server provably did not process.
         int max_retries = 3;
         // Connections opened in parallel to this origin (>= 1). See the
-        // class comment or when a new one is opened.
+        // class comment for when a new one is opened.
         size_t max_connections = 4;
         // Requests queued per connection beyond the stream limit.
         size_t max_queued = 1000;

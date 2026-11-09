@@ -23,27 +23,27 @@ using ServerStreamPtr = std::shared_ptr<ServerStream>;
 // asynchronously and/or stream the response body. Same API on HTTP/1.1 and
 // HTTP/2. Design: docs/insights/features/http-streaming-design.md.
 //
-//  server.setStreamHandler([](const http::ServerStreamPtr& s) {
-//      s->writeHead(200, {{"content-type", "text/event-stream"}});
-//      s->write("data: hello\n\n");         // sent now
-//      // ...keep `s`, write more later, then:
-//      s->send();
-//  });
+//   server.setStreamHandler([](const http::ServerStreamPtr& s) {
+//       s->writeHead(200, {{"content-type", "text/event-stream"}});
+//       s->write("data: hello\n\n");         // sent now
+//       // ...keep `s`, write more later, then:
+//       s->send();
+//   });
 //
 // Contract:
-//  * Call it only on loop() (use loop()->runInLoop from other threads).
-//  * Exactly one response: respond() once, OR writeHead(), write()*, end().
-//    Misuse is logged and ignored.
-//  * Holding the ServerStreamPtr keeps the exchange open. If every
-//    reference is dropped without a response, the server answers 500, so a
-//    forgetten response never hangs the client.
-//  * onAbort fires at most once, when the client goes away (connection
-//    closes, HTTP/2 RST_STREAM) before end(). Writes after it are ignored.
-//  * Callbacks may capture the ServerStreamPtr itself (e.g. to keep
-//    writing from onWritable). The stream drops its callbacks when the
-//    exchange ends (end(), respond(), or abort), which breaks that cycle.
-//    A stream that never ends, held only by its own callback, still leaks:
-//    always end() or let the client abort.
+//   * Call it only on loop() (use loop()->runInLoop from other threads).
+//   * Exactly one response: respond() once, OR writeHead(), write()*, end().
+//     Misuse is logged and ignored.
+//   * Holding the ServerStreamPtr keeps the exchange open. If every
+//     reference is dropped without a response, the server answers 500, so a
+//     forgotten response never hangs the client.
+//   * onAbort fires at most once, when the client goes away (connection
+//     closed, HTTP/2 RST_STREAM) before end(). Writes after it are ignored.
+//   * Callbacks may capture the ServerStreamPtr itself (e.g. to keep
+//     writing from onWritable). The stream drops its callbacks when the
+//     exchange ends (end(), respond(), or abort), which breaks that cycle.
+//     A stream that never ends, held only by its own callback, still leaks:
+//     always end() or let the client abort.
 class ServerStream {
 public:
     using Headers = std::map<std::string, std::string>;
@@ -73,13 +73,13 @@ public:
     const HttpRequest& request() const { return request_; }
 
     // ---- response ----
-    // Send a whole response at once (stats, headers, body).
+    // Send a whole response at once (status, headers, body).
     void respond(const HttpResponse& resp);
     // Start a streamed response. If `headers` has no content-length the
     //  body length is open-ended: HTTP/2 just sends DATA frames, HTTP/1.1
     //  uses chunked transfer encoding.
     void writeHead(int status, Headers headers = {});
-    // Append body bytes (copied). Return false when the bytes buffered for
+    // Append body bytes (copied). Returns false when the bytes buffered for
     // this stream are at or above the high-water mark: the data is still
     // accepted, but the caller should wait for onWritable before writing
     // more.

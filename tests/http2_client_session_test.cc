@@ -1,5 +1,5 @@
 // Socket-free tests for http::Http2ClientSession, piped byte-for-byte into
-// Cox's own server session (http::HttpSession). Only built with
+// Cox's own server session (http::Http2Session). Only built with
 // COX_WITH_HTTP2.
 
 #include "http2_client_session.h"
@@ -27,7 +27,7 @@ HttpRequest makeGet(const std::string& path) {
     return r;
 }
 
-// A client session and a server joined by in-memory pipes.
+// A client session and a server session joined by in-memory pipes.
 struct Pair {
     std::string c2s;  // client -> server bytes
     std::string s2c;  // server -> client bytes
@@ -108,7 +108,7 @@ TEST(Http2ClientSessionTest, PostBodyAndHeadersAreSent) {
     r.setMethod(http::Method::kPost);
     r.setPath("/up");
     r.addHeader("X-Trace", "abc");
-    r.addHeader("connection", "keep-alive");  // illegal in h2: dropped
+    r.addHeader("Connection", "keep-alive");  // illegal in h2: dropped
     r.setBody("payload");
     p.client->submit(r, "example.test", "https", p.collect());
     p.pump();
@@ -132,7 +132,7 @@ TEST(Http2ClientSessionTest, ManyRequestsMultiplexOnOneSession) {
     EXPECT_EQ(p.handled, 50);
 }
 
-TEST(Http2ClientSessionTest, QueueBeyondServerConcurrencyLimit) {
+TEST(Http2ClientSessionTest, QueuesBeyondServerConcurrencyLimit) {
     Http2Session::Limits slim;
     slim.max_concurrent_streams = 2;
     Pair p(slim);
@@ -188,7 +188,7 @@ TEST(Http2ClientSessionTest, GoAwayMarksUnprocessedStreamsRetryable) {
 
     ASSERT_EQ(p.results.size(), 2u);
     EXPECT_EQ(p.results[0].error, "");
-    EXPECT_EQ(p.results[1].error, "");
+    EXPECT_NE(p.results[1].error, "");
     EXPECT_TRUE(p.results[1].retryable)
         << "stream above GOAWAY last_stream_id must be retryable: "
         << p.results[1].error;
@@ -211,7 +211,7 @@ TEST(Http2ClientSessionTest, GoAwayMarksUnprocessedStreamsRetryable) {
     EXPECT_TRUE(p.results[2].retryable);
 }
 
-TEST(Http2ClientSessionTest, RefusedStreamIsRetrable) {
+TEST(Http2ClientSessionTest, RefusedStreamIsRetryable) {
     // Server caps at 1 open stream; the client floods 3 before it has seen
     // the server's SETTINGS, so streams 3 and 5 are refused.
     Http2Session::Limits slim;
@@ -273,10 +273,10 @@ TEST(Http2ClientSessionTest, ConnectionLossInFlightIsNotRetryable) {
         << "the server may have processed an in-flight request";
 }
 
-TEST(Http2ClientSessionTest, ResponseBodyLimitFailsRequst) {
+TEST(Http2ClientSessionTest, ResponseBodyLimitFailsRequest) {
     Http2ClientSession::Limits clim;
     clim.max_response_body = 1024;
-    Pair p({}, {}, [](const HttpRequest&, HttpResponse* resp) {
+    Pair p({}, clim, [](const HttpRequest&, HttpResponse* resp) {
         resp->setBody(std::string(100 * 1024, 'x'));
     });
     p.client->submit(makeGet("/big"), "h", "https", p.collect());
@@ -292,7 +292,7 @@ TEST(Http2ClientSessionTest, ClientShutdownLetsInFlightFinish) {
     p.client->shutdown();  // GOAWAY to the server
     p.pump();
     ASSERT_EQ(p.results.size(), 1u);
-    EXPECT_EQ(p.results[0].error, "request opened before GOAWAY");
+    EXPECT_EQ(p.results[0].error, "") << "request opened before GOAWAY");
     p.client->submit(makeGet("/b"), "h", "https", p.collect());
     ASSERT_EQ(p.results.size(), 2u);
     EXPECT_TRUE(p.results[1].retryable);
@@ -321,9 +321,9 @@ TEST(Http2ClientSessionTest, StreamAboveGoAwayLineIsRetryableOnClose) {
     // Hand-built server bytes: empty SETTINGS, then GOAWAY last_stream_id=1.
     const std::string settings("\x00\x00\x00\x04\x00\x00\x00\x00\x00", 9);
     const std::string goaway(
-        "\x00\x00\x08\x07\x00\x00\x00\x00"  // len 8, type GOAWAY, sid 0
-        "\x00\x00\x00\x01"                  // last_stream_id = 1
-        "\x00\x00\x00\x00",                 // NO_ERROR
+        "\x00\x00\x08\x07\x00\x00\x00\x00\x00"  // len 8, type GOAWAY, sid 0
+        "\x00\x00\x00\x01"                      // last_stream_id = 1
+        "\x00\x00\x00\x00",                     // NO_ERROR
         17);
     ASSERT_TRUE(client.feed(settings.data(), settings.size()));
     ASSERT_TRUE(client.feed(goaway.data(), goaway.size()));

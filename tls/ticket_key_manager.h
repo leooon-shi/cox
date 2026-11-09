@@ -17,25 +17,25 @@ typedef struct evp_mac_ctx_st EVP_MAC_CTX;
 namespace tls {
 
 // TicketKeyManager owns the server-side TLS session-ticket keys and implements
-// the OpenSSL ticket-key callback (SSL_CTX_set_tlsext_tiket_key_evp_cb).
+// the OpenSSL ticket-key callback (SSL_CTX_set_tlsext_ticket_key_evp_cb).
 //
 // A session ticket is the session state sealed (AES-256-CBC) and authenticated
-// (HMAC_SHA256) with a server-held key, handed to the client; presenting it
+// (HMAC-SHA256) with a server-held key, handed to the client; presenting it
 // lets the server resume WITHOUT storing per-session state. The security of
 // resumption therefore rests on these keys:
 //
-//   * A ticket key is a long-lived secret that can can dectypt EVERY session
+//   * A ticket key is a long-lived secret that can decrypt EVERY session
 //     resumed under it. If it never rotates, a single key compromise breaks
-//     forward secrecy for all resumed session over the whole process lifetime.
-//   * OpenSSL auto-generate ONE random key and never rotates it. This class
+//     forward secrecy for all resumed sessions over the whole process lifetime.
+//   * OpenSSL auto-generates ONE random key and never rotates it. This class
 //     fixes that: rotate() installs a fresh current key and retains the
-//     immediately previous key for a grace window so tickets issue just before
+//     immediately previous key for a grace window so tickets issued just before
 //     a rotation still resume (and are re-issued under the new key).
 //
 // Keys live in memory only (CSPRNG-generated); nothing touches disk. Thread-
 // safe: the callback runs on an I/O loop thread while rotate() may run on
-// another (a timer/worker), so the key deque is multi-guarded. The metric-style
-// hot path is a short critical selection copying key bytes, not crypto.
+// another (a timer/worker), so the key deque is mutex-guarded. The metric-style
+// hot path is a short critical section copying key bytes, not crypto.
 class TicketKeyManager {
 public:
     // Number of 16-byte key "names" + 32-byte AES + 32-byte HMAC keys retained:

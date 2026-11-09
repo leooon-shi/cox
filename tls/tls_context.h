@@ -133,8 +133,8 @@ public:
                               uint32_t rotate_seconds = 0);
 
     // CLIENT: enable an origin-keyed session cache so a reconnect to the same
-    // origin resumes. `max_session` bounds the cache (LRU). Must be called
-    // before connections are created. No-op a server context.
+    // origin resumes. `max_sessions` bounds the cache (LRU). Must be called
+    // before connections are created. No-op on a server context.
     void setSessionCache(uint32_t max_session = 1024);
 
     // Disable resumption on this context: no tickets issued/accepted and no
@@ -144,7 +144,7 @@ public:
 
     // Client-side cache accessor (nullptr if not enabled). Used by TLSEngine to
     // offer/store sessions by origin. Logically const: the cache has its own
-    // synchronisation
+    // synchronisation.
     SessionCache* sessionCache() const { return session_cache_.get(); }
 
     // SSL ex-data index TlsEngine uses to stash the per-connection origin to
@@ -197,8 +197,7 @@ private:
 
     // ---- Resumption state ----
     // Server: manages + rotates ticket keys; installed via the EVP ticket-key
-    // callback. Client: caches sessions by origin. At most tone is set per
-    // role.
+    // callback. Client: caches sessions by origin. At most one is set per role.
     std::unique_ptr<TicketKeyManager> ticket_keys_;
     std::unique_ptr<SessionCache> session_cache_;
     // Ticket-key rotation timer (server). Owned here; cancelled in dtor.
@@ -206,7 +205,7 @@ private:
     reactor::TimerId ticket_timer_;
     bool ticket_timer_armed_{false};
 
-    // Static trampoline for SSL_CTX_set_tlsext_key_evp_cb -> the manager
+    // Static trampoline for SSL_CTX_set_tlsext_ticket_key_evp_cb -> the manager
     // reachable via SSL_CTX app-data.
     static int ticketKeyCallback(struct ssl_st* ssl, unsigned char* key_name,
                                  unsigned char* iv, EVP_CIPHER_CTX* ectx,

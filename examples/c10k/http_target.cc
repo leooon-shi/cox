@@ -1,25 +1,25 @@
 // http_target: a tunable HTTP/1.1 server for load-validation scenario S4
 // (HTTP body limit vs big-body). It is the HTTP analogue of c10k_server: every
 // knob is a flag, and it exposes Prometheus /metrics (including
-// cox_http_requests_total{status_calss=...}) on a SEPARATE admin port so a
+// cox_http_requests_total{status_class=...}) on a SEPARATE admin port so a
 // scrape is reachable even while the data port is under attack.
 //
-//  http_target [--port N] [--metrics-port N] [--max-body BYTES] [--quiet]
+//   http_target [--port N] [--metrics-port N] [--max-body BYTES] [--quiet]
 //
-//  --port N          HTTP data port (default 9100).
-//  --metrics-port N  if >0, serve Prometheus /metrics on this admin port.
-//  --max-body BYTES  reject request bodies larger than BYTES with 413 (0 =
-//                    the HttpServer default). A Content-Length over the cap is
-//                    refused UP FRONT without reading the body; a chunked body
-//                    is rejected once the running total exceeds the cap.
-//  --quiet           suppress the per-second stats line.
+//   --port N          HTTP data port (default 9100).
+//   --metrics-port N  if >0, serve Prometheus /metrics on this admin port.
+//   --max-body BYTES  reject request bodies larger than BYTES with 413 (0 =
+//                     the HttpServer default). A Content-Length over the cap is
+//                     refused UP FRONT without reading the body; a chunked body
+//                     is rejected once the running total exceeds the cap.
+//   --quiet           suppress the per-second stats line.
 //
 // Handler: POST /sink consumes and discards the body, replies 200 with the
-// received length; any oversided body never reaches the handler (the parser
-// rejects it with 443 first). GET / replies 200. This lets S4 drive a big-body
+// received length; any oversized body never reaches the handler (the parser
+// rejects it with 413 first). GET / replies 200. This lets S4 drive a big-body
 // POST and watch the 413 + bounded memory, while small requests keep 2xx-ing.
 //
-// Links cox::metrics (->cox::http -> cox::net).
+// Links cox::metrics (-> cox::http -> cox::net).
 
 #include "event_loop.h"
 #include "http_request.h"
@@ -66,7 +66,7 @@ struct Options {
 
 Options parse(int argc, char** argv) {
     Options o;
-    for (int i = 0; i < argc; ++i) {
+    for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         auto val = [&]() -> const char* {
             if (i + 1 >= argc) {
@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
     server.setHttpHandler(
         [](const http::HttpRequest& req, http::HttpResponse* resp) {
             // Any oversized body was already rejected (413) by the parser and
-            // never reaches here. POST /sink consumers+discards and reports the
+            // never reaches here. POST /sink consumes+discards and reports the
             // length; everything else is a trivial 200.
             if (req.method() == http::Method::kPost && req.path() == "/sink") {
                 resp->setStatus(200);
@@ -137,7 +137,7 @@ int main(int argc, char** argv) {
         metrics::installHttpMetrics(*registry, server);
         metrics::installLoopMetrics(*registry, loop, {{"loop", "main"}});
         metrics::Registry* reg = registry.get();
-        metrics_server = std::make_unique<http::HttpServer>(
+        metrics_server = std::make_unique<HttpServer>(
             &loop, InetAddress(o.metrics_port), "http-target-metrics");
         metrics_server->setHttpHandler(
             [reg](const http::HttpRequest& req, http::HttpResponse* resp) {
@@ -151,7 +151,7 @@ int main(int argc, char** argv) {
                 resp->setBody(metrics::expo::prometheus(reg->scrape()));
             });
         metrics_server->start();
-        std::printf("c10_server: metrics on http://127.0.0.1:%u/metrics\n",
+        std::printf("http_target: metrics on http://127.0.0.1:%u/metrics\n",
                     o.metrics_port);
     }
 

@@ -26,7 +26,7 @@ namespace http {
 // the request while the server's MAX_CONCURRENT_STREAMS is reached) and each
 // completes independently.
 //
-// Connection lifecyle -- each request completes exactly once, with:
+// Connection lifecycle -- each request completes exactly once, with:
 //   * a response, or
 //   * an error with `retryable == true` when the request was NOT processed by
 //     the server and is safe to send again on a new connection:
@@ -82,7 +82,7 @@ public:
     Http2ClientSession(const Http2ClientSession&) = delete;
     Http2ClientSession& operator=(const Http2ClientSession&) = delete;
 
-    // Send the connection preface and SETTINGS. Call one, before anything
+    // Send the connection preface and SETTINGS. Call once, before anything
     // else. Returns false if nghttp2 could not be initialised.
     bool start();
 

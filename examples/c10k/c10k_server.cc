@@ -16,7 +16,7 @@
 //   --idle S       close connections idle for S seconds (0 = never).
 //   --accept-qps Q token-bucket limit on NEW connections per second.
 //   --nodelay      set TCP_NODELAY on accepted connections.
-//   --metrics-port N if >0, serve Prometheus metrics at GET /metrics on this
+//   --metrics-port N  if >0, serve Prometheus metrics at GET /metrics on this
 //                  SEPARATE admin port (default 0 = off). The telemetry plane
 //                  is kept off the data port so a scraper can always reach
 //                  /metrics even while the echo port is under attack -- which
@@ -25,7 +25,7 @@
 //                  load-validation scenario S6; 0 = off).
 //   --write-timeout S  force-close a connection whose output stays backed up
 //                  for S seconds (slow-consumer defense, scenario S2; 0 = off).
-//   --max_input-buf BYTES  force-close a connection whose unconsumed input
+//   --max-input-buf BYTES  force-close a connection whose unconsumed input
 //                  buffer exceeds BYTES (read-side memory bound, scenario S3;
 //                  0 = off).
 //   --sink         NEVER consume received data (the message callback leaves the
@@ -35,10 +35,10 @@
 //                  accumulates until the input cap force-closes it.
 //   --work-ms N    simulate per-request WORK of N ms: each received message is
 //                  admitted through a ConcurrencyLimiter and its echo reply is
-//                  DEFENDED by N ms (via a timer, so the loop never blocks),
+//                  DEFERRED by N ms (via a timer, so the loop never blocks),
 //                  holding an in-flight slot for that long. Scenario S7.
-//   --max-inflight N   capacity of the S7 ConcurrencyLimiter (requires
-//                  --work-ms). Requests beyong N in flight are SHED immediately
+//   --max-inflight N  capacity of the S7 ConcurrencyLimiter (requires
+//                  --work-ms). Requests beyond N in flight are SHED immediately
 //                  with a cheap "BUSY\n" reply and do not hold a slot.
 //
 // Prints one stats line per second: live connections, accepted/rejected/closed
@@ -98,7 +98,7 @@ struct Options {
     uint16_t metrics_port = 0;
     uint32_t max_age = 0;        // connection lifetime cap (S6)
     uint32_t write_timeout = 0;  // slow-consumer force-close (S2)
-    size_t max_input_buf = 0;    // read-slide memory bound (S3)
+    size_t max_input_buf = 0;    // read-side memory bound (S3)
     bool sink = false;           // never consume input (S3 target)
     uint32_t work_ms = 0;        // simulated per-request work duration (S7)
     size_t max_inflight = 0;     // concurrency limit for simulated work (S7)
@@ -178,7 +178,7 @@ Options parse(int argc, char** argv) {
 // When `reg` is non-null, also install the standard Cox server metrics on it
 // (chained AFTER the echo callbacks, as installServerMetrics requires). A
 // single shared Registry across all listeners is safe: the metric atomics and
-// the helper's dedup set are thread safe, so N reuseport loops aggregate into
+// the helper's dedup set are thread-safe, so N reuseport loops aggregate into
 // one metric set.
 void configure(TcpServer& server, const Options& o, Stats& st,
                metrics::Registry* reg,
@@ -297,7 +297,7 @@ int main(int argc, char** argv) {
 
     // S7: a shared ConcurrencyLimiter for simulated slow work, created only
     // when --work-ms is set. Shared across all listeners so the in-flight cap
-    // is global (reuseport loops share one budge). The message callbacks hold
+    // is global (reuseport loops share one budget). The message callbacks hold
     // a copy, so it outlives any deferred work task.
     std::shared_ptr<flowcontrol::ConcurrencyLimiter> limiter;
     if (o.work_ms > 0) {
@@ -309,7 +309,7 @@ int main(int argc, char** argv) {
         // stays <= capacity and excess is shed.
         auto* lim = limiter.get();
         reg->registerSampled(
-            "cox_request_in_flight", "Requests currently in flight (S7 work)",
+            "cox_requests_in_flight", "Requests currently in flight (S7 work)",
             metrics::MetricPoint::Type::kGauge,
             [lim] { return static_cast<double>(lim->inFlight()); });
         Stats* stp = &st;
@@ -378,7 +378,7 @@ int main(int argc, char** argv) {
                 resp->setBody(metrics::expo::prometheus(reg->scrape()));
             });
         metrics_server->start();
-        std::printf("c10_server: metrics on http://127.0.0.1:%u/metrics\n",
+        std::printf("c10k_server: metrics on http://127.0.0.1:%u/metrics\n",
                     o.metrics_port);
     }
     std::fflush(stdout);

@@ -130,7 +130,9 @@ public:
         connection_callback_ = std::move(cb);
     }
     // The installed connection callback (to chain onto it). Returns a copy.
-    ConnectionCallback connectionCallback() { return connection_callback_; }
+    ConnectionCallback connectionCallback() const {
+        return connection_callback_;
+    }
     void setMessageCallback(MessageCallback cb) {
         message_callback_ = std::move(cb);
     }
@@ -161,16 +163,16 @@ public:
         return bytes_written_.load(std::memory_order_relaxed);
     }
 
-    // --- Close reason (for metrics / diagnostics) ----
+    // ---- Close reason (for metrics / diagnostics) ----
     // Why the connection ended. Set at each force-close site (the hardening
     // timers and the input-buffer cap) before teardown; defaults to kPeer for
     // an ordinary peer close / error. Read by metrics on disconnect so a
-    // labeled cox_connection_closed_total{reason=...} can attribute closes to
+    // labeled cox_connections_closed_total{reason=...} can attribute closes to
     // the specific defense that fired (vs. a normal close). Written only by the
     // loop thread, before the close callback runs; read after, same thread in
     // the single-loop case and happens-after the disconnect callback otherwise.
     enum class CloseReason {
-        kPeer,          // peer closed, read EOF, or socket error (the defualt)
+        kPeer,          // peer closed, read EOF, or socket error (the default)
         kIdleTimeout,   // idle timeout fired (no inbound activity)
         kWriteTimeout,  // write timeout fired (slow consumer, output backed up)
         kMaxAge,        // connection max-age reached (lifetime recycling)

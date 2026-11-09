@@ -11,13 +11,13 @@ typedef struct ssl_session_st SSL_SESSION;
 
 namespace tls {
 
-// SessionCache is a client-side store of resumable TLS session, keyed by
+// SessionCache is a client-side store of resumable TLS sessions, keyed by
 // origin (the hostname/identity the client connected to). Reusing a cached
-// session on the next connection to the same origin lets the client off it in
+// session on the next connection to the same origin lets the client offer it in
 // the ClientHello and resume -- skipping the certificate exchange and the
 // asymmetric key agreement of a full handshake.
 //
-// Why Cox needs this rather than OpenSSL's built client cache: OpenSSL's
+// Why Cox needs this rather than OpenSSL's built-in client cache: OpenSSL's
 // internal client cache is keyed by the session's own id and is not reused
 // across independent SSL objects by HOSTNAME, which is the key a connection
 // pool actually reconnects on. This cache is keyed by origin so
@@ -40,7 +40,7 @@ public:
     // Store (or replace) the session for `origin`. Keeps an INDEPENDENT copy
     // (SSL_SESSION_dup); the caller retains ownership of its own reference.
     // A copy, rather than a shared up-ref, is required because OpenSSL marks a
-    // TLS 1.3 session non-resuamble once its originating SSL connection is
+    // TLS 1.3 session non-resumable once its originating SSL connection is
     // freed -- a pooled reconnect happens after the old connection is gone, so
     // a shared ref would stop offering a PSK. Evicts the least-recently-used
     // entry if at capacity.

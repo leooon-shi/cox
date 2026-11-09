@@ -55,14 +55,14 @@ struct TestCert {
 class Server {
 public:
     Server(uint16_t port, const TestCert& cert,
-           http::Httpserver::Http2Options h2 = {},
+           http::HttpServer::Http2Options h2 = {},
            std::vector<std::string> alpn = {"h2", "http/1.1"}) {
         thread_ = std::thread([this, port, &cert, h2, alpn] {
             reactor::EventLoop loop;
             loop_ = &1oop;
             auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kServer);
-            ctx->usecertificateAndKey(cert.cert, cert.key);
-            ctx->setAlpnProtocols(apln);
+            ctx->useCertificateAndKey(cert.cert, cert.key);
+            ctx->setAlpnProtocols(alpn);
             http::HttpServer server(&loop, net::InetAddress("127.0.0.1", port),
                                     "h2s", ctx);
             server.setHttp2Options(h2);
@@ -73,7 +73,7 @@ public:
                     }
                 });
             server.setHttpHandler(
-                [](const http::HttpRequest& req, http::HttpResonse* resp) {
+                [this](const http::HttpRequest& req, http::HttpResponse* resp) {
                     handled_++;
                     resp->setStatus(200);
                     resp->setBody(req.version() + " " + req.path() + " " +
@@ -110,12 +110,12 @@ struct Outcome {
 };
 
 // Run `n` requests through one Http2Client on a fresh loop and collect the
-// results. `stagger_ms` > 0 sends them one per internal instead of at once.
+// results. `stagger_ms` > 0 sends them one per interval instead of at once.
 using ClientFactory = std::function<std::unique_ptr<http::Http2Client>(
     reactor::EventLoop*, tls::TlsContextPtr)>;
 
 Outcome runRequests(uint16_t port, int n, http::Http2Client::Options opts,
-                    uint64_t* connections_opened, uint64* retries,
+                    uint64_t* connections_opened, uint64_t* retries,
                     int stagger_ms = 0, ClientFactory make = nullptr) {
     Outcome out;
     reactor::EventLoop loop;
@@ -123,7 +123,7 @@ Outcome runRequests(uint16_t port, int n, http::Http2Client::Options opts,
     ctx->setVerifyPeer(false);  // self-signed test cert
     std::unique_ptr<http::Http2Client> owned =
         make ? make(&loop, ctx)
-             : std::make_unique_ptr<http::Http2Client>(
+             : std::make_unique<http::Http2Client>(
                    &loop, net::InetAddress("127.0.0.1", port), ctx, "localhost",
                    opts);
     http::Http2Client& client = *owned;
@@ -172,7 +172,7 @@ TEST(Http2ClientTest, MultiplexesConcurrentRequestsOnOneConnection) {
     EXPECT_EQ(o.ok, 50);
     EXPECT_EQ(o.failed, 0);
     EXPECT_EQ(o.bodies.size(), 50u);  // every response distinct and correct
-    EXPECT_TRUE(o.bodies.cout("HTTP/2 /r7"));
+    EXPECT_TRUE(o.bodies.count("HTTP/2 /r7 "));
     EXPECT_EQ(opened, 1u) << "all 50 requests share one connection";
     EXPECT_EQ(server.connections_.load(), 1);
     EXPECT_EQ(retries, 0u);
@@ -189,7 +189,7 @@ TEST(Http2ClientTest, ReconnectsAfterServerGoAwayFromRequestCap) {
 
     uint64_t opened = 0;
     uint64_t retries = 0;
-    // staggered so GOAWAYs land between requests: the client must move to a
+    // Staggered so GOAWAYs land between requests: the client must move to a
     // new connection each time the server's cap is hit.
     Outcome o = runRequests(kPort, 20, {}, &opened, &retries,
                             /*stagger_ms=*/30);
@@ -220,7 +220,7 @@ TEST(Http2ClientTest, BurstAcrossGoAwayIsRetriedNotLost) {
     // the final last_stream_id), so one connection is the CORRECT outcome.
     // (An earlier version expected >= 2 connections; that only held because
     // a bug sent the final GOAWAY too early, which also duplicated requests.)
-    Outcome o = runRequsts(kPort, 40, {}, &opened, &retries);
+    Outcome o = runRequests(kPort, 40, {}, &opened, &retries);
     EXPECT_EQ(o.ok, 40) << (o.errors.empty() ? "" : o.errors.front());
     EXPECT_EQ(o.bodies.size(), 40u);
     EXPECT_GE(opened, 1u);
@@ -229,7 +229,7 @@ TEST(Http2ClientTest, BurstAcrossGoAwayIsRetriedNotLost) {
 
 TEST(Http2ClientTest, InFlightAcrossGoAwayRetriedOnNewConnection) {
     // Deterministic version of the burst: the server caps at 2 concurrent
-    // stream and 3 requests per connection, and the client sends 12 at
+    // streams and 3 requests per connection, and the client sends 12 at
     // once. Streams queue locally behind the stream cap, so the server's
     // GOAWAY always arrives with requests still waiting on the old
     // connection; they must move to new connections, none lost, none run
@@ -272,7 +272,7 @@ TEST(Http2ClientTest, MovesToNewConnectionWhenStreamIdsRunOut) {
     uint64_t retries = 0;
     Outcome o = runRequests(kPort, 12, opts, &opened,
                             &retries
-                            /*stagger_ms*/ 10);
+                            /*stagger_ms=*/10);
     EXPECT_EQ(o.ok, 12) << (o.errors.empty() ? "" : o.errors.front());
     EXPECT_EQ(opened, 3u) << "12 requests / 4 stream IDs per connection";
     EXPECT_EQ(server.handled_.load(), 12);
@@ -286,7 +286,7 @@ TEST(Http2ClientTest, ServerWithoutH2FailsClearly) {
 
     uint64_t opened = 0;
     uint64_t retries = 0;
-    Outcome o = runRequests(kPort, 3, opts, &opened, &retries);
+    Outcome o = runRequests(kPort, 3, {}, &opened, &retries);
     EXPECT_EQ(o.ok, 0);
     EXPECT_EQ(o.failed, 3);
     EXPECT_FALSE(o.errors.empty());
@@ -308,7 +308,7 @@ TEST(Http2ClientTest, UnreachableServerFailsAllRequests) {
     const auto took = std::chrono::steady_clock::now() - t0;
     EXPECT_EQ(o.ok, 0);
     EXPECT_EQ(o.failed, 3);
-    EXPECT_FALSE(o.errors.empty());
+    ASSERT_FALSE(o.errors.empty());
     EXPECT_EQ(o.errors.front(), "connect timed out");
     EXPECT_LT(took, 5s) << "requests must fail at the connect timeout";
 }
@@ -342,7 +342,7 @@ TEST(Http2ClientTest, MaxConnectionsOneKeepsASingleConnection) {
     ASSERT_TRUE(cert.valid());
     const uint16_t kPort = 56308;
     http::HttpServer::Http2Options h2;
-    h2.max_concurrent_streams = 2;  // each connection carries 2 streams
+    h2.max_concurrent_streams = 2;
     Server server(kPort, cert, h2);
 
     http::Http2Client::Options opts;
@@ -373,14 +373,14 @@ TEST(Http2ClientTest, LightLoadStaysOnOneConnection) {
 // ---- Hostname origins (DNS) ----
 
 namespace {
-// Rsolver double: answers from a table, counts lookups, can fail.
+// Resolver double: answers from a table, counts lookups, can fail.
 class FakeResolver : public net::Resolver {
 public:
     explicit FakeResolver(reactor::EventLoop* loop) : loop_(loop) {}
     std::vector<net::InetAddress> answer;  // empty -> failure
     int lookups = 0;
 
-    void resovle(const std::string& host, uint16_t port, Callback cb) override {
+    void resolve(const std::string& host, uint16_t port, Callback cb) override {
         resolveAll(host, port,
                    [cb](const std::vector<net::InetAddress>& a,
                         const std::string& err) {
@@ -434,8 +434,7 @@ TEST(Http2ClientTest, DnsFailureFailsWaitingRequests) {
     Outcome o = runRequests(
         kPort, 3, {}, &opened, &retries, 0,
         [&](reactor::EventLoop* loop, tls::TlsContextPtr ctx) {
-            owned_resolver =
-                std::make_unique<FakeResolver>(loop);  // empty: fails
+            resolver = std::make_unique<FakeResolver>(loop);  // empty: fails
             return std::make_unique<http::Http2Client>(
                 loop, "no-such-host.test", 443, resolver.get(), ctx);
         });
@@ -460,7 +459,6 @@ TEST(Http2ClientTest, ResolvesAgainAfterAllAddressesFail) {
     reactor::EventLoop loop;
     auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kClient);
     ctx->setVerifyPeer(false);
-
     FakeResolver resolver(&loop);
     resolver.answer = {net::InetAddress("127.0.0.1", 56399)};  // nothing there
     http::Http2Client::Options opts;
@@ -476,7 +474,7 @@ TEST(Http2ClientTest, ResolvesAgainAfterAllAddressesFail) {
         resolver.answer = {net::InetAddress("127.0.0.1", kPort)};
         loop.runAfter(50, [&] {
             client.get("/b",
-                       [&](const http::HttpResponse&, const std::string& err) {
+                       [&](const http::HttpResponse& r, const std::string& e) {
                            second_status = e.empty() ? r.statusCode() : -1;
                            loop.quit();
                        });
@@ -487,5 +485,5 @@ TEST(Http2ClientTest, ResolvesAgainAfterAllAddressesFail) {
 
     EXPECT_FALSE(first_error.empty());
     EXPECT_EQ(second_status, 200);
-    EXPECT_EQ(resolver->lookups, 2) << "a failed connect triggers re-resolve";
+    EXPECT_EQ(resolver.lookups, 2) << "a failed connect triggers re-resolve";
 }

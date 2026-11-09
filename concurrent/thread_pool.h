@@ -69,7 +69,7 @@ public:
 
     // Lifetime task counters (relaxed atomics; cheap to read from any thread,
     // e.g. a metrics scrape). tasksRun() counts tasks that actually executed
-    // (on a worker or inline). taskShed() counts tasks that were NOT run:
+    // (on a worker or inline). tasksShed() counts tasks that were NOT run:
     // tryRun() refused because the queue was full or the pool was stopped, or
     // run() dropped because the pool was stopping.
     uint64_t tasksRun() const {
