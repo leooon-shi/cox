@@ -100,7 +100,7 @@ struct Options {
     std::fprintf(stderr,
                  "usage: %s [--host H] [--port N] [--conns N] [--rate R] "
                  "[--duration S] [--msg BYTES] [--inflight K] "
-                 "[--src-ips a,b] [--split] [--client-nagle] ",
+                 "[--src-ips a,b] [--split] [--client-nagle] "
                  "[--attack slowloris|flood|slow-read|big-body] "
                  "[--dribble-ms MS]\n",
                  p);

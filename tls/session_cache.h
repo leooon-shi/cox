@@ -61,9 +61,9 @@ private:
     const size_t max_;
     // LRU: front = most recently used. The map points at list nodes for O(1)
     // move-to-front and erase.
-    std::list<std::pair<std::string, std::string>> lru_;
-    std::unordered_map<std::string,
-                       std::list<std::pair<std::string, std::string>>::iterator>
+    std::list<std::pair<std::string, SSL_SESSION*>> lru_;
+    std::unordered_map<
+        std::string, std::list<std::pair<std::string, SSL_SESSION*>>::iterator>
         index_;
 };
 
