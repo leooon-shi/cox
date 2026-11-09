@@ -185,6 +185,9 @@ void TcpServer::shutdownInLoop(uint32_t drain_deadline_seconds) {
     }
     for (const auto& conn : conns) {
         conn->getLoop()->runInLoop([this, conn]() {
+            if (drain_takeover_ && drain_takeover_(conn)) {
+                return;  // the application closes this connection itself
+            }
             if (drain_callback_) {
                 drain_callback_(conn);  // app-level orderly close hook
             }

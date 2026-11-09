@@ -65,6 +65,11 @@ public:
     std::string requestedServerName() const {
         return engine_.requestedServerName();
     }
+    // ALPN protocol agreed in the handshake ("h2", "http/1.1"), or "" if none.
+    // Valid once handshakeDone().
+    std::string negotiatedProtocol() const {
+        return engine_.negotiatedProtocol();
+    }
 
     void setHandshakeDoneCallback(HandshakeDoneCallback cb) {
         handshake_done_callback_ = std::move(cb);
@@ -87,13 +92,22 @@ private:
     void flushOutbound();
     // Drive the handshake forward; fires the done callback on completion.
     void driveHandshake();
+    // Count this connection's handshake outcome on ctx_(once).
+    void recordHandshake(bool ok);
 
     std::shared_ptr<net::TcpConnection> conn_;
+    // The context this connection was built from. Held (not just borrowed) so
+    // the handshake outcome can be recorded on it even if the owner drops its
+    // reference mid-handshake. With SNI, OpenSSL may switch the SSL onto a
+    // per-host context; outcomes are still counted on this one (the context
+    // the server/client was configured with).
+    TlsContextPtr ctx_;
     TlsEngine engine_;
     // NOTE: the role only affects how the engine is constructed (and is queried
     // via the engine when needed), so it is deliberately NOT stored here.
     bool handshake_done_{false};
     bool closed_{false};
+    bool handshake_recorded_{false};  // outcome counted exactly once
 
     HandshakeDoneCallback handshake_done_callback_;
     MessageCallback message_callback_;

@@ -142,12 +142,12 @@ public:
     // is required (e.g. re-authentication boundaries).
     void disableResumption();
 
-    // Client-side cache accessor (nullptr if not enabled). Used by TLSEngine to
+    // Client-side cache accessor (nullptr if not enabled). Used by TlsEngine to
     // offer/store sessions by origin. Logically const: the cache has its own
     // synchronisation.
     SessionCache* sessionCache() const { return session_cache_.get(); }
 
-    // SSL ex-data index TlsEngine uses to stash the per-connection origin to
+    // SSL ex-data index TlsEngine uses to stash the per-connection origin so
     // the new-session callback can key the cache. Static, process-wide.
     static int sessionOriginExIndex();
 

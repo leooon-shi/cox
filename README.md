@@ -3,8 +3,9 @@ Cox is an event-driven architecture designed for high performance.
 
 A reactor core (epoll, timerfd, eventfd) with TCP and Unix-domain transports,
 TLS 1.2+/1.3+ (incl, mTLS, SNI, cert hot-reload, OCSP stapling), HTTP/1.1 with
-REST routing and connection pooling, async DNS, flow/overload control,
-structured logging, and graceful shutdown.
+REST routing and connection pooling, optional HTTP/2 serving (nghttp2, via
+ALPN), async DNS, flow/overload control, structured logging, and graceful
+shutdown.
 - Design rationale per feature: [`docs/insights/features/`](docs/insights/features/)
 - Status, deferred and discarded work: [`docs/insights/roadmap.md`](docs/insights/roadmap.md)
 - User guide: [`docs/user-guide.md`](docs/user-guide.md)
@@ -68,7 +69,8 @@ ctest --preset clang-debug
 ```
 
 Available presets: `clang-debug`, `clang-release`, `gcc-debug`, `gcc-release`,
-`asan`, `tsan`, `ubsan`, `examples` (`cmake --list-presets` to list them). Each
+`asan`, `tsan`, `ubsan`, `examples` `coverage`, `http2` (`cmake --list-presets`
+to list them). Each
 builds into its own `build/<preset>/` directory, so configurations never clobber
 each other.
 

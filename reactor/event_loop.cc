@@ -154,7 +154,7 @@ void EventLoop::queueInLoop(Task&& task) {
     // currently dispatching channel events (so the newly queued task is not
     // delayed until the next poll wakeup).
     if (!isInLoopThread() ||
-        processing_channel_.load(std::memory_order_relaxed)) {
+        processing_channel_.load(std::memory_order_relaxed) == nullptr) {
         wakeup();
     }
 }

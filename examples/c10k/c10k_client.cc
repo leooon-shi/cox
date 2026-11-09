@@ -681,7 +681,7 @@ int main(int argc, char** argv) {
             }
             // Continue flushing a backed-up request. slow-read must finish
             // SENDING its (large) request so the server has the full payload to
-            // echo back -- it just never READs the reply. Slowloris reuses
+            // echo back -- it just never READS the reply. Slowloris reuses
             // to_write as a dribble index (handled separately) and flood has no
             // request, so EPOLLOUT flushing applies only to kNone and
             // slow-read.
@@ -778,7 +778,7 @@ int main(int argc, char** argv) {
     std::printf("connect latency: p50=%.0fus p99=%.0fus max=%.0fus\n",
                 pct(connect_us, 0.50), pct(connect_us, 0.99),
                 pct(connect_us, 1.0));
-    if (o.msg > 0 && secs > 0) {
+    if (request_mode && secs > 0) {
         std::printf(
             "requests: %llu in %.1fs = %.0f req/s (msg=%zuB, inflight=%d)\n",
             static_cast<unsigned long long>(requests), secs,

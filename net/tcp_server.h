@@ -70,7 +70,15 @@ public:
     void setDrainCallback(ConnectionCallback cb) {
         drain_callback_ = std::move(cb);
     }
-
+    // Like the drain callback, but it may TAKE_OVER the close: return true to
+    // say "I will closet this connection myself" (e.g. an HTTP/2 layer sending
+    // GOAWAY and finishing in-flight streams), and the server skips its
+    // half-close for it. The drain deadline still force-close stragglers.
+    // Return false for the default behavior. Runs on the connection's loop.
+    using DrainTakeoverCallback = std::function<bool(const TcpConnectionPtr&)>;
+    void setDrainTakeoverCallback(DrainTakeoverCallback cb) {
+        drain_takeover_ = std::move(cb);
+    }
     bool isDraining() const { return draining_; }
 
     void setThreadInitCallback(ThreadInitCallback cb) {
@@ -167,6 +175,7 @@ private:
     MessageCallback message_callback_;
     WriteCompleteCallback write_complete_callback_;
     ConnectionCallback drain_callback_;
+    DrainTakeoverCallback drain_takeover_;
     DrainCompleteCallback drain_complete_callback_;
     OverloadCallback overload_callback_;
 

@@ -17,15 +17,22 @@ logging::Logger& log() {
 
 TlsConnection::TlsConnection(std::shared_ptr<net::TcpConnection> conn,
                              const TlsContextPtr& ctx, Role role)
-    : conn_(std::move(conn)), engine_(*ctx, role) {}
+    : conn_(std::move(conn)), ctx_(ctx), engine_(*ctx, role) {}
 
 TlsConnection::TlsConnection(std::shared_ptr<net::TcpConnection> conn,
                              const TlsContextPtr& ctx, Role role,
                              const std::string& server_hostname)
-    : conn_(std::move(conn)), engine_(*ctx, role, server_hostname) {}
+    : conn_(std::move(conn)), ctx_(ctx), engine_(*ctx, role, server_hostname) {}
 
 TlsConnection::~TlsConnection() = default;
 
+void TlsConnection::recordHandshake(bool ok) {
+    if (handshake_recorded_) {
+        return;
+    }
+    handshake_recorded_ = true;
+    ctx_->recordHandshake(ok);
+}
 void TlsConnection::start() {
     // Intercept the underlying TCP connection's byte stream.
     //
@@ -42,12 +49,20 @@ void TlsConnection::start() {
                 self->onTcpMessage(buf);
             }
         });
-    conn_->setConnectionCallback([weak](const net::TcpConnectionPtr& c) {
-        if (c->connected()) {
+    // CHAIN onto the callback already installed (e.g. HttpServer's or
+    // TcpServer's connection callback, which tracks per-connection state and
+    // metrics): replacing it would hide the disconnect from its owner, which
+    // then never releases that connection's state.
+    net::ConnectionCallback prev = conn_->connectionCallback();
+    conn_->setConnectionCallback([weak, prev](const net::TcpConnectionPtr& c) {
+        if (!c->connected()) {
+            if (auto self = weak.lock()) {
+                self->onTcpClose();
+            }
             return;
         }
-        if (auto self = weak.lock()) {
-            self->onTcpClose();
+        if (prev) {
+            prev(c);
         }
     });
 
@@ -67,12 +82,14 @@ void TlsConnection::driveHandshake() {
 
     if (s == TlsEngine::Status::kError) {
         log().error("TlsConnection handshake error: " + engine_.lastError());
+        recordHandshake(false);
         conn_->forceClose();
         return;
     }
 
     if (engine_.handshakeDone()) {
         handshake_done_ = true;
+        recordHandshake(true);
         log().info("TLS handshake complete: " + engine_.protocolVersion() +
                    " " + engine_.cipherName());
         if (handshake_done_callback_) {
@@ -123,6 +140,11 @@ void TlsConnection::onTcpClose() {
         return;
     }
     closed_ = true;
+    if (!handshake_done_) {
+        // Peer want away mid-handshake (e.g. a client rejecting our cert closes
+        // without completing): count it as a failed handshake.
+        recordHandshake(false);
+    }
     if (close_callback_) {
         close_callback_(shared_from_this());
     }

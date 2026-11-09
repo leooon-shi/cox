@@ -198,7 +198,7 @@ TEST(Http2IntegrationTest, MultiplexesManyRequestsOverOneConnection) {
 
     // --parallel with one host reuses a single h2 connection; num_connects
     // counts NEW connections per transfer (only the first should be 1).
-    std::string cm =
+    std::string cmd =
         "curl -sk --http2 --parallel --parallel-max 20 "
         "-w '%{http_version} %{num_connects}\\n' -o /dev/null";
     for (int i = 0; i < 20; ++i) {

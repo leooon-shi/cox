@@ -59,7 +59,7 @@ public:
            std::vector<std::string> alpn = {"h2", "http/1.1"}) {
         thread_ = std::thread([this, port, &cert, h2, alpn] {
             reactor::EventLoop loop;
-            loop_ = &1oop;
+            loop_ = &loop;
             auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kServer);
             ctx->useCertificateAndKey(cert.cert, cert.key);
             ctx->setAlpnProtocols(alpn);
@@ -289,7 +289,7 @@ TEST(Http2ClientTest, ServerWithoutH2FailsClearly) {
     Outcome o = runRequests(kPort, 3, {}, &opened, &retries);
     EXPECT_EQ(o.ok, 0);
     EXPECT_EQ(o.failed, 3);
-    EXPECT_FALSE(o.errors.empty());
+    ASSERT_FALSE(o.errors.empty());
     EXPECT_NE(o.errors.front().find("does not support HTTP/2"),
               std::string::npos)
         << o.errors.front();
