@@ -31,7 +31,7 @@ using ServerStreamPtr = std::shared_ptr<ServerStream>;
 //   });
 //
 // Contract:
-//   * .Call it only on loop() (use loop()->runInLoop from other threads).
+//   * Call it only on loop() (use loop()->runInLoop from other threads).
 //   * Exactly one response: respond() once, OR writeHead(), write()*, end().
 //     Misuse is logged and ignored.
 //   * Holding the ServerStreamPtr keeps the exchange open. If every

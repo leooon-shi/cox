@@ -97,6 +97,15 @@
                 "CMAKE_BUILD_TYPE": "Debug",
                 "COX_COVERAGE": "ON"
             }
+        },
+        {
+            "name": "http2",
+            "displayName": "Clang Debug + HTTP/2 (nghttp2)",
+            "inherits": "clang",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "COX_WITH_HTTP2": "ON"
+            }
         }
     ],
     "buildPresets": [
@@ -108,7 +117,8 @@
         {"name": "tsan", "configurePreset": "tsan"},
         {"name": "ubsan", "configurePreset": "ubsan"},
         {"name": "examples", "configurePreset": "examples"},
-        {"name": "coverage", "configurePreset": "coverage"}
+        {"name": "coverage", "configurePreset": "coverage"},
+        {"name": "http2", "configurePreset": "http2"}
     ],
 
     "testPresets": [
@@ -148,6 +158,7 @@
             "inherits": "base",
             "configurePreset": "coverage",
             "execution": {"jobs": 1, "noTestsAction": "error"}
-        }
+        },
+        {"name": "http2", "inherits": "base", "configurePreset": "http2"}
     ]
 }

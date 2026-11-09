@@ -183,6 +183,32 @@ jobs:
       - name: Measure coverage
         run: ./scripts/coverage.sh
 
+  http2:
+    name: http2 (nghttp2)
+    runs-on: ubuntu-24.04
+    # NON-BLOCKING for now: HTTP/2 is new (2026-11-03) and opt-in
+    # (COX_WITH_HTTP2, default OFF). Builds with the http2 preset against the
+    # distro libnghtt2 and runs the full suite, including the h2 unit tests
+    # and the curl --http2 integration tests. Make it blocking once it has a
+    # track record.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build clang libssl-dev libc-ares-dev openssl \
+            libnghttp2-dev pkg-config curl
+      - name: Configue
+        run: cmake --preset http2
+      - name: Build
+        run: cmake --build --preset http2 --parallel
+      - name: Test
+        run: ctest --preset http2
+
   sanitizers:
     name: ${{ matrix.preset }}
     runs-on: ubuntu-24.04
