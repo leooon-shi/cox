@@ -70,8 +70,8 @@ public:
     void setDrainCallback(ConnectionCallback cb) {
         drain_callback_ = std::move(cb);
     }
-    // Like the drain callback, but it may TAKE_OVER the close: return true to
-    // say "I will closet this connection myself" (e.g. an HTTP/2 layer sending
+    // Like the drain callback, but it may TAKE OVER the close: return true to
+    // say "I will close this connection myself" (e.g. an HTTP/2 layer sending
     // GOAWAY and finishing in-flight streams), and the server skips its
     // half-close for it. The drain deadline still force-close stragglers.
     // Return false for the default behavior. Runs on the connection's loop.

@@ -59,7 +59,6 @@ void TlsConnection::start() {
             if (auto self = weak.lock()) {
                 self->onTcpClose();
             }
-            return;
         }
         if (prev) {
             prev(c);

@@ -153,6 +153,8 @@ else()
 endif()
 
 # Wire in third-party dependencies from one place (see third_party/README.md).
+# Added BEFORE the Cox modules so a vendored dependency's target (e.g.
+# nghttp2::nghttp2 for COX_WITH_HTTP2) already exists when a module links it.
 set(COX_THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 add_subdirectory(third_party)
 

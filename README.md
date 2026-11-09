@@ -69,7 +69,7 @@ ctest --preset clang-debug
 ```
 
 Available presets: `clang-debug`, `clang-release`, `gcc-debug`, `gcc-release`,
-`asan`, `tsan`, `ubsan`, `examples` `coverage`, `http2` (`cmake --list-presets`
+`asan`, `tsan`, `ubsan`, `examples`, `coverage`, `http2` (`cmake --list-presets`
 to list them). Each
 builds into its own `build/<preset>/` directory, so configurations never clobber
 each other.

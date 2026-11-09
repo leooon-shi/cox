@@ -92,7 +92,7 @@ private:
     void flushOutbound();
     // Drive the handshake forward; fires the done callback on completion.
     void driveHandshake();
-    // Count this connection's handshake outcome on ctx_(once).
+    // Count this connection's handshake outcome on ctx_ (once).
     void recordHandshake(bool ok);
 
     std::shared_ptr<net::TcpConnection> conn_;

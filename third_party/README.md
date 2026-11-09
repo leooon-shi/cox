@@ -4,7 +4,7 @@ Cox vendors external code as **git submodules pinned by commit**, wired into
 the build from a single place (`third_party/CMakeLists.txt`) through one helper
 (`cmake/CoxAddVendored.cmake`). This page is the policy; follow it when adding a
 dependency so the tree stays consistent as the dependency count grows
-(googletest today; nghttp2 for HTTP/2 is optionaly - see below).
+(googletest today; nghttp2 for HTTP/2 optionaly - see below).
 
 ## Principles
 
