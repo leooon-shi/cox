@@ -101,6 +101,7 @@
         {
             "name": "http2",
             "displayName": "Clang Debug + HTTP/2 (nghttp2)",
+            "description": "COX_WITH_HTTP2=ON. Uses third_party/nghttp2 if the submodule is checked out, else the system libnghttp2 (pkg-config).",
             "inherits": "clang",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
@@ -159,6 +160,6 @@
             "configurePreset": "coverage",
             "execution": {"jobs": 1, "noTestsAction": "error"}
         },
-        {"name": "http2", "inherits": "base", "configurePreset": "http2"}
+        { "name": "http2", "inherits": "base", "configurePreset": "http2"}
     ]
 }
