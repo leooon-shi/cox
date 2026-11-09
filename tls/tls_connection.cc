@@ -33,6 +33,7 @@ void TlsConnection::recordHandshake(bool ok) {
     handshake_recorded_ = true;
     ctx_->recordHandshake(ok);
 }
+
 void TlsConnection::start() {
     // Intercept the underlying TCP connection's byte stream.
     //
@@ -140,7 +141,7 @@ void TlsConnection::onTcpClose() {
     }
     closed_ = true;
     if (!handshake_done_) {
-        // Peer want away mid-handshake (e.g. a client rejecting our cert closes
+        // Peer went away mid-handshake (e.g. a client rejecting our cert closes
         // without completing): count it as a failed handshake.
         recordHandshake(false);
     }

@@ -135,9 +135,11 @@ TEST(SessionCacheTest, StoreGetAndLruEvict) {
     SSL_SESSION* still_a = cache.get("origin-a");
     SSL_SESSION* gone_b = cache.get("origin-b");
     SSL_SESSION* got_c = cache.get("origin-c");
+
     EXPECT_NE(still_a, nullptr);  // a survived (was MRU)
     EXPECT_EQ(gone_b, nullptr);   // b evicted
     EXPECT_NE(got_c, nullptr);    // c present
+
     if (still_a) {
         SSL_SESSION_free(still_a);
     }

@@ -73,7 +73,7 @@ public:
     // Like the drain callback, but it may TAKE OVER the close: return true to
     // say "I will close this connection myself" (e.g. an HTTP/2 layer sending
     // GOAWAY and finishing in-flight streams), and the server skips its
-    // half-close for it. The drain deadline still force-close stragglers.
+    // half-close for it. The drain deadline still force-closes stragglers.
     // Return false for the default behavior. Runs on the connection's loop.
     using DrainTakeoverCallback = std::function<bool(const TcpConnectionPtr&)>;
     void setDrainTakeoverCallback(DrainTakeoverCallback cb) {

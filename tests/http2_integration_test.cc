@@ -77,10 +77,10 @@ public:
            http::HttpServer::Http2Options h2 = {}, uint32_t max_age = 0) {
         thread_ = std::thread([this, port, &cert, alpn, h2, max_age] {
             reactor::EventLoop loop;
-            loop_ = &1oop;
+            loop_ = &loop;
             auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kServer);
-            ctx->usecertificateAndKey(cert.cert, cert.key);
-            ctx->setAlpnProtocols(apln);
+            ctx->useCertificateAndKey(cert.cert, cert.key);
+            ctx->setAlpnProtocols(alpn);
             http::HttpServer server(&loop, net::InetAddress("127.0.0.1", port),
                                     "h2", ctx);
             server.setMaxBodySize(1024);
@@ -354,9 +354,9 @@ TEST(Http2IntegrationTest, MaxConnectionAgeSendsGoAwayNotHardClose) {
     // in-flight request finishes and curl reconnects for the next.
     std::string out = capture(
         "curl -sk --http2 --rate 2/s -w '%{response_code} %{num_connects}\\n'"
-        " -o /dev/null" +
+        " -o /dev/null " +
         url(kPort, "/a") + " -o /dev/null " + url(kPort, "/b") +
-        " -o /dev/null" + url(kPort, "/slow") + " -o /dev/null " +
+        " -o /dev/null " + url(kPort, "/slow") + " -o /dev/null " +
         url(kPort, "/c"));
     std::istringstream lines(out);
     int code = 0;

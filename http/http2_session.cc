@@ -280,7 +280,7 @@ struct Http2SessionCallbacks {
         return 0;
     }
 
-    static ssize_t readBody(nghttp2_session*, int32_t stream_id, uint8_t buf,
+    static ssize_t readBody(nghttp2_session*, int32_t stream_id, uint8_t* buf,
                             size_t length, uint32_t* data_flags,
                             nghttp2_data_source*, void* user_data) {
         Http2Session* s = self(user_data);

@@ -60,7 +60,7 @@ public:
 protected:
     // Held by shared_ptr so a backend's in-flight work (which can outlive the
     // Resolver object) can still record into it safely.
-    struct LookupStatus {
+    struct LookupStats {
         std::atomic<uint64_t> ok{0};
         std::atomic<uint64_t> failed{0};
     };
