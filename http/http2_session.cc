@@ -50,7 +50,7 @@ struct Http2Session::Stream {
 namespace {
 std::string lower(const uint8_t* p, size_t n) {
     std::string s(reinterpret_cast<const char*>(p), n);
-    std::transform(s.begin, s.end(), s.begin(),
+    std::transform(s.begin(), s.end(), s.begin(),
                    [](unsigned char c) { return std::tolower(c); });
     return s;
 }

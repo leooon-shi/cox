@@ -146,7 +146,7 @@ short waitFd(int fd, short events, Clock::time_point deadline) {
 enum class Result { kOk, kConnectFail, kTimeout, kIoFail };
 
 // One probe: fresh non-blocking connect + send(msg) + recv(msg) within the
-// deadline. Fills `latency_us` on success. keeps its own fd; never leaks it.
+// deadline. Fills `latency_us` on success. Keeps its own fd; never leaks it.
 Result probeOnce(const Options& o, const sockaddr_in& dst,
                  const std::string& payload, std::vector<char>& rbuf,
                  double* latency_us) {
@@ -284,7 +284,7 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    // Payload: raw filter for the echo probe, or a minimal valid HTTP GET for
+    // Payload: raw filler for the echo probe, or a minimal valid HTTP GET for
     // an HTTP target (--http). Connection: close so the server ends the
     // response cleanly and we measure one full round trip per probe.
     const std::string payload =

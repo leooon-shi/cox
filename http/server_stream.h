@@ -27,11 +27,11 @@ using ServerStreamPtr = std::shared_ptr<ServerStream>;
 //       s->writeHead(200, {{"content-type", "text/event-stream"}});
 //       s->write("data: hello\n\n");         // sent now
 //       // ...keep `s`, write more later, then:
-//       s->send();
+//       s->end();
 //   });
 //
 // Contract:
-//   * Call it only on loop() (use loop()->runInLoop from other threads).
+//   * .Call it only on loop() (use loop()->runInLoop from other threads).
 //   * Exactly one response: respond() once, OR writeHead(), write()*, end().
 //     Misuse is logged and ignored.
 //   * Holding the ServerStreamPtr keeps the exchange open. If every

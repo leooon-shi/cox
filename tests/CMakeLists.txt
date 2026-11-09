@@ -112,7 +112,7 @@ cox_add_test(https_test               LIBS cox_http OPAQUE)
 
 # ---- HTTP/2 (only with -DCOX_WITH_HTTP2=ON) ----
 if(COX_WITH_HTTP2)
-    cox_add_test(http2_session_test LIBS cox_http)
+    cox_add_test(http2_session_test   LIBS cox_http)
     cox_add_test(http2_client_session_test LIBS cox_http)
     # OPAQUE: shells out to openssl (cert) and curl (h2 client)
     cox_add_test(http2_integration_test   LIBS cox_http OPAQUE)

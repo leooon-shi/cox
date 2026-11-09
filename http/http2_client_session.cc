@@ -402,7 +402,7 @@ bool Http2ClientSession::feed(const char* data, size_t len) {
         session_, reinterpret_cast<const uint8_t*>(data), len);
     if (rv < 0) {
         last_error_ = std::string("nghttp2_session_mem_recv: ") +
-                      nghttp2_strerror(static_cast<int>(rv)));
+                      nghttp2_strerror(static_cast<int>(rv));
         dead_ = true;
         failAll("HTTP/2 protocol error: " + last_error_, true);
         return false;

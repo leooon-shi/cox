@@ -292,7 +292,7 @@ TEST(Http2ClientSessionTest, ClientShutdownLetsInFlightFinish) {
     p.client->shutdown();  // GOAWAY to the server
     p.pump();
     ASSERT_EQ(p.results.size(), 1u);
-    EXPECT_EQ(p.results[0].error, "") << "request opened before GOAWAY");
+    EXPECT_EQ(p.results[0].error, "") << "request opened before GOAWAY";
     p.client->submit(makeGet("/b"), "h", "https", p.collect());
     ASSERT_EQ(p.results.size(), 2u);
     EXPECT_TRUE(p.results[1].retryable);

@@ -733,7 +733,7 @@ int main(int argc, char** argv) {
     std::printf("still open at end: %d / %d\n", connected, o.conns);
     if (o.attack == Attack::kSlowloris) {
         // Interpretation: against a DEFENDED server, most/all slowloris
-        /// connections are idle-reaped, so "still open" trends toward 0 and the
+        // connections are idle-reaped, so "still open" trends toward 0 and the
         // errno histogram shows the server-initiated closes. Against an
         // UNDEFENDED server they stay open (still open ~= conns) -- the failure
         // the idle timeout exists to prevent. The authoritative containment
@@ -765,7 +765,7 @@ int main(int argc, char** argv) {
         std::printf(
             "big-body: %d/%d still open at end. still-open near 0 => target "
             "rejected the oversized body (413) and closed; check "
-            "cox_http_requests_total{status_class:\"4xx\"} and flat RSS.\n",
+            "cox_http_requests_total{status_class=\"4xx\"} and flat RSS.\n",
             connected, o.conns);
     }
     if (!errors.empty()) {

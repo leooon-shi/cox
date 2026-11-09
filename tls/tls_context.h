@@ -135,7 +135,7 @@ public:
     // CLIENT: enable an origin-keyed session cache so a reconnect to the same
     // origin resumes. `max_sessions` bounds the cache (LRU). Must be called
     // before connections are created. No-op on a server context.
-    void setSessionCache(uint32_t max_session = 1024);
+    void setSessionCache(size_t max_session = 1024);
 
     // Disable resumption on this context: no tickets issued/accepted and no
     // client caching -- every handshake is full. Useful where a fresh handshake

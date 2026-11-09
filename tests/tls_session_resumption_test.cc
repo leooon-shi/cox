@@ -3,6 +3,7 @@
 // piping two TlsEngines together (the same harness style as tls_engine_test).
 
 #include "session_cache.h"
+#include "ticket_key_manager.h"
 #include "tls_context.h"
 #include "tls_engine.h"
 
@@ -134,9 +135,9 @@ TEST(SessionCacheTest, StoreGetAndLruEvict) {
     SSL_SESSION* still_a = cache.get("origin-a");
     SSL_SESSION* gone_b = cache.get("origin-b");
     SSL_SESSION* got_c = cache.get("origin-c");
-    ASSERT_NE(still_a, nullptr);  // a survived (was MRU)
-    ASSERT_NE(gone_b, nullptr);   // b evicted
-    ASSERT_NE(got_c, nullptr);    // c present
+    EXPECT_NE(still_a, nullptr);  // a survived (was MRU)
+    EXPECT_EQ(gone_b, nullptr);   // b evicted
+    EXPECT_NE(got_c, nullptr);    // c present
     if (still_a) {
         SSL_SESSION_free(still_a);
     }

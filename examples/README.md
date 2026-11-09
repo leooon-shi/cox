@@ -108,7 +108,7 @@ $B/probe_client --port 19100 --count 12 &
 $B/c10k_client --port 19100 --conns 480 --rate 960 --attack slowloris --dribble-ms 2000 --duration 12
 wait; kill $SRV 2>/dev/null
 ```
-Scenario → defense → tool mapping (S1-S8):
+Scenario → defense → tool mapping (S1–S8):
 
 | Scenario | Server under test | Adversary |
 |---|---|---|
@@ -116,7 +116,7 @@ Scenario → defense → tool mapping (S1-S8):
 | S2 slow reader | `c10k_server --write-timeout S` | `--attack slow-read --msg <large>` |
 | S3 unframed flood | `c10k_server --sink --max-input-buf BYTES` (probe with `--no-read`) | endless body the server never consumes |
 | S4 big body | `http_target --max-body BYTES` (probe with `--http`) | `--attack big-body` |
-| S5 connection flood | `c10k_server --max-conns N --accept-qps Q` | `--attack fllood` |
+| S5 connection flood | `c10k_server --max-conns N --accept-qps Q` | `--attack flood` |
 | S6 connection age | `c10k_server --max-age S` | long-lived idle connections (`--msg 0`) |
 | S7 heavy in-flight | `c10k_server --work-ms N --max-inflight N` | concurrent requests exceeding capacity |
 | S8 fd exhaustion | `c10k_server` under `ulimit -n 1024` | connection flood |

@@ -64,7 +64,7 @@ std::string capture(const std::string& cmd) {
     return out;
 }
 
-bool curHasHttp2() {
+bool curlHasHttp2() {
     return capture("curl --version 2>/dev/null").find("HTTP2") !=
            std::string::npos;
 }
@@ -200,7 +200,7 @@ TEST(Http2IntegrationTest, MultiplexesManyRequestsOverOneConnection) {
     // counts NEW connections per transfer (only the first should be 1).
     std::string cm =
         "curl -sk --http2 --parallel --parallel-max 20 "
-        "-w ' %{http_version} %{num_connects}\\n' -o /dev/null";
+        "-w '%{http_version} %{num_connects}\\n' -o /dev/null";
     for (int i = 0; i < 20; ++i) {
         cmd += " -o /dev/null " + url(kPort, "/i" + std::to_string(i));
     }
@@ -298,7 +298,7 @@ TEST(Http2IntegrationTest, MaxRequestsPerConnectionMakesClientReconnect) {
     std::istringstream lines(out);
     int code = 0;
     int ok = 0;
-    while (lines >> version) {
+    while (lines >> code) {
         ok += code == 200;
     }
     EXPECT_EQ(ok, 9) << out;
@@ -322,7 +322,7 @@ TEST(Http2IntegrationTest, GracefulDrainFinishesInFlightRequest) {
     std::string result;
     std::thread client([&] {
         result = capture("curl -sk --http2 -w ' %{response_code}' " +
-                         url(kPort, "/slow"))
+                         url(kPort, "/slow"));
     });
     std::this_thread::sleep_for(150ms);  // request is inside the handler
     server.drain(/*deadline_seconds=*/5);
