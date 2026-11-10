@@ -33,7 +33,7 @@ target_link_libraries(cox_http PUBLIC cox_net cox_buffer cox_logging cox_tls)
 # out at third_party/nghttp2 (third_party/CMakeLists.txt defines the target),
 # otherwise from the system package via pkg-config. Either way the rest of the
 # tree only sees the nghttp2::nghttp2 target.
-if (COX_WITH_HTTP2)
+if(COX_WITH_HTTP2)
     if(NOT TARGET nghttp2::nghttp2)
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(NGHTTP2 REQUIRED IMPORTED_TARGET libnghttp2>=1.43)
@@ -45,7 +45,7 @@ if (COX_WITH_HTTP2)
     target_link_libraries(cox_http PUBLIC nghttp2::nghttp2)
     target_compile_definitions(cox_http PUBLIC COX_WITH_HTTP2)
     list(APPEND HTTP_HEADERS http2_session.h http2_client_session.h
-        http2_client.h)
+         http2_client.h)
 endif()
 
 if(COX_INSTALL)
