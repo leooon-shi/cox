@@ -35,15 +35,15 @@ public:
     };
 
     TestClient() {
-        nghtt2_session_callbacks* cb = nullptr;
+        nghttp2_session_callbacks* cb = nullptr;
         nghttp2_session_callbacks_new(&cb);
-        nghttp2_session_callbacks_set_header_callback(cb, &onHeader);
+        nghttp2_session_callbacks_set_on_header_callback(cb, &onHeader);
         nghttp2_session_callbacks_set_on_data_chunk_recv_callback(cb, &onData);
         nghttp2_session_callbacks_set_on_stream_close_callback(cb, &onClose);
         nghttp2_session_callbacks_set_on_frame_recv_callback(cb, &onFrame);
         nghttp2_session_client_new(&session_, cb, this);
         nghttp2_session_callbacks_del(cb);
-        nghttp2_sub_settings(session_, NGHTTP2_FLAG_NONE, nullptr, 0);
+        nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, nullptr, 0);
     }
     ~TestClient() { nghttp2_session_del(session_); }
 
@@ -69,7 +69,7 @@ public:
         if (body != nullptr) {
             body_ = *body;
             body_off_ = 0;
-            prd.read_callback = &readbody;
+            prd.read_callback = &readBody;
         }
         return nghttp2_submit_request(session_, nullptr, nva.data(), nva.size(),
                                       body != nullptr ? &prd : nullptr, this);
@@ -94,17 +94,17 @@ public:
     // Cancel a stream (RST_STREAM(CANCEL)), as a client abandoning a request.
     void reset(int32_t id) {
         nghttp2_submit_rst_stream(session_, NGHTTP2_FLAG_NONE, id,
-                                  NGHTTP2_CACNEL);
+                                  NGHTTP2_CANCEL);
     }
 
     std::map<int32_t, Response> responses;
     // Every GOAWAY received, in order: (last_stream_id, error_code).
     std::vector<std::pair<int32_t, uint32_t>> goaways;
-    // Server SETTINGS value received (id -> value).
+    // Server SETTINGS values received (id -> value).
     std::map<int32_t, uint32_t> settings;
 
 private:
-    static int onFrame(nghttp2_session*, const nghtt2_frame* frame, void* u) {
+    static int onFrame(nghttp2_session*, const nghttp2_frame* frame, void* u) {
         if (frame->hd.type == NGHTTP2_GOAWAY) {
             self(u)->goaways.emplace_back(frame->goaway.last_stream_id,
                                           frame->goaway.error_code);
@@ -138,17 +138,17 @@ private:
                                            len);
         return 0;
     }
-    static int onClose(nghttp2_session*, int32_t id, uint32_t code, void*) {
+    static int onClose(nghttp2_session*, int32_t id, uint32_t code, void* u) {
         Response& r = self(u)->responses[id];
         r.closed = true;
         r.close_code = code;
         return 0;
     }
-    static ssize_t readBody(nghttp2_session*, int32_t, uint8_t buf,
+    static ssize_t readBody(nghttp2_session*, int32_t, uint8_t* buf,
                             size_t length, uint32_t* flags,
                             nghttp2_data_source*, void* u) {
         TestClient* c = self(u);
-        size_t n = std::min(length, c->body_.size() - c.body_off_);
+        size_t n = std::min(length, c->body_.size() - c->body_off_);
         std::memcpy(buf, c->body_.data() + c->body_off_, n);
         c->body_off_ += n;
         if (c->body_off_ == c->body_.size()) {
@@ -174,14 +174,14 @@ struct Harness {
         cbs.handler = [this, h](const HttpRequest& req, HttpResponse* resp) {
             ++handled;
             h(req, resp);
-        } cbs.send = [this](const char* d, size_t n) {
-            to_client.append(d, n);
-        } cbs.on_reject = [this](int s) { rejects.push_back(s); };
+        };
+        cbs.send = [this](const char* d, size_t n) { to_client.append(d, n); };
+        cbs.on_reject = [this](int s) { rejects.push_back(s); };
         server = std::make_unique<Http2Session>(std::move(cbs), lim);
         EXPECT_TRUE(server->start());
     }
 
-    // Pump both direction until neither side produces bytes.
+    // Pump both directions until neither side produces bytes.
     void pump(TestClient& c) {
         for (int i = 0; i < 50; ++i) {
             std::string up = c.takeOutput();
@@ -244,7 +244,7 @@ TEST(Http2SessionTest, SimpleGetReachesHandlerAsHttp2) {
     h.pump(c);
 
     ASSERT_TRUE(c.responses.count(id));
-    const auto& r = c.responses[i];
+    const auto& r = c.responses[id];
     EXPECT_EQ(r.status, 200);
     EXPECT_EQ(r.body, "GET /hello?x=1 HTTP/2 host=localhost body=");
     EXPECT_EQ(r.headers.at("content-type"), "text/plain");
@@ -258,7 +258,7 @@ TEST(Http2SessionTest, MultiplexedStreamsOnOneConnection) {
     TestClient c;
     std::vector<int32_t> ids;
     for (int i = 0; i < 10; ++i) {
-        ids.push_back(c.request("GET", "/item" + std::to_string(i)));
+        ids.push_back(c.request("GET", "/item/" + std::to_string(i)));
     }
     h.pump(c);
 
@@ -278,7 +278,7 @@ TEST(Http2SessionTest, PostBodyIsDelivered) {
     int32_t id = c.request("POST", "/up", {}, &body);
     h.pump(c);
     EXPECT_EQ(c.responses[id].status, 200);
-    EXPECT_NE(c.responses[id].body.find("body-payload-123"), std::string::npos);
+    EXPECT_NE(c.responses[id].body.find("body=payload-123"), std::string::npos);
 }
 
 TEST(Http2SessionTest, LargeResponseBodySpansManyDataFrames) {
@@ -315,15 +315,15 @@ TEST(Http2SessionTest, OversizedBodyGets413AndSkipsHandler) {
     Harness h(&echoHandler, lim);
     TestClient c;
     std::string body(1000, 'b');
-    int32_t id = c.request("POST", "/up", {} & body);
+    int32_t id = c.request("POST", "/up", {}, &body);
     h.pump(c);
     EXPECT_EQ(c.responses[id].status, 413);
-    EXPECT_EQ(c.handled, 0);
+    EXPECT_EQ(h.handled, 0);
     ASSERT_EQ(h.rejects.size(), 1u);
     EXPECT_EQ(h.rejects[0], 413);
 }
 
-TEST(Http2SessionTest, OversizedHeaderListGets413) {
+TEST(Http2SessionTest, OversizedHeaderListGets431) {
     Http2Session::Limits lim;
     lim.max_header_list_bytes = 512;
     Harness h(&echoHandler, lim);
@@ -353,19 +353,20 @@ TEST(Http2SessionTest, StreamsBeyondConcurrencyCapAreRefused) {
     std::string to_client;
     int handled = 0;
     Http2Session::Callbacks cbs;
-    cbs.handler = [&](const HttpRequest&, HttpRespose* resp) {
+    cbs.handler = [&](const HttpRequest&, HttpResponse* resp) {
         ++handled;
         resp->setBody("ok");
-    } cbs.send = [&](const char* d, size_t n) { to_client.append(d, n); };
+    };
+    cbs.send = [&](const char* d, size_t n) { to_client.append(d, n); };
     // Hold all output so the first two streams stay open while the rest
-    // arrive (the cap counts OPEN streams)
-    size_t held = i;
+    // arrive (the cap counts OPEN streams).
+    size_t held = 1;
     cbs.pending = [&] { return held; };
     lim.output_high_water = 1;
     Http2Session s(std::move(cbs), lim);
     ASSERT_TRUE(s.start());
 
-    TESTClient c;
+    TestClient c;
     for (int i = 0; i < 5; ++i) {
         c.request("GET", "/s" + std::to_string(i));
     }
@@ -388,7 +389,7 @@ TEST(Http2SessionTest, StreamsBeyondConcurrencyCapAreRefused) {
 
 TEST(Http2SessionTest, NonHttp2PrefaceIsAFatalError) {
     Harness h(&echoHandler);
-    const std::string& h1 = "GET / HTTP/1.1\r\nHost: x\r\n\r\n";
+    const std::string h1 = "GET / HTTP/1.1\r\nHost: x\r\n\r\n";
     EXPECT_FALSE(h.server->feed(h1.data(), h1.size()));
     EXPECT_FALSE(h.server->lastError().empty());
 }
@@ -398,7 +399,7 @@ TEST(Http2SessionTest, BackpressureStopsFlushAboveHighWater) {
     size_t pending = 0;
     std::string wire;
     Http2Session::Callbacks cbs;
-    cbs.handler = [&](onst HttpRequest&, HttpResponse* resp) {
+    cbs.handler = [&](const HttpRequest&, HttpResponse* resp) {
         resp->setBody(big);
     };
     cbs.send = [&](const char* d, size_t n) {
@@ -449,7 +450,7 @@ TEST(Http2SessionTest, RejectsLimitsOutsideRfcBounds) {
     lim.max_frame_size = 1000;  // < 16384
     EXPECT_NE(Http2Session::validate(lim), "");
     lim = {};
-    lim.initial_window_size = 1U << 31;  // > 2^31 -1
+    lim.initial_window_size = 1U << 31;  // > 2^31-1
     EXPECT_NE(Http2Session::validate(lim), "");
     lim = {};
     lim.max_stream_id = 1U << 31;
@@ -561,12 +562,12 @@ TEST(Http2SessionTest, MaxRequestsPerConnectionTriggersGoAway) {
 
 TEST(Http2SessionTest, MaxStreamIdDrainsAndRefusesBeyondIt) {
     Http2Session::Limits lim;
-    lim.max_stream_id = 5;  // client may use stream 1, 3, 5
+    lim.max_stream_id = 5;  // client may use streams 1, 3, 5
     Harness h(&echoHandler, lim);
     TestClient c;
     std::vector<int32_t> ids;
     for (int i = 0; i < 4; ++i) {  // 1, 3, 5, 7: 7 is over the cap
-        dis.push_back(c.request("GET", "/s" + std::to_strign(i)));
+        ids.push_back(c.request("GET", "/s" + std::to_string(i)));
     }
     h.pump(c);
     EXPECT_EQ(c.responses[ids[0]].status, 200);
@@ -588,7 +589,7 @@ TEST(Http2SessionTest, ReachingMaxStreamIdStartsGracefulDrain) {
     TestClient c;
     c.request("GET", "/1");
     h.pump(c);
-    EXEPCT_FALSE(h.server->goingAway());
+    EXPECT_FALSE(h.server->goingAway());
     c.request("GET", "/3");  // the last usable ID
     h.pump(c);
     EXPECT_TRUE(h.server->goingAway());  // notice already sent
@@ -608,10 +609,10 @@ struct StreamHarness {
 
     explicit StreamHarness(
         std::function<void(const http::ServerStreamPtr&)> handler,
-        http2Session::Limits lim = {}) {
+        Http2Session::Limits lim = {}) {
         Http2Session::Callbacks cbs;
         cbs.stream_handler = std::move(handler);
-        cbs.send = [this](const char*, size_t n) { to_client.append(d, n); };
+        cbs.send = [this](const char* d, size_t n) { to_client.append(d, n); };
         cbs.on_request = [this](int st, double) { statuses.push_back(st); };
         server = std::make_unique<Http2Session>(std::move(cbs), lim);
         EXPECT_TRUE(server->start());
@@ -639,7 +640,7 @@ struct StreamHarness {
 
 TEST(Http2StreamingTest, AsyncResponseAfterHandlerReturned) {
     StreamHarness h(
-        [&](const http::ServerStreamPtr& s) { h.held.push_back(s); });
+        [&h](const http::ServerStreamPtr& s) { h.held.push_back(s); });
     TestClient c;
     int32_t id = c.request("GET", "/later");
     h.pump(c);
@@ -650,19 +651,19 @@ TEST(Http2StreamingTest, AsyncResponseAfterHandlerReturned) {
     // ...the handler's async work completes:
     HttpResponse resp;
     resp.setStatus(201);
-    resp.setBody("done" + h.held[0]->request().path());
+    resp.setBody("done " + h.held[0]->request().path());
     h.held[0]->respond(resp);
     h.pump(c);
     EXPECT_EQ(c.responses[id].status, 201);
     EXPECT_EQ(c.responses[id].body, "done /later");
     EXPECT_TRUE(c.responses[id].closed);
-    EXPECT_EQ(h.statuses.size(), 1u);
+    ASSERT_EQ(h.statuses.size(), 1u);
     EXPECT_EQ(h.statuses[0], 201);
 }
 
 TEST(Http2StreamingTest, StreamedBodyWithoutContentLength) {
     StreamHarness h(
-        [&](const http::ServerStreamPtr& s) { h.held.push_back(s); });
+        [&h](const http::ServerStreamPtr& s) { h.held.push_back(s); });
     TestClient c;
     int32_t id = c.request("GET", "/events");
     h.pump(c);
@@ -671,7 +672,7 @@ TEST(Http2StreamingTest, StreamedBodyWithoutContentLength) {
     s->write("data: one\n\n");
     h.pump(c);
     // The client has the headers and the first event while the response is
-    // still open: that is waht makes SSE / long-poll possible.
+    // still open: that is what makes SSE / long-poll possible.
     EXPECT_EQ(c.responses[id].status, 200);
     EXPECT_EQ(c.responses[id].body, "data: one\n\n");
     EXPECT_FALSE(c.responses[id].closed);
@@ -690,7 +691,7 @@ TEST(Http2StreamingTest, PendingStreamDoesNotBlockOthers) {
     // Stream /slow is held open by its handler; /fast on the same connection
     // must complete meanwhile (the h2 case where a blocking handler would
     // stall every stream).
-    StreamHarness h([&](const http::ServerStreamPtr& s) {
+    StreamHarness h([&h](const http::ServerStreamPtr& s) {
         if (s->request().path() == "/fast") {
             HttpResponse r;
             r.setBody("fast");
@@ -715,12 +716,12 @@ TEST(Http2StreamingTest, LargeStreamedBodyRespectsFlowControl) {
     // 1 MB written in 64 KB pieces as the stream drains, i.e. well past the
     // client's 64 KB flow-control window.
     std::string chunk(64 * 1024, 'k');
-    int write_left = 64;
+    int writes_left = 16;
     StreamHarness h([&](const http::ServerStreamPtr& s) {
         h.held.push_back(s);
         s->writeHead(200);
         auto pumpWrites = [&, s]() {
-            while (write_left > 0) {
+            while (writes_left > 0) {
                 --wirtes_left;
                 if (!s->write(chunk)) {
                     return;  // wait for onWritable
@@ -740,7 +741,7 @@ TEST(Http2StreamingTest, LargeStreamedBodyRespectsFlowControl) {
 
 TEST(Http2StreamingTest, WriteReturnsFalseAboveHighWater) {
     Http2Session::Limits lim;
-    lim.stream_high_water = 4095;
+    lim.stream_high_water = 4096;
     StreamHarness h(
         [&h](const http::ServerStreamPtr& s) { h.held.push_back(s); }, lim);
     TestClient c;
@@ -754,7 +755,7 @@ TEST(Http2StreamingTest, WriteReturnsFalseAboveHighWater) {
     for (int i = 0; i < 40 && ok; ++i) {
         ok = s->write(std::string(4096, 'b'));
     }
-    EXPECT_FALSE(ok) << "write() must singal backpressure";
+    EXPECT_FALSE(ok) << "write() must signal backpressure";
     bool writable = false;
     s->setOnWritable([&] { writable = true; });
     h.pump(c);  // client reads and opens the window
@@ -771,7 +772,7 @@ TEST(Http2StreamingTest, DroppedStreamWithoutResponseGets500) {
     int32_t id = c.request("GET", "/forgot");
     h.pump(c);
     EXPECT_EQ(c.responses[id].status, 500);
-    EXPECT_TRUE(c.response[id].closed);
+    EXPECT_TRUE(c.responses[id].closed);
 }
 
 TEST(Http2StreamingTest, DroppedAfterHeadersResetsStream) {
@@ -784,7 +785,7 @@ TEST(Http2StreamingTest, DroppedAfterHeadersResetsStream) {
                                  : "drop inside the handler");
         http::ServerStreamPtr held;
         StreamHarness h([&](const http::ServerStreamPtr& s) {
-            s - writeHead(200);
+            s->writeHead(200);
             s->write("partial");
             if (flush_first) {
                 held = s;  // keep it past the handler; drop below
@@ -820,7 +821,7 @@ TEST(Http2StreamingTest, ClientResetAbortsHandler) {
     h.pump(c);
     EXPECT_TRUE(aborted);
     EXPECT_TRUE(h.held.at(0)->aborted());
-    // Writing after abort is harless.
+    // Writing after abort is harmless.
     h.held[0]->writeHead(200);
     EXPECT_FALSE(h.held[0]->write("x"));
     h.held[0]->end();
