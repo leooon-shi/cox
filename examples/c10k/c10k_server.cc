@@ -218,47 +218,47 @@ void configure(TcpServer& server, const Options& o, Stats& st,
             --st.live;
         }
     });
-    server.setMessageCallback(
-        [&st, sink = o.sink, work_ms = o.work_ms, limiter](
-            const TcpConnectionPtr& c, buffer::Buffer* buf) {
-            if (sink) {
-                // S3 target: a "parser" that never completes a frame, so it
-                // NEVER consumes the input buffer. Unconsumed bytes accumulate
-                // until the max-input-buffer cap force-closes the connection.
-                // Do NOT retrieve/echo (leaving the data is the point) and do
-                // NOT add buf->readableBytes() to st.bytes -- the buffer is not
-                // drained, so it would re-count the whole backlog every read.
+    server.setMessageCallback([&st, sink = o.sink, work_ms = o.work_ms,
+                               limiter](const TcpConnectionPtr& c,
+                                        buffer::Buffer* buf) {
+        if (sink) {
+            // S3 target: a "parser" that never completes a frame, so it
+            // NEVER consumes the input buffer. Unconsumed bytes accumulate
+            // until the max-input-buffer cap force-closes the connection.
+            // Do NOT retrieve/echo (leaving the data is the point) and do
+            // NOT add buf->readableBytes() to st.bytes -- the buffer is not
+            // drained, so it would re-count the whole backlog every read.
+            return;
+        }
+        if (limiter) {
+            // S7: simulated slow work under a concurrency limit. Admit via
+            // the limiter; on success hold the permit while the reply is
+            // DEFERRED by work_ms (a timer, so the loop never blocks), then
+            // echo and release. Over capacity -> shed immediately with a
+            // cheap reply, holding no slot.
+            std::string data = buf->retrieveAllAsString();
+            auto permit = limiter->tryAcquire();
+            if (!permit) {
+                ++st.shed;
+                c->send("BUSY\n");
                 return;
             }
-            if (limiter) {
-                // S7: simulated slow work under a concurrency limit. Admit via
-                // the limiter; on success hold the permit while the reply is
-                // DEFERRED by work_ms (a timer, so the loop never blocks), then
-                // echo and release. Over capacity -> shed immediately with a
-                // cheap reply, holding no slot.
-                std::string data = buf->retrieveAllAsString();
-                auto permit = limiter->tryAcquire();
-                if (!permit) {
-                    ++st.shed;
-                    c->send("BUSY\n");
-                    return;
-                }
-                st.bytes += data.size();
-                // Move the permit into the deferred task so the slot is held
-                // for the whole simulated work duration, then released on
-                // completion. Capture the connection shared_ptr to keep it
-                // alive across the delay.
+            st.bytes += data.size();
+            // Move the permit into the deferred task so the slot is held
+            // for the whole simulated work duration, then released on
+            // completion. Capture the connection shared_ptr to keep it
+            // alive across the delay.
             auto p = std::make_shared<flowcontrol::ConcurrencyLimiter::Permit>(
-                std::move(permit);
+                std::move(permit));
             c->getLoop()->runAfter(work_ms, [c, data = std::move(data), p]() {
                 c->send(data);
                 p->release();  // work done: free the in-flight slot
             });
             return;
-            }
-            st.bytes += buf->readableBytes();
-            c->send(buf->retrieveAllAsString());
-        });
+        }
+        st.bytes += buf->readableBytes();
+        c->send(buf->retrieveAllAsString());
+    });
     // Install metrics LAST so the helper chains onto the echo callbacks above
     // rather than being clobbered by them.
     if (reg != nullptr) {

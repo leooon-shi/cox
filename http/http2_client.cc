@@ -378,7 +378,7 @@ private:
     //   3. otherwise the least-loaded active connection (the request queues
     //      there until one of its streams finishes).
     std::shared_ptr<H2Conn> pick() {
-        // Drop connection that stopped accepting requests (GOAWAY, stream
+        // Drop connections that stopped accepting requests (GOAWAY, stream
         // IDs exhausted, closed); they finish their own streams as retiring.
         for (size_t i = 0; i < active_.size();) {
             if (!active_[i]->usable()) {

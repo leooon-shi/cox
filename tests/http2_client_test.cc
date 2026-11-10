@@ -270,8 +270,7 @@ TEST(Http2ClientTest, MovesToNewConnectionWhenStreamIdsRunOut) {
     opts.max_stream_id = 7;  // 4 requests per connection (streams 1,3,5,7)
     uint64_t opened = 0;
     uint64_t retries = 0;
-    Outcome o = runRequests(kPort, 12, opts, &opened,
-                            &retries
+    Outcome o = runRequests(kPort, 12, opts, &opened, &retries,
                             /*stagger_ms=*/10);
     EXPECT_EQ(o.ok, 12) << (o.errors.empty() ? "" : o.errors.front());
     EXPECT_EQ(opened, 3u) << "12 requests / 4 stream IDs per connection";

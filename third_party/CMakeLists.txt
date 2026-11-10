@@ -28,9 +28,11 @@ endif()
 # adding the submodule later is a localised change, not a refactor. Each block
 # stays inert until both the option is ON and the submodule is checked out.
 
-if(COX_WITH_HTTP2)
-    # nghttp2: CMake-capable. Disable its apps/examples/tests; we only want the
-    # library target (nghttp2::nghttp2 / nghttp2_static).
+if(COX_WITH_HTTP2 AND EXISTS "${COX_THIRD_PARTY_DIR}/nghttp2/CMakeLists.txt")
+    # nghttp2 vendored as a pinned submodule. Without the submodule, the http
+    # module falls back to the system libnghttp2 (pkg-cofig), see
+    # http/CMakeLists.txt. Disable nghttp2's apps/examples/tests; we only want
+    # library target.
     set(ENABLE_LIB_ONLY ON CACHE BOOL "" FORCE)
     set(ENABLE_APP OFF CACHE BOOL "" FORCE)
     set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)

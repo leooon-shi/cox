@@ -168,7 +168,7 @@ void ThreadPoolResolver::resolve(const std::string& host, uint16_t port,
 
 void ThreadPoolResolver::resolveAll(const std::string& host, uint16_t port,
                                     ListCallback cb) {
-    impl_->resolve(host, port, std::move(cb), cache_ttl_s_);
+    impl_->resolve(host, port, counted(std::move(cb)), cache_ttl_s_);
 }
 
 }  // namespace net

@@ -56,6 +56,7 @@ public:
     QueryParams formParams() const;
 
     void setVersion(std::string v) { version_ = std::move(v); }
+    // "HTTP/1.0", "HTTP/1.1", or "HTTP/2" (set by the HTTP/2 session).
     const std::string& version() const { return version_; }
 
     // Header keys are lowercased for case-insensitive lookup.

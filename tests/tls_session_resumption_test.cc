@@ -215,7 +215,7 @@ TEST(TlsResumptionTest, DisableResumptionForcesFullHandshake) {
         ASSERT_TRUE(driveHandshake(client, server));
         exchangeAndSettle(client, server);
     }
-    // Cache was torn down by disableResumption(), so nothing is stored
+    // Cache was torn down by disableResumption(), so nothing is stored.
     EXPECT_EQ(client_ctx.sessionCache(), nullptr);
 
     {

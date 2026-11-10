@@ -226,7 +226,7 @@ void CaresResolver::resolve(const std::string& host, uint16_t port,
 
 void CaresResolver::resolveAll(const std::string& host, uint16_t port,
                                ListCallback cb) {
-    impl_->resolve(host, port, std::move(cb));
+    impl_->resolve(host, port, counted(std::move(cb)));
 }
 
 }  // namespace net

@@ -72,7 +72,7 @@ std::string readAll(int fd, int ms) {
 }  // namespace
 
 TEST(HttpServerTest, GetRequestResponse) {
-    const uint16_t kPort = 55501;
+    const uint16_t kPort = 30501;
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
 
@@ -110,7 +110,7 @@ TEST(HttpServerTest, GetRequestResponse) {
 }
 
 TEST(HttpServerTest, KeepAliveTwoRequests) {
-    const uint16_t kPort = 55502;
+    const uint16_t kPort = 30502;
     std::atomic<bool> started{false};
     std::atomic<int> request_count{0};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -155,7 +155,7 @@ TEST(HttpServerTest, KeepAliveTwoRequests) {
 }
 
 TEST(HttpServerTest, PostEcho) {
-    const uint16_t kPort = 55503;
+    const uint16_t kPort = 30503;
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
 
@@ -192,7 +192,7 @@ TEST(HttpServerTest, PostEcho) {
 }
 
 TEST(HttpServerTest, OversizedBodyRejectedWith413) {
-    const uint16_t kPort = 55504;
+    const uint16_t kPort = 30504;
     std::atomic<bool> started{false};
     std::atomic<int> handler_calls{0};
     reactor::EventLoop* loop_ptr = nullptr;

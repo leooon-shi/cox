@@ -224,6 +224,27 @@ void TcpConnection::armMaxAgeTimer() {
                 return;
             }
             COX_LOG_INFO("[" + self->name_ + "] max age reached; closing");
+            self->close_reason_ = CloseReason::kMaxAge;
+            if (self->max_age_callback_ && self->max_age_callback_(self)) {
+                // The protocol layer closes gracefully (e.g. HTTP/2 GOAWAY).
+                // Bound how long that may take: force-close after the grace
+                // period if the connection is still open.
+                COX_LOG_INFO("[" + self->name_ +
+                             "] max age reached; graceful close");
+                if (self->max_age_grace_seconds_ > 0) {
+                    std::weak_ptr<TcpConnection> weak = self;
+                    self->loop_->runAfter(
+                        static_cast<uint64_t>(self->max_age_grace_seconds_) *
+                            1000,
+                        [weak]() {
+                            if (auto c = weak.lock()) {
+                                c->forceClose();
+                            }
+                        });
+                }
+                return;
+            }
+            COX_LOG_INFO("[" + self->name_ + "] max age reached; closing");
             self->forceClose();
         });
     max_age_timer_armed_ = true;

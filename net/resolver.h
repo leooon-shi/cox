@@ -64,8 +64,8 @@ protected:
         std::atomic<uint64_t> ok{0};
         std::atomic<uint64_t> failed{0};
     };
-    // Wrap a user callback so its innvocation records the outcome. Backends
-    // apply this is resolveAll() before handling the callback to their Impl.
+    // Wrap a user callback so its invocation records the outcome. Backends
+    // apply this in resolveAll() before handing the callback to their Impl.
     ListCallback counted(ListCallback cb) const {
         return
             [stats = stats_, cb = std::move(cb)](

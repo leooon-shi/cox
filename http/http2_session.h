@@ -161,7 +161,7 @@ public:
     bool finalGoAwaySent() const { return goaway_state_ == GoAway::kFinalSent; }
 
     // True once neither side wants more I/O (after GOAWAY and all remaining
-    // streams have finished , or a fatal error), The caller should then close
+    // streams have finished, or a fatal error), The caller should then close
     // the connection.
     bool finished() const;
 

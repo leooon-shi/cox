@@ -76,8 +76,8 @@ public:
     // Send a whole response at once (status, headers, body).
     void respond(const HttpResponse& resp);
     // Start a streamed response. If `headers` has no content-length the
-    //  body length is open-ended: HTTP/2 just sends DATA frames, HTTP/1.1
-    //  uses chunked transfer encoding.
+    // body length is open-ended: HTTP/2 just sends DATA frames, HTTP/1.1
+    // uses chunked transfer encoding.
     void writeHead(int status, Headers headers = {});
     // Append body bytes (copied). Returns false when the bytes buffered for
     // this stream are at or above the high-water mark: the data is still
