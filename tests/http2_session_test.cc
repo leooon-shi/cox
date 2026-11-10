@@ -722,7 +722,7 @@ TEST(Http2StreamingTest, LargeStreamedBodyRespectsFlowControl) {
         s->writeHead(200);
         auto pumpWrites = [&, s]() {
             while (writes_left > 0) {
-                --wirtes_left;
+                --writes_left;
                 if (!s->write(chunk)) {
                     return;  // wait for onWritable
                 }
