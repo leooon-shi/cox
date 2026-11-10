@@ -34,6 +34,8 @@ Requirements:
 - Linux (epoll, eventfd, timerfd, inotify)
 - clang with libc++, CMake 3.20+, OpenSSL 3
 - GoogleTest (bundled as a submodule)
+- Optional: c-ares (async DNS backend), nghttp2 (HTTP/2, with
+  `-DCOX_WITH_HTTP2=ON`)
 
 Build with the provided script:
 
@@ -46,8 +48,8 @@ Build with the provided script:
 All output goes to `build/` (binaries in `build/bin/`).
 
 Link your application against the module libraries you use, for example
-`cow_net` (which pulls in the reactor, buffer, flowcontrol, logging, utilities)
-and `cow_tls` for TLS.
+`cox_net` (which pulls in the reactor, buffer, flowcontrol, logging, utilities)
+and `cox_tls` for TLS.
 
 ## 2. Core concepts
 
@@ -327,6 +329,157 @@ handshake before any request is parsed:
 ```cpp
 http::HttpServer server(&loop, net::InetAddress(8443), "api", server_ctx);
 ```
+
+### HTTP/2
+
+HTTP/2 is opt-in at build time: configure with `-DCOX_WITH_HTTP2-ON` (or
+`cmake --preset http2`). It needs nghttp2: the system `libnghttp2-dev` package
+is picked up through pkg-config, or a `third_party/nghttp2` submodule if you
+have checked one out.
+
+An HTTPS server then serves HTTP/2 to any client that negotiates it, and
+HTTP/1.1 to the rest, with the same handler. Advertise `h2` through ALPN:
+
+```cpp
+server_ctx->setAlpnProtocols({"h2", "http/1.1"});   // h2 preferred
+http::HttpServer server(&loop, net::InetAddress(8843), "api", server_ctx);
+server.setHttp2MaxConcurrentStreams(100);   // per connection (default 100)
+server.setHttpHandler([](const http::HttpRequest& req,
+                         http::HttpResponse* resp) {
+    resp->setBody("served over " + req.version());  // "HTTP/2" or "HTTP/1.1"
+});
+```
+
+Requests on one HTTP/2 connection are multiplexed: many can be in flight at
+once and each response is sent when its handler returns. `setMaxBodySize`
+applies to HTTP/2 bodies too (413), an oversized header list gets 431, and
+sreams beyond the concurrency cap are refused. Check with
+`curl -k --http2 https://127.0.0.1:8443/`. To make HTTP/2 requests from Cox,
+use `Http2Client` (below); `HttpClient` and the connection pools speak
+HTTP/1.1. Cleartext h2 (h2c) is not supported.
+
+All HTTP/2 settings are in `Http2Options` (invalid values throw
+`std::invalid_argument`);
+
+``cpp
+http::HttpServer::Http2Options h2;  
+h2.max_concurrent_streams = 100;       // SETTINGS_MAX_CONCURRENT_STREAMS
+h2.max_header_list_size = 64 * 1024;   // SETTINGS_MAX_HEADER_LIST_SIZE (431)
+h2.initial_window_size = 1 << 20;      // per-stream upload window
+h2.connection_window_size = 4 << 20;   // whole-connection upload window
+h2.max_frame_size = 16384;             // SETTINGS_MAX_FRAME_SIZE
+h2.max_stream_id = 0;                  // 0 = protocol max (2^31-1)
+h2.max_requests_per_connection = 1000; // then GOAWAY; 0 = unlimited
+h2.goaway_notice_ms = 1000;            // delay between the two GOAWAYs
+h2.goaway_grace_seconds = 30;          // then force-close leftovers
+server.setHttp2Options(h2);
+```
+
+Connections are closed with GOAWAY, never cut off mid-request:
+
+- **Server drain.** `server.tcpServer().shutdown(deadline)` sends HTTP/2
+  connections a two-step GOAWAY: first a notice (the client stops opening
+  streams), then, `goaway_notice_ms` later, the final GOAWAY naming the last
+  stream the server will process. Requests already in flight finish; the
+  connection closes when they are done or at the drain deadline.
+- **Connection max age** (`tcpServer().setMaxConnectionAge`) and the request
+  cap use the same GOAWAY, so clients move to a new connection without
+  failing a request.
+- **Stream IDs.** Client stream IDs only increase and cannot be reused. When a
+  connection reaches `max_stream_id` the server starts the GOAWAY; a stream
+  above the limit is not processed, and the GOAWAY tells the client it may
+  retry it on a new connection. HTTP/2 has no way to reset stream IDs on a
+  connection, so a new connection is the only continuation.
+
+### Async handlers and streamed response
+
+`setHttpHandler` needs the response complete when the handler returns. With
+`setStreamHandler` the handler receives a `ServerStream` and may answer later
+(after a database or upstream call) or send the body in pieces, e.g.
+server-sent events:
+
+```cpp
+#include "server_stream.h"
+
+server.setStreamHandler([&loop](const http::ServerStreamPtr& s) {
+    s->writeHead(200, {{"content-type", "text/event-stream"}});
+    s->write("data: hello\n\n");    // reaches the client now
+    // keep `s`, write more later from a timer or callback, then:
+    // s->end();
+});
+```
+
+- Answer once: `respond(resp)`, or `writeHead()` then `write(0` any number of
+  times then `end()`. Without a `content-length` header the length is
+  open-ended.
+- Call it from the connection's loop (`s->loop()->runInLoop(...)` from other
+  threads).
+- `Write()` returns false when too much is buffered; wait for the
+ `setOnWritable` callback before writing more.
+- `onAbort` tells you the client went away; stop working then.
+- If you drop the stream without answering, the client gets 500. If you drop
+  it after `writeHead()` without `end()`, the client sees an error, not a
+  short body.
+- Tody this is fully supported on HTTP/2. On HTTP/1.1 the handler must
+  finish (`respond` or `end`) before returning; a later answer gets 500.
+
+### HTTP/2 client
+
+`HTTPClient` (also needs `COX_WITH_HTTP2`) sends many requests over one
+TLS connection at once. Call `send()`/`get()` as often as you like without
+waiting; each callback fires when its own response arrives:
+
+```cpp
+#include "http2_client.h"
+
+auto tls = std::make_shared<tls::TlsContext>(tls::Role::kClient);
+tls->loadCaFile("ca.pem");  // Http2Client sets ALPN to {"h2"} itself
+http::Http2Client client(&loop, net::InetAddress("10.0.0.5", 8443), tls,
+                         "api.example.com");    // :authority and SNI
+for (int i = 0; i < 100; ++i) {
+    client.get("/item/" + std::to_string(i),
+               [](const http::HttpResponse& resp, const std::string& err) {
+                   // runs on `loop`; responses arrive in any order
+               });
+}
+```
+
+It handles the connection lifecycle for you:
+
+- When the server sends GOAWAY, or the connection runs out of stream IDs,
+  new requests go to a fresh connection. The old one finishes its in-flight
+  requests, then closes.
+- A request the server provably did not process is re-sent on the new
+  connection automatically (`Options::max_retries`, default 3). That covers
+  requests above the GOAWAY's last stream ID, requests refused that was in
+  flight when a connection died is not re-sent, because the server may have
+  run it; its callback gets the error.
+- Requests byond the server's `MAX_CONCURRENT_STREAMS` wait in a local queue.
+- An unreachable server fails waiting requests after
+  `Options::connect_timeout_ms` (default 10 s). A server that does not
+  negotiate h2 fails them with "server does not support HTTP/2".
+
+`client.shutdown()` sends GOAWAY: in-flight requests finish, new ones fail.
+
+Two more knobs on `Options`:
+
+- `max_connections` (default 4). One connection carries up to the server's
+  `MAX_CONCURRENT_STREAMS` requests at once. The client opens anohter
+  connection only when every existing one is full, up to this limit; past it,
+  requests queue on the least-loaded connection. Light load therefore stays
+  on a single connection. Set it to 1 to never open a second one.
+- A hostname instead of an address. Pass a `net::Resolver` (section 9):
+
+```cpp
+net::ThreadPoolResolver resolver(&loop, &pool);
+http::Http2Client client(&loop, "api.example.com", 443, &resolver, tls);
+```
+
+The name is resolved on the first request; requests sent meanwhile wait for
+it and share one lookup. Each connection tries the resolved addresses in
+order (IPv6 and IPv4). If a DNS lookup fails, waiting requests fail with
+"DNS resolution failed"; if no resolved address can be reached, the name is
+looked up again for the next request, so a changed DNS record is picked up.
 
 ### Making requests
 

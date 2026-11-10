@@ -13,9 +13,14 @@ cmake --preset examples && cmake --build --preset examples --parallel
 | `echo/cross_thread_tasks` | `runInLoop()`: other threads post work, every task runs on the loop thread |
 | `http/rest_server` | `HttpServer` + `Router`: path params, query string, form body |
 | `benchmark/*` | Micro-benchmarks: reactor task scheduling, echo QPS/latency, thread-pool batching, buffer |
-| **`c10k/c10k_server`** | Tunable echo server for C10K experiments: io threads vs `SO_REUSEPORT` listeners, caps, accept rate limit, live stats |
-| **`c10k/c10k_client`** | Standalone epoll load generator: N connections, paced connects, closed-loop requests, multiple source IPs, latency percentiles |
+| **`c10k/c10k_server`** | Tunable echo server for C10K experiments: io threads vs `SO_REUSEPORT` listeners, caps, accept rate limit, live stats; hardening knobs (`idle`, `--max-age`, `--write-timeout`, `--max-input-buf`, `--sink`, `--work-ms`/`--max-inflight`) and Prometheus `/metrics` on a separate `--metrics-port` |
+| **`c10/c10k_client`** | Standalone epoll load generator: N connections, paced connects (`--rate`), closed-loop requests, multiple source IPs, latency percentiles; adversarial `--atack slowloris\|flood\|slow-read\|big-body` |
+| **`c10k/probe_client`** | One legitimate request per interval with a deadline (`--http` for HTTP targets, `--no-read` for sink targets): "is a real client still served under attack?" |
+| **`c10k/sample.sh`** | Once-per-second CSV sampler: server RSS(`/proc`), socket count (`ss`), and live/accepted/closed/rejected from `/metrics` |
 | **`c10k/backpressure_proxy`** + **`c10k/slow_sink`** | End-to-end backpressure: high-water mark → `stopRead()` → TCP window closes → fast sender throttled |
+
+There is no HTTP/2 example program yet; see the user guide for `HttpServer`
+HTTP/2 (ALPN `h2`, `http2` preset) and `Http2Client`.
 
 ## C10K walkthrough
 
@@ -45,10 +50,10 @@ Fix it the way production clients do — more 4-tuples:
 ./c10k_client --port 9100 --conns 20000 --msg 0 --duration 0 \
     --src-ips 127.0.0.2,127.0.0.3,127.0.0.4,127.0.0.5
 ```
-Measured: **20000 connected in 0.79 s (25k conn/s), p99 21 ms** — same server, same TIME_WAIT backlog. (`IP_BIND_ADDRESS_NO_PORT` lets the kernel pick ports per 4-tuple rather than per local IP.) See `docs/interview/tcp_connection_lifecycle_scaling.md` for the theory.
+Measured: **20000 connected in 0.79 s (25k conn/s), p99 21 ms** — same server, same TIME_WAIT backlog. (`IP_BIND_ADDRESS_NO_PORT` lets the kernel pick ports per 4-tuple rather than per local IP.) See `interview/tcp_connection_lifecycle_scaling.md` in the study repo for the theory.
 
 ### 3. One loop vs io threads vs SO_REUSEPORT listeners
-f
+
 ```bash
 ./c10k_server --port 9100 --quiet                 # 1 loop does accept + I/O
 ./c10k_server --port 9100 --quiet --threads 4     # 1 acceptor loop + 4 io loops (round-robin)
@@ -130,8 +135,8 @@ Run procedures and observed results: `docs/performance/hardening-validation.md`.
 
 The HTTP/2 design (`docs/insights/features/http2-design.md`; server and
 `Http2Client` implemented, opt-in via `COX_WITH_HTTP2` / the `http2` preset)
-delivberately defers the protocol internals to nghttp2, but the *concepts* it
-relies on are standard deep-dive interview therritory. Read the design alongside
+deliberately defers the protocol internals to nghttp2, but the *concepts* it
+relies on are standard deep-dive interview territory. Read the design alongside
 these study-repo docs (create the sections noted if they are not yet written):
 
 | Design topic (§ in http2-design.md) | Interview doc / question it covers |
