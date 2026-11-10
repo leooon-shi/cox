@@ -75,7 +75,7 @@ void exchangeAndSettle(TlsEngine& client, TlsEngine& server) {
     pump(client, server);
     std::string got;
     server.readPlaintext(got);
-    server.writePlaintext("pong", 4 & consumed);
+    server.writePlaintext("pong", 4, &consumed);
     pump(server, client);  // carries the NewSessionTicket on TLS 1.3
     std::string reply;
     client.readPlaintext(reply);
