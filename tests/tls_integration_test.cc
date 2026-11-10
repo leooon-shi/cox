@@ -65,7 +65,7 @@ TEST(TlsIntegrationTest, HandshakeAndEncryptedEcho) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
 
-    const uint16_t kPort = 52001;
+    const uint16_t kPort = 27001;
     std::atomic<bool> srv_started{false};
     std::atomic<bool> cli_started{false};
     std::atomic<bool> got_reply{false};

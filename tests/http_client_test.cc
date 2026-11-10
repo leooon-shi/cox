@@ -79,7 +79,7 @@ TEST(ResponseParserTest, StatusCodeParsed) {
 
 // ---- End-to-end client <-> server ----
 TEST(HttpClientTest, GetAgainstCoxServer) {
-    const uint16_t kPort = 55601;
+    const uint16_t kPort = 30601;
     std::atomic<bool> srv_started{false};
     reactor::EventLoop* srv_loop = nullptr;
 
@@ -146,7 +146,7 @@ TEST(HttpClientTest, GetAgainstCoxServer) {
 }
 
 TEST(HttpClientTest, PostAgainstCoxServer) {
-    const uint16_t kPort = 55602;
+    const uint16_t kPort = 30602;
     std::atomic<bool> srv_started{false};
     reactor::EventLoop* srv_loop = nullptr;
 
@@ -212,7 +212,7 @@ TEST(HttpClientTest, PostAgainstCoxServer) {
 }
 
 TEST(HttpClientTest, KeepAliveReusesConnection) {
-    const uint16_t kPort = 55603;
+    const uint16_t kPort = 30603;
     std::atomic<bool> srv_started{false};
     std::atomic<int> server_reqs{0};   // requests the server handled
     std::atomic<int> server_conns{0};  // Connections accepted (via observer)

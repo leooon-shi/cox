@@ -174,7 +174,7 @@ TEST(Http2IntegrationTest, SameHandlerServesH2AndHttp11) {
     }
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56201;
+    const uint16_t kPort = 31201;
     Server server(kPort, cert);
 
     // %{http_version} reports what curl actually negotiated.
@@ -193,7 +193,7 @@ TEST(Http2IntegrationTest, MultiplexesManyRequestsOverOneConnection) {
     }
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56202;
+    const uint16_t kPort = 31202;
     Server server(kPort, cert);
 
     // --parallel with one host reuses a single h2 connection; num_connects
@@ -226,7 +226,7 @@ TEST(Http2IntegrationTest, LargeResponseAndPostBody) {
     }
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56203;
+    const uint16_t kPort = 31203;
     Server server(kPort, cert);
 
     std::string size = capture(
@@ -246,7 +246,7 @@ TEST(Http2IntegrationTest, OversizedBodyRejectedWith413) {
     }
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56204;
+    const uint16_t kPort = 31204;
     Server server(kPort, cert);  // max body 1024
 
     std::string code = capture(
@@ -263,7 +263,7 @@ TEST(Http2IntegrationTest, ServerWithoutH2InAlpnStaysOnHttp11) {
     }
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56205;
+    const uint16_t kPort = 31205;
     Server server(kPort, cert, {"http/1.1"});
 
     // curl asks for h2 but the server does not offer it: h1 fallback.
@@ -282,7 +282,7 @@ TEST(Http2IntegrationTest, MaxRequestsPerConnectionMakesClientReconnect) {
     }
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56206;
+    const uint16_t kPort = 31206;
     http::HttpServer::Http2Options h2;
     h2.max_requests_per_connection = 3;
     h2.goaway_notice_ms = 50;
@@ -313,7 +313,7 @@ TEST(Http2IntegrationTest, GracefulDrainFinishesInFlightRequest) {
     }
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56207;
+    const uint16_t kPort = 31207;
     http::HttpServer::Http2Options h2;
     h2.goaway_notice_ms = 50;
     Server server(kPort, cert, {"h2", "http/1.1"}, h2);
@@ -343,7 +343,7 @@ TEST(Http2IntegrationTest, MaxConnectionAgeSendsGoAwayNotHardClose) {
     }
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56208;
+    const uint16_t kPort = 31208;
     http::HttpServer::Http2Options h2;
     h2.goaway_notice_ms = 50;
     Server server(kPort, cert, {"h2", "http/1.1"}, h2, /*max_age=*/1);
@@ -379,7 +379,7 @@ TEST(Http2IntegrationTest, ClosedConnectionsAreReleased) {
     }
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56209;
+    const uint16_t kPort = 31209;
     Server server(kPort, cert);
 
     for (const char* proto : {"--http1.1", "--http2"}) {
@@ -410,7 +410,7 @@ TEST(Http2IntegrationTest, StreamedResponseArrivesIncrementally) {
     }
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56210;
+    const uint16_t kPort = 31210;
 
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -487,7 +487,7 @@ TEST(Http2IntegrationTest, StreamHandlerStillServesHttp11Synchronously) {
     }
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56211;
+    const uint16_t kPort = 31211;
 
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;

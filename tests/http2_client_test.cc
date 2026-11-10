@@ -163,7 +163,7 @@ Outcome runRequests(uint16_t port, int n, http::Http2Client::Options opts,
 TEST(Http2ClientTest, MultiplexesConcurrentRequestsOnOneConnection) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56301;
+    const uint16_t kPort = 31301;
     Server server(kPort, cert);
 
     uint64_t opened = 0;
@@ -181,7 +181,7 @@ TEST(Http2ClientTest, MultiplexesConcurrentRequestsOnOneConnection) {
 TEST(Http2ClientTest, ReconnectsAfterServerGoAwayFromRequestCap) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56302;
+    const uint16_t kPort = 31302;
     http::HttpServer::Http2Options h2;
     h2.max_requests_per_connection = 5;
     h2.goaway_notice_ms = 20;
@@ -202,7 +202,7 @@ TEST(Http2ClientTest, ReconnectsAfterServerGoAwayFromRequestCap) {
 TEST(Http2ClientTest, BurstAcrossGoAwayIsRetriedNotLost) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56303;
+    const uint16_t kPort = 31303;
     http::HttpServer::Http2Options h2;
     h2.max_requests_per_connection = 10;
     h2.goaway_notice_ms = 20;
@@ -236,7 +236,7 @@ TEST(Http2ClientTest, InFlightAcrossGoAwayRetriedOnNewConnection) {
     // twice.
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56313;
+    const uint16_t kPort = 31313;
     http::HttpServer::Http2Options h2;
     h2.max_concurrent_streams = 2;
     h2.max_requests_per_connection = 3;
@@ -263,7 +263,7 @@ TEST(Http2ClientTest, InFlightAcrossGoAwayRetriedOnNewConnection) {
 TEST(Http2ClientTest, MovesToNewConnectionWhenStreamIdsRunOut) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56304;
+    const uint16_t kPort = 31304;
     Server server(kPort, cert);
 
     http::Http2Client::Options opts;
@@ -281,7 +281,7 @@ TEST(Http2ClientTest, MovesToNewConnectionWhenStreamIdsRunOut) {
 TEST(Http2ClientTest, ServerWithoutH2FailsClearly) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56305;
+    const uint16_t kPort = 31305;
     Server server(kPort, cert, {}, {"http/1.1"});
 
     uint64_t opened = 0;
@@ -298,7 +298,7 @@ TEST(Http2ClientTest, ServerWithoutH2FailsClearly) {
 
 TEST(Http2ClientTest, UnreachableServerFailsAllRequests) {
     // Nothing listens here; requests must fail rather than hang.
-    const uint16_t kPort = 56306;
+    const uint16_t kPort = 31306;
     http::Http2Client::Options opts;
     opts.connect_timeout_ms = 500;
     uint64_t opened = 0;
@@ -318,7 +318,7 @@ TEST(Http2ClientTest, UnreachableServerFailsAllRequests) {
 TEST(Http2ClientTest, OpensMoreConnectionsWhenStreamLimitIsReached) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56307;
+    const uint16_t kPort = 31307;
     http::HttpServer::Http2Options h2;
     h2.max_concurrent_streams = 2;  // each connection carries 2 streams
     Server server(kPort, cert, h2);
@@ -340,7 +340,7 @@ TEST(Http2ClientTest, OpensMoreConnectionsWhenStreamLimitIsReached) {
 TEST(Http2ClientTest, MaxConnectionsOneKeepsASingleConnection) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56308;
+    const uint16_t kPort = 31308;
     http::HttpServer::Http2Options h2;
     h2.max_concurrent_streams = 2;
     Server server(kPort, cert, h2);
@@ -358,7 +358,7 @@ TEST(Http2ClientTest, MaxConnectionsOneKeepsASingleConnection) {
 TEST(Http2ClientTest, LightLoadStaysOnOneConnection) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56309;
+    const uint16_t kPort = 31309;
     Server server(kPort, cert);  // default 100 streams per connection
 
     uint64_t opened = 0;
@@ -403,7 +403,7 @@ private:
 TEST(Http2ClientTest, HostnameIsResolvedOnceAndReused) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56310;
+    const uint16_t kPort = 31310;
     Server server(kPort, cert);
 
     FakeResolver* resolver = nullptr;
@@ -427,7 +427,7 @@ TEST(Http2ClientTest, HostnameIsResolvedOnceAndReused) {
 }
 
 TEST(Http2ClientTest, DnsFailureFailsWaitingRequests) {
-    const uint16_t kPort = 56311;
+    const uint16_t kPort = 31311;
     std::unique_ptr<FakeResolver> resolver;  // outlives the client
     uint64_t opened = 0;
     uint64_t retries = 0;
@@ -450,7 +450,7 @@ TEST(Http2ClientTest, DnsFailureFailsWaitingRequests) {
 TEST(Http2ClientTest, ResolvesAgainAfterAllAddressesFail) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 56312;
+    const uint16_t kPort = 31312;
     Server server(kPort, cert);
 
     // First answer points at a dead port; the second at the real server.
@@ -460,7 +460,7 @@ TEST(Http2ClientTest, ResolvesAgainAfterAllAddressesFail) {
     auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kClient);
     ctx->setVerifyPeer(false);
     FakeResolver resolver(&loop);
-    resolver.answer = {net::InetAddress("127.0.0.1", 56399)};  // nothing there
+    resolver.answer = {net::InetAddress("127.0.0.1", 31399)};  // nothing there
     http::Http2Client::Options opts;
     opts.connect_timeout_ms = 300;
     opts.max_retries = 0;

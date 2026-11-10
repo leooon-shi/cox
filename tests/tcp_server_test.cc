@@ -49,7 +49,7 @@ int connectClient(uint16_t port) {
 }  // namespace
 
 TEST(TcpServerTest, EchoRoundTrip) {
-    const uint16_t kPort = 46001;
+    const uint16_t kPort = 21001;
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
 
@@ -90,7 +90,7 @@ TEST(TcpServerTest, EchoRoundTrip) {
 }
 
 TEST(TcpServerTest, ConnectionCallbackFires) {
-    const uint16_t kPort = 46002;
+    const uint16_t kPort = 21002;
     std::atomic<bool> started{false};
     std::atomic<int> connect_events{0};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -128,7 +128,7 @@ TEST(TcpServerTest, ConnectionCallbackFires) {
 }
 
 TEST(TcpServerTest, MultipleClientsEcho) {
-    const uint16_t kPort = 46003;
+    const uint16_t kPort = 21003;
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
 
@@ -177,7 +177,7 @@ TEST(TcpServerTest, MultipleClientsEcho) {
 }
 
 TEST(TcpServerTest, IdleTimeoutClosesSilentClient) {
-    const uint16_t kPort = 46005;
+    const uint16_t kPort = 21005;
     std::atomic<bool> started{false};
     std::atomic<int> disconnects{0};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -226,7 +226,7 @@ TEST(TcpServerTest, IdleTimeoutClosesSilentClient) {
 }
 
 TEST(TcpServerTest, IdleTimeoutResetOnActivity) {
-    const uint16_t kPort = 46006;
+    const uint16_t kPort = 21006;
     std::atomic<bool> started{false};
     std::atomic<int> disconnects{0};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -279,7 +279,7 @@ TEST(TcpServerTest, IdleTimeoutResetOnActivity) {
 }
 
 TEST(TcpServerTest, MaxConnectionsCap) {
-    const uint16_t kPort = 46008;
+    const uint16_t kPort = 21008;
     const size_t kMax = 3;
     std::atomic<bool> started{false};
     std::atomic<int> live_conns{0};
@@ -330,7 +330,7 @@ TEST(TcpServerTest, MaxConnectionsCap) {
 TEST(TcpServerTest, WriteToClosedClientDoesNotCrash) {
     // Regression for SIGPIPE handling: if the server writes to a connection
     // whose peer has gone away, the process must not be killed by SIGPIPE.
-    const uint16_t kPort = 46007;
+    const uint16_t kPort = 21007;
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
 
@@ -372,7 +372,7 @@ TEST(TcpServerTest, WriteToClosedClientDoesNotCrash) {
 }
 
 TEST(TcpServerTest, ServerDetectsClientClose) {
-    const uint16_t kPort = 46004;
+    const uint16_t kPort = 21004;
     std::atomic<bool> started{false};
     std::atomic<int> disconnects{0};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -411,7 +411,7 @@ TEST(TcpServerTest, ServerDetectsClientClose) {
 }
 
 TEST(TcpServerTest, MultiThreadedEcho) {
-    const uint16_t kPort = 46009;
+    const uint16_t kPort = 21009;
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
 
@@ -463,7 +463,7 @@ TEST(TcpServerTest, MultiThreadedEcho) {
 }
 
 TEST(TcpServerTest, MultiThreadedConnectionsUseDistinctLoops) {
-    const uint16_t kPort = 46010;
+    const uint16_t kPort = 21010;
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
 

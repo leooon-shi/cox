@@ -53,7 +53,7 @@ struct TestCert {
 TEST(HttpsTest, ServerAndClientEndToEnd) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 55901;
+    const uint16_t kPort = 30901;
 
     std::atomic<bool> srv_started{false};
     reactor::EventLoop* srv_loop = nullptr;

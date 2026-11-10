@@ -54,7 +54,7 @@ int connectClient(uint16_t port) {
 // stall the io loop; the reply is marshaled back with runInLoop. Two clients
 // are served concurrently even though each handler takes ~100ms.
 TEST(ThreadPoolIntegrationTest, OffloadKeepsLoopResponsive) {
-    const uint16_t kPort = 49001;
+    const uint16_t kPort = 24001;
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
 

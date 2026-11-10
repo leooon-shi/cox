@@ -45,7 +45,7 @@ int connectClient(uint16_t port) {
 // A burst of connections beyond the accept-rate budget is shed, and the
 // overload callback fires for each shed connection.
 TEST(OverloadControlTest, AcceptRateLimitShedsAndNotifies) {
-    const uint16_t kPort = 50001;
+    const uint16_t kPort = 25001;
     std::atomic<bool> started{false};
     std::atomic<int> accepted{0};
     std::atomic<int> overloads{0};
@@ -98,7 +98,7 @@ TEST(OverloadControlTest, AcceptRateLimitShedsAndNotifies) {
 // stopRead applies TCP backpressure: while reading is paused the server does
 // not consume data; after startRead the buffered data is delivered.
 TEST(OverloadControlTest, IngressBackpressurePausesAndResumes) {
-    const uint16_t kPort = 50002;
+    const uint16_t kPort = 25002;
     std::atomic<bool> started{false};
     std::atomic<int> bytes_seen{0};
     TcpConnectionPtr held;

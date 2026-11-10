@@ -86,7 +86,7 @@ double labeledValue(const metrics::Snapshot& snap, const std::string& name,
 }  // namespace
 
 TEST(MetricsServerTest, CountsAcceptedLiveAndClosedAndChainsUserCallback) {
-    const uint16_t kPort = 46210;
+    const uint16_t kPort = 21210;
     metrics::Registry reg;
     std::atomic<bool> started{false};
     std::atomic<int> user_connect_events{0};
@@ -158,7 +158,7 @@ TEST(MetricsServerTest, CountsAcceptedLiveAndClosedAndChainsUserCallback) {
 }
 
 TEST(MetricsServerTest, RejectedCounterOnConnectionCap) {
-    const uint16_t kPort = 46211;
+    const uint16_t kPort = 21211;
     metrics::Registry reg;
     std::atomic<bool> started{false};
     std::atomic<int> user_overloads{0};
@@ -201,7 +201,7 @@ TEST(MetricsServerTest, RejectedCounterOnConnectionCap) {
 }
 
 TEST(MetricsServerTest, HttpRequestMetricsByStatusClassAndDuration) {
-    const uint16_t kPort = 46212;
+    const uint16_t kPort = 21212;
     metrics::Registry reg;
     std::atomic<bool> started{false};
     std::atomic<int> user_obs_calls{0};
@@ -261,7 +261,7 @@ TEST(MetricsServerTest, HttpRequestMetricsByStatusClassAndDuration) {
 }
 
 TEST(MetricsServerTest, ByteCountersSummedOnClose) {
-    const uint16_t kPort = 46313;
+    const uint16_t kPort = 21313;
     metrics::Registry reg;
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -408,7 +408,7 @@ TEST(MetricsServerTest, ThreadPoolTasksRunShedAndQueueDepth) {
 }
 
 TEST(MetricsServerTest, HttpRejectedByReason) {
-    const uint16_t kPort = 46214;
+    const uint16_t kPort = 21214;
     metrics::Registry reg;
     std::atomic<bool> started{false};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -469,7 +469,7 @@ TEST(MetricsServerTest, TlsHandshakesOkAndFailed) {
         cert + " -days 1 -subj '/CN=localhost' >/dev/null 2>&1");
     ASSERT_TRUE(std::ifstream(cert).good() && std::ifstream(key).good());
 
-    const uint16_t kPort = 46215;
+    const uint16_t kPort = 21215;
     metrics::Registry reg;
     auto ctx = std::make_shared<tls::TlsContext>(tls::Role::kServer);
     ctx->useCertificateAndKey(cert, key);

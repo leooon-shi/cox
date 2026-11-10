@@ -49,7 +49,7 @@ int connectClient(uint16_t port) {
 
 // Drain completes once connected clients close; the completion callback fires.
 TEST(GracefulShutdownTest, DrainCompletesWhenClientsClose) {
-    const uint16_t kPort = 48001;
+    const uint16_t kPort = 23001;
     std::atomic<bool> started{false};
     std::atomic<bool> drain_done{false};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -108,7 +108,7 @@ TEST(GracefulShutdownTest, DrainCompletesWhenClientsClose) {
 
 // New connections are refused once draining has started.
 TEST(GracefulShutdownTest, RejectsNewConnectionsWhileDraining) {
-    const uint16_t kPort = 48002;
+    const uint16_t kPort = 23002;
     std::atomic<bool> started{false};
     std::atomic<int> accepted{0};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -150,7 +150,7 @@ TEST(GracefulShutdownTest, RejectsNewConnectionsWhileDraining) {
 // A client that refuses to close is force-closed at the drain deadline, and
 // drain then completes.
 TEST(GracefulShutdownTest, ForceCloseAtDeadline) {
-    const uint16_t kPort = 48003;
+    const uint16_t kPort = 23003;
     std::atomic<bool> started{false};
     std::atomic<bool> drain_done{false};
     reactor::EventLoop* loop_ptr = nullptr;

@@ -34,7 +34,7 @@ HttpRequest getReq(const std::string& path) {
 // Fire several concurrent requests through a pool; all should complete, and the
 // pool should open no more than maxConnections.
 TEST(ConnectionPoolTest, ConcurrentRequestsRespectCap) {
-    const uint16_t kPort = 55701;
+    const uint16_t kPort = 30701;
     std::atomic<bool> srv_started{false};
     std::atomic<int> server_conns{0};
     reactor::EventLoop* srv_loop = nullptr;
@@ -112,7 +112,7 @@ TEST(ConnectionPoolTest, ConcurrentRequestsRespectCap) {
 
 // Sequential requests should reuse a single pooled connection.
 TEST(ConnectionPoolTest, SequentialReuseSingleConnection) {
-    const uint16_t kPort = 55702;
+    const uint16_t kPort = 30702;
     std::atomic<bool> srv_started{false};
     std::atomic<int> server_conns{0};
     reactor::EventLoop* srv_loop = nullptr;

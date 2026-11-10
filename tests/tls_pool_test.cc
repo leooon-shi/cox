@@ -115,7 +115,7 @@ private:
 TEST(TlsPoolTest, ReusesTlsConnectionAcrossRequests) {
     TestCert cert;
     ASSERT_TRUE(cert.valid());
-    const uint16_t kPort = 55801;
+    const uint16_t kPort = 30801;
 
     std::atomic<bool> srv_started{false};
     std::atomic<int> server_conns{0};
@@ -187,8 +187,8 @@ TEST(TlsPoolTest, ReusesTlsConnectionAcrossRequests) {
 }
 
 TEST(MultiOriginPoolTest, RoutesToDistinctOrigins) {
-    const uint16_t kPortA = 55811;
-    const uint16_t kPortB = 55812;
+    const uint16_t kPortA = 30811;
+    const uint16_t kPortB = 30812;
 
     std::atomic<bool> a_started{false}, b_started{false};
     reactor::EventLoop* a_loop = nullptr;

@@ -50,7 +50,7 @@ int connectClient(uint16_t port) {
 // A connection is force-closed once it reaches the configured max age, even if
 // it is actively exchanging data.
 TEST(HardeningTest, MaxConnectionAgeRecyclesConnection) {
-    const uint16_t kPort = 51001;
+    const uint16_t kPort = 26001;
     std::atomic<bool> started{false};
     std::atomic<int> disconnects{0};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -107,7 +107,7 @@ TEST(HardeningTest, MaxConnectionAgeRecyclesConnection) {
 // If the peer floods data that the application does not consume, the input
 // buffer cap force-closes the connection.
 TEST(HardeningTest, MaxInputBufferClosesFlood) {
-    const uint16_t kPort = 51002;
+    const uint16_t kPort = 26002;
     std::atomic<bool> started{false};
     std::atomic<int> disconnects{0};
     reactor::EventLoop* loop_ptr = nullptr;
@@ -156,7 +156,7 @@ TEST(HardeningTest, MaxInputBufferClosesFlood) {
 // A slow consumer (client that never reads) whose output cannot drain is
 // force-closed at the write-timeout deadline.
 TEST(HardeningTest, WriteTimeoutClosesSlowConsumer) {
-    const uint16_t kPort = 51003;
+    const uint16_t kPort = 26003;
     std::atomic<bool> started{false};
     std::atomic<int> disconnects{0};
     reactor::EventLoop* loop_ptr = nullptr;

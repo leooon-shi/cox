@@ -23,7 +23,7 @@ namespace sockets = net::sockets;
 // Fixed-port variant that verifies the callback fires. Uses ports in the
 // ephemeral range with SO_REUSEADDR; sufficient for loopback CI.
 TEST(AcceptorTest, CallbackFiresOnConnect) {
-    const uint16_t kPort = 45789;
+    const uint16_t kPort = 20789;
     std::atomic<bool> started{false};
     std::atomic<int> accepted_count{0};
     std::atomic<uint16_t> peer_port{0};
@@ -67,7 +67,7 @@ TEST(AcceptorTest, CallbackFiresOnConnect) {
 }
 
 TEST(AcceptorTest, MultipleConnections) {
-    const uint16_t kPort = 45790;
+    const uint16_t kPort = 20790;
     std::atomic<bool> started{false};
     std::atomic<int> accepted_count{0};
     reactor::EventLoop* loop_ptr = nullptr;

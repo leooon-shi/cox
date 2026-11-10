@@ -61,7 +61,7 @@ struct EchoServerThread {
 }  // namespace
 
 TEST(TcpClientTest, ConnectAndEcho) {
-    const uint16_t kPort = 47001;
+    const uint16_t kPort = 22001;
     EchoServerThread server(kPort);
 
     std::atomic<bool> cli_started{false};
@@ -110,7 +110,7 @@ TEST(TcpClientTest, ConnectAndEcho) {
 }
 
 TEST(TcpClientTest, RetryUntilServerAvailable) {
-    const uint16_t kPort = 47002;
+    const uint16_t kPort = 22002;
 
     // Start the client first, pointing at a port with no server yet.
     std::atomic<bool> cli_started{false};
@@ -159,8 +159,8 @@ TEST(TcpClientTest, RetryUntilServerAvailable) {
 // after a backoff interval, since stepping between a host's candidates is
 // immediate.
 TEST(TcpClientTest, FailsOverToReachableCandidate) {
-    const uint16_t kDeadPort = 47010;  // nothing listens here
-    const uint16_t kLivePort = 47011;
+    const uint16_t kDeadPort = 22010;  // nothing listens here
+    const uint16_t kLivePort = 22011;
     EchoServerThread server(kLivePort);
 
     std::atomic<bool> cli_started{false};
@@ -214,7 +214,7 @@ TEST(TcpClientTest, FailsOverToReachableCandidate) {
 // Failover across families: an IPv6-first candidate list where only the IPv4
 // server is up (mirrors the DNS/K8s case that motivated the feature).
 TEST(TcpClientTest, FailsOverFromIpv6ToIpv4) {
-    const uint16_t kPort = 47012;
+    const uint16_t kPort = 22012;
     EchoServerThread server(kPort);  // IPv4 (127.0.0.1) only
 
     std::atomic<bool> cli_started{false};
