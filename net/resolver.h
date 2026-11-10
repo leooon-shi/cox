@@ -77,7 +77,7 @@ protected:
     }
 
 private:
-    std::shared_ptr<LookupStatus> stats_ = std::make_shared<LookupStatus>();
+    std::shared_ptr<LookupStats> stats_ = std::make_shared<LookupStats>();
 
 public:
     // Resolve host:port to an address, invoking cb on the loop thread. Kept
