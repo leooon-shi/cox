@@ -15,7 +15,7 @@ cmake --preset examples && cmake --build --preset examples --parallel
 | `benchmark/*` | Micro-benchmarks: reactor task scheduling, echo QPS/latency, thread-pool batching, buffer |
 | **`c10k/c10k_server`** | Tunable echo server for C10K experiments: io threads vs `SO_REUSEPORT` listeners, caps, accept rate limit, live stats; hardening knobs (`--idle`, `--max-age`, `--write-timeout`, `--max-input-buf`, `--sink`, `--work-ms`/`--max-inflight`) and Prometheus `/metrics` on a separate `--metrics-port` |
 | **`c10/c10k_client`** | Standalone epoll load generator: N connections, paced connects (`--rate`), closed-loop requests, multiple source IPs, latency percentiles; adversarial `--atack slowloris\|flood\|slow-read\|big-body` |
-| **`c10k/http_target`** | Tunable HTTP/1.1 server: `POST /sink`, `GET /`, `--max-body` cap (413), `/metrics` on `--metrics-port` - the target for the big-body scenario |
+| **`c10k/http_target`** | Tunable HTTP/1.1 server: `POST /sink`, `GET /`, `--max-body` cap (413), `/metrics` on `--metrics-port` – the target for the big-body scenario |
 | **`c10k/probe_client`** | One legitimate request per interval with a deadline (`--http` for HTTP targets, `--no-read` for sink targets): "is a real client still served under attack?" |
 | **`c10k/sample.sh`** | Once-per-second CSV sampler: server RSS(`/proc`), socket count (`ss`), and live/accepted/closed/rejected from `/metrics` |
 | **`c10k/backpressure_proxy`** + **`c10k/slow_sink`** | End-to-end backpressure: high-water mark → `stopRead()` → TCP window closes → fast sender throttled |

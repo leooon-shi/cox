@@ -332,7 +332,7 @@ http::HttpServer server(&loop, net::InetAddress(8443), "api", server_ctx);
 
 ### HTTP/2
 
-HTTP/2 is opt-in at build time: configure with `-DCOX_WITH_HTTP2-=ON` (or
+HTTP/2 is opt-in at build time: configure with `-DCOX_WITH_HTTP2=ON` (or
 `cmake --preset http2`). It needs nghttp2: the system `libnghttp2-dev` package
 is picked up through pkg-config, or a `third_party/nghttp2` submodule if you
 have checked one out.
@@ -343,7 +343,7 @@ HTTP/1.1 to the rest, with the same handler. Advertise `h2` through ALPN:
 ```cpp
 server_ctx->setAlpnProtocols({"h2", "http/1.1"});  // h2 preferred
 http::HttpServer server(&loop, net::InetAddress(8443), "api", server_ctx);
-server.setHttp2MaxConcurrentStreams(100);   // per connection (default 100)
+server.setHttp2MaxConcurrentStreams(100);  // per connection (default 100)
 server.setHttpHandler([](const http::HttpRequest& req,
                          http::HttpResponse* resp) {
     resp->setBody("served over " + req.version());  // "HTTP/2" or "HTTP/1.1"
@@ -359,12 +359,12 @@ use `Http2Client` (below); `HttpClient` and the connection pools speak
 HTTP/1.1. Cleartext h2 (h2c) is not supported.
 
 All HTTP/2 settings are in `Http2Options` (invalid values throw
-`std::invalid_argument`);
+`std::invalid_argument`):
 
-``cpp
+```cpp
 http::HttpServer::Http2Options h2;  
 h2.max_concurrent_streams = 100;       // SETTINGS_MAX_CONCURRENT_STREAMS
-h2.max_header_list_size = 64 * 1024;
+h2.max_header_list_bytes = 64 * 1024;
 h2.initial_window_size = 1 << 20;      // per-stream upload window
 h2.connection_window_size = 4 << 20;   // whole-connection upload window
 h2.max_frame_size = 16384;             // SETTINGS_MAX_FRAME_SIZE
@@ -416,7 +416,7 @@ server.setStreamHandler([&loop](const http::ServerStreamPtr& s) {
 - Call it from the connection's loop (`s->loop()->runInLoop(...)` from other
   threads).
 - `write()` returns false when too much is buffered; wait for the
- `setOnWritable` callback before writing more.
+  `setOnWritable` callback before writing more.
 - `onAbort` tells you the client went away; stop working then.
 - If you drop the stream without answering, the client gets 500. If you drop
   it after `writeHead()` without `end()`, the client sees an error, not a
