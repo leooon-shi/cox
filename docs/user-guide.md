@@ -15,7 +15,7 @@ For the design rationale behind each feature, see `insights/features/`.
 5. Multi-threading
 6. TLS and mutual TLS
 7. Kubernetes certificate rotation
-8. HTTP, HTTPS, and REST
+8. HTTP, HTTPS and REST
 9. Connecting by hostname (DNS)
 10. Unix-domain sockets
 11. Timers
@@ -32,20 +32,22 @@ For the design rationale behind each feature, see `insights/features/`.
 
 Requirements:
 - Linux (epoll, eventfd, timerfd, inotify)
-- clang with libc++, CMake 3.20+, OpenSSL 3
+- A C++20 compiler (clang++ or g++), CMake 3.20+, OpenSSL 3
 - GoogleTest (bundled as a submodule)
 - Optional: c-ares (async DNS backend), nghttp2 (HTTP/2, with
   `-DCOX_WITH_HTTP2=ON`)
 
-Build with the provided script:
+Build with the provided script (a wrapper over `CMakePresets.json`):
 
 ```
-./build.sh  --release                  # library only
-./build.sh. --debug --build-tests      # with tests
-./build.sh  --release --build-examples
+./build.sh --release                  # Release build (tests are built too)
+./build.sh --debug --test             # Debug build, then run the suite
+./build.sh --build-examples           # examples + benchmarks
+./build.sh --help                     # all options (--gcc, --asan, ...)
 ```
 
-All output goes to `build/` (binaries in `build/bin/`).
+Each preset builds into its own `build/<preset>` directory (binaries in
+`build/<preset>/bin/`), e.g. `build/clang-debug/bin/`).
 
 Link your application against the module libraries you use, for example
 `cox_net` (which pulls in the reactor, buffer, flowcontrol, logging, utilities)
@@ -223,13 +225,22 @@ instead of fetching:
 stapler.loadFromFile("/var/run/ocsp/resp.der");
 ```
 
-Refresh is not automatic. Schedule it with a timer, well before expiry:
+Keep the staple fresh with `startAutoRefresh()`: the blocking fetch runs on a
+worker pool, and the next refresh is scheduled on the loop at half the
+remaining lifetime (tunable via `tls::OcspRefreshOptions`):
+
+```cpp
+stapler.startAutoRefresh(loop, pool);   // pool: a started concurrent::ThreadPool
+// ... before stapler, loop or pool is destroyed:
+stapler.stopAutoRefresh();
+```
+
+To schedule it yourself instead, use a timer and keep `refresh()` off the loop:
 
 ```cpp
 loop.runEvery(3600*3600, [&stapler, &pool] {
     int64_t left = stapler.secondsUntilExpiry();    // -1 = no expiry hint
-    if (left >= 0 && left < 7200)
-    {
+    if (left >= 0 && left < 7200) {
         pool.run([&stapler] {stapler.refresh(); })  // off the loop thread.
     }
 });
@@ -311,7 +322,7 @@ bool has_page       = req.hasQueryParam("page");
 const auto& all     = req.queryParams();                // whole map
 
 // POST with Content-Type: application/x-www-form-urlencoded
-auto form = req.forParams();                              // decoded key/value pairs
+auto form = req.formParams();                              // decoded key/value pairs
 
 // Standalone helpers
 std::string decoded = http::urlDecode("a%20b");
@@ -362,9 +373,9 @@ All HTTP/2 settings are in `Http2Options` (invalid values throw
 `std::invalid_argument`):
 
 ```cpp
-http::HttpServer::Http2Options h2;  
+http::HttpServer::Http2Options h2;
 h2.max_concurrent_streams = 100;       // SETTINGS_MAX_CONCURRENT_STREAMS
-h2.max_header_list_bytes = 64 * 1024;
+h2.max_header_list_bytes = 64 * 1024;  // SETTINGS_MAX_HEAD_LIST_SIZE (431)
 h2.initial_window_size = 1 << 20;      // per-stream upload window
 h2.connection_window_size = 4 << 20;   // whole-connection upload window
 h2.max_frame_size = 16384;             // SETTINGS_MAX_FRAME_SIZE
@@ -473,8 +484,9 @@ Two more knobs on `Options`:
 - A hostname instead of an address. Pass a `net::Resolver` (section 9):
 
 ```cpp
-net::ThreadPoolResolver resolver(&loop, &pool);
-http::Http2Client client(&loop, "api.example.com", 443, &resolver, tls);
+net::ThreadPoolResolver resolver(&loop, &pool); // pool: a started ThreadPool
+http::Http2Client client(&loop, "api.example.com", 443, &resolver,
+                         tls);  // the client TlsConext from above
 ```
 
 The name is resolved on the first request; requests sent meanwhile wait for
@@ -507,13 +519,13 @@ For concurrency, or to amortize TLS handshakes across many requests:
 #include "connection_pool.h"
 #include "multi_origin_pool.h"
 
-http:ConnectionPool pool(&loop, origin_addr);           // optionally + TlsContext
+http::ConnectionPool pool(&loop, origin_addr);           // optionally + TlsContext
 pool.setMaxConnections(8);                              // then queue beyond the cap
 pool.setIdleTimeout(60);                                // evict idle connections
 pool.request(req, callback);
 
 // Several origins behind one object (Go http.Transport style):
-http.MultiOriginPool multi(&loop);
+http::MultiOriginPool multi(&loop);
 multi.setTlsContext("api.example.com", 443, client_ctx);
 multi.request("api.example.com", 443, req, callback);
 ```
@@ -652,7 +664,7 @@ Apply to every connection via the server:
 ```cpp
 server.setIdleTimeout(60);                      // Close silent connection after 60s
 server.setWriteTimeout(30);                     // Close slow consumers that can't drain
-server.setMaxInputBufferSize(1<<20);            // Bound read-safe memory (1 MB)
+server.setMaxInputBufferSize(1<<20);            // Bound read-side memory (1 MB)
 server.setMaxConnectionAge(3600);               // Recycle after 1 hour
 server.setMaxConnections(10000);                // Cap concurrent connections
 ```
@@ -680,7 +692,7 @@ server.shutdown(30, [&loop] {       // 30s drain deadline
 
 Drain stops accepting, half-closes connections so peers see EOF, waits for them
 to finish, force-closes stragglers at the deadline, then invokes the completion
-callback. Wire this to SIGPIPE/SIGINT via an async-signal-safe flag polled by a
+callback. Wire this to SIGINT/SIGTERM via an async-signal-safe flag polled by a
 timer (see `examples/echo/echo_server.cc`).
 
 ## 16. Logging
@@ -752,7 +764,7 @@ buffer; lower the threshold with `log.setFlushLevel(logging::LogLevel::Error)`.
 - Create and run an `EventLoop` on the same thread.
 - For Kubernetes cert rotation, watch the mount directory, not the file.
 - Signal handlers must only set a flag; do real work on the loop thread.
-- set `setThreadNum`, rate limits, and hardening knobs before `start()`.
+- Set `setThreadNum`, rate limits, and hardening knobs before `start()`.
 - Logging to a file from a loop thread needs an `AsyncSink` (section 16); a
   synchronous write stalls every connection on that loop.
 - On a TLS client, pass the server hostname so the certificate is checked
