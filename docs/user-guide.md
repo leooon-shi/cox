@@ -332,7 +332,7 @@ http::HttpServer server(&loop, net::InetAddress(8443), "api", server_ctx);
 
 ### HTTP/2
 
-HTTP/2 is opt-in at build time: configure with `-DCOX_WITH_HTTP2-ON` (or
+HTTP/2 is opt-in at build time: configure with `-DCOX_WITH_HTTP2-=ON` (or
 `cmake --preset http2`). It needs nghttp2: the system `libnghttp2-dev` package
 is picked up through pkg-config, or a `third_party/nghttp2` submodule if you
 have checked one out.
@@ -341,8 +341,8 @@ An HTTPS server then serves HTTP/2 to any client that negotiates it, and
 HTTP/1.1 to the rest, with the same handler. Advertise `h2` through ALPN:
 
 ```cpp
-server_ctx->setAlpnProtocols({"h2", "http/1.1"});   // h2 preferred
-http::HttpServer server(&loop, net::InetAddress(8843), "api", server_ctx);
+server_ctx->setAlpnProtocols({"h2", "http/1.1"});  // h2 preferred
+http::HttpServer server(&loop, net::InetAddress(8443), "api", server_ctx);
 server.setHttp2MaxConcurrentStreams(100);   // per connection (default 100)
 server.setHttpHandler([](const http::HttpRequest& req,
                          http::HttpResponse* resp) {
@@ -353,7 +353,7 @@ server.setHttpHandler([](const http::HttpRequest& req,
 Requests on one HTTP/2 connection are multiplexed: many can be in flight at
 once and each response is sent when its handler returns. `setMaxBodySize`
 applies to HTTP/2 bodies too (413), an oversized header list gets 431, and
-sreams beyond the concurrency cap are refused. Check with
+streams beyond the concurrency cap are refused. Check with
 `curl -k --http2 https://127.0.0.1:8443/`. To make HTTP/2 requests from Cox,
 use `Http2Client` (below); `HttpClient` and the connection pools speak
 HTTP/1.1. Cleartext h2 (h2c) is not supported.
@@ -364,7 +364,7 @@ All HTTP/2 settings are in `Http2Options` (invalid values throw
 ``cpp
 http::HttpServer::Http2Options h2;  
 h2.max_concurrent_streams = 100;       // SETTINGS_MAX_CONCURRENT_STREAMS
-h2.max_header_list_size = 64 * 1024;   // SETTINGS_MAX_HEADER_LIST_SIZE (431)
+h2.max_header_list_size = 64 * 1024;
 h2.initial_window_size = 1 << 20;      // per-stream upload window
 h2.connection_window_size = 4 << 20;   // whole-connection upload window
 h2.max_frame_size = 16384;             // SETTINGS_MAX_FRAME_SIZE
@@ -382,6 +382,7 @@ Connections are closed with GOAWAY, never cut off mid-request:
   streams), then, `goaway_notice_ms` later, the final GOAWAY naming the last
   stream the server will process. Requests already in flight finish; the
   connection closes when they are done or at the drain deadline.
+  `server.goAwayHttp2Connections()` does the same without stopping the server.
 - **Connection max age** (`tcpServer().setMaxConnectionAge`) and the request
   cap use the same GOAWAY, so clients move to a new connection without
   failing a request.
@@ -391,7 +392,7 @@ Connections are closed with GOAWAY, never cut off mid-request:
   retry it on a new connection. HTTP/2 has no way to reset stream IDs on a
   connection, so a new connection is the only continuation.
 
-### Async handlers and streamed response
+### Async handlers and streamed responses
 
 `setHttpHandler` needs the response complete when the handler returns. With
 `setStreamHandler` the handler receives a `ServerStream` and may answer later
@@ -403,29 +404,29 @@ server-sent events:
 
 server.setStreamHandler([&loop](const http::ServerStreamPtr& s) {
     s->writeHead(200, {{"content-type", "text/event-stream"}});
-    s->write("data: hello\n\n");    // reaches the client now
+    s->write("data: hello\n\n");  // reaches the client now
     // keep `s`, write more later from a timer or callback, then:
     // s->end();
 });
 ```
 
-- Answer once: `respond(resp)`, or `writeHead()` then `write(0` any number of
+- Answer once: `respond(resp)`, or `writeHead()` then `write()` any number of
   times then `end()`. Without a `content-length` header the length is
   open-ended.
 - Call it from the connection's loop (`s->loop()->runInLoop(...)` from other
   threads).
-- `Write()` returns false when too much is buffered; wait for the
+- `write()` returns false when too much is buffered; wait for the
  `setOnWritable` callback before writing more.
 - `onAbort` tells you the client went away; stop working then.
 - If you drop the stream without answering, the client gets 500. If you drop
   it after `writeHead()` without `end()`, the client sees an error, not a
   short body.
-- Tody this is fully supported on HTTP/2. On HTTP/1.1 the handler must
+- Today this is fully supported on HTTP/2. On HTTP/1.1 the handler must
   finish (`respond` or `end`) before returning; a later answer gets 500.
 
 ### HTTP/2 client
 
-`HTTPClient` (also needs `COX_WITH_HTTP2`) sends many requests over one
+`Http2Client` (also needs `COX_WITH_HTTP2`) sends many requests over one
 TLS connection at once. Call `send()`/`get()` as often as you like without
 waiting; each callback fires when its own response arrives:
 
@@ -435,7 +436,7 @@ waiting; each callback fires when its own response arrives:
 auto tls = std::make_shared<tls::TlsContext>(tls::Role::kClient);
 tls->loadCaFile("ca.pem");  // Http2Client sets ALPN to {"h2"} itself
 http::Http2Client client(&loop, net::InetAddress("10.0.0.5", 8443), tls,
-                         "api.example.com");    // :authority and SNI
+                         "api.example.com");  // :authority and SNI
 for (int i = 0; i < 100; ++i) {
     client.get("/item/" + std::to_string(i),
                [](const http::HttpResponse& resp, const std::string& err) {
@@ -451,7 +452,8 @@ It handles the connection lifecycle for you:
   requests, then closes.
 - A request the server provably did not process is re-sent on the new
   connection automatically (`Options::max_retries`, default 3). That covers
-  requests above the GOAWAY's last stream ID, requests refused that was in
+  requests above the GOAWAY's last stream ID, requests refused with
+  REFUSED_STREAM, and requests still queued locally. A request that was in
   flight when a connection died is not re-sent, because the server may have
   run it; its callback gets the error.
 - Requests byond the server's `MAX_CONCURRENT_STREAMS` wait in a local queue.
@@ -464,7 +466,7 @@ It handles the connection lifecycle for you:
 Two more knobs on `Options`:
 
 - `max_connections` (default 4). One connection carries up to the server's
-  `MAX_CONCURRENT_STREAMS` requests at once. The client opens anohter
+  `MAX_CONCURRENT_STREAMS` requests at once. The client opens another
   connection only when every existing one is full, up to this limit; past it,
   requests queue on the least-loaded connection. Light load therefore stays
   on a single connection. Set it to 1 to never open a second one.

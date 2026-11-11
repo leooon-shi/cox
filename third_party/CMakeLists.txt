@@ -30,7 +30,7 @@ endif()
 
 if(COX_WITH_HTTP2 AND EXISTS "${COX_THIRD_PARTY_DIR}/nghttp2/CMakeLists.txt")
     # nghttp2 vendored as a pinned submodule. Without the submodule, the http
-    # module falls back to the system libnghttp2 (pkg-cofnig), see
+    # module falls back to the system libnghttp2 (pkg-config), see
     # http/CMakeLists.txt. Disable nghttp2's apps/examples/tests; we only want
     # the library target.
     set(ENABLE_LIB_ONLY ON CACHE BOOL "" FORCE)
