@@ -32,7 +32,7 @@ For the design rationale behind each feature, see `insights/features/`.
 
 Requirements:
 - Linux (epoll, eventfd, timerfd, inotify)
-- A C++20 compiler (clang++ or g++), CMake 3.20+, OpenSSL 3
+- A C++20 compiler (clang++ or g++), CMake 3.21+, OpenSSL 3
 - GoogleTest (bundled as a submodule)
 - Optional: c-ares (async DNS backend), nghttp2 (HTTP/2, with
   `-DCOX_WITH_HTTP2=ON`)
@@ -40,14 +40,14 @@ Requirements:
 Build with the provided script (a wrapper over `CMakePresets.json`):
 
 ```
-./build.sh --release                  # Release build (tests are built too)
-./build.sh --debug --test             # Debug build, then run the suite
-./build.sh --build-examples           # examples + benchmarks
-./build.sh --help                     # all options (--gcc, --asan, ...)
+./build.sh --release                   # Release build (tests are built too)
+./build.sh --debug --test              # Debug build, then run the suite
+./build.sh --build-examples            # examples + benchmarks
+./build.sh --help                      # all options (--gcc, --asan, ...)
 ```
 
-Each preset builds into its own `build/<preset>` directory (binaries in
-`build/<preset>/bin/`), e.g. `build/clang-debug/bin/`).
+ Each preset builds into its own `build/<preset>/` directory (binaries in
+ `build/<preset>/bin/`), e.g. `build/clang-debug/bin/`).
 
 Link your application against the module libraries you use, for example
 `cox_net` (which pulls in the reactor, buffer, flowcontrol, logging, utilities)
